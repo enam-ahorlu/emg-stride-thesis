@@ -1,0 +1,182 @@
+{
+  "wilcoxon_tests": {
+    "RF_vs_SVM": {
+      "W_plus": 523.0,
+      "W_minus": 297.0,
+      "z_approx": 1.5189,
+      "p_value": 0.128796,
+      "mean_difference": 0.0085,
+      "n_effective": 40,
+      "significant_at_005": false
+    },
+    "RF_vs_CNN": {
+      "W_plus": 576.0,
+      "W_minus": 244.0,
+      "z_approx": 2.2313,
+      "p_value": 0.025664,
+      "mean_difference": 0.0304,
+      "n_effective": 40,
+      "significant_at_005": true
+    },
+    "SVM_vs_CNN": {
+      "W_plus": 501.0,
+      "W_minus": 319.0,
+      "z_approx": 1.2232,
+      "p_value": 0.22127,
+      "mean_difference": 0.0219,
+      "n_effective": 40,
+      "significant_at_005": false
+    }
+  },
+  "confidence_intervals": {
+    "RF": {
+      "mean": 0.7119,
+      "std": 0.0804,
+      "se": 0.0127,
+      "ci_95_low": 0.687,
+      "ci_95_high": 0.7369,
+      "min": 0.4245,
+      "max": 0.8275
+    },
+    "SVM": {
+      "mean": 0.7035,
+      "std": 0.0573,
+      "se": 0.0091,
+      "ci_95_low": 0.6857,
+      "ci_95_high": 0.7212,
+      "min": 0.5707,
+      "max": 0.8348
+    },
+    "CNN": {
+      "mean": 0.6816,
+      "std": 0.1029,
+      "se": 0.0163,
+      "ci_95_low": 0.6497,
+      "ci_95_high": 0.7135,
+      "min": 0.3136,
+      "max": 0.8325
+    }
+  },
+  "subject_difficulty": {
+    "hardest_5": [
+      {
+        "subject": 10,
+        "avg_f1": 49.8,
+        "rf": 55.1,
+        "svm": 63.0,
+        "cnn": 31.4
+      },
+      {
+        "subject": 1,
+        "avg_f1": 52.9,
+        "rf": 42.4,
+        "svm": 57.1,
+        "cnn": 59.0
+      },
+      {
+        "subject": 5,
+        "avg_f1": 56.0,
+        "rf": 52.5,
+        "svm": 62.7,
+        "cnn": 52.8
+      },
+      {
+        "subject": 35,
+        "avg_f1": 61.6,
+        "rf": 66.9,
+        "svm": 68.4,
+        "cnn": 49.5
+      },
+      {
+        "subject": 4,
+        "avg_f1": 63.7,
+        "rf": 63.6,
+        "svm": 62.1,
+        "cnn": 65.5
+      }
+    ],
+    "easiest_5": [
+      {
+        "subject": 2,
+        "avg_f1": 78.0,
+        "rf": 78.9,
+        "svm": 71.7,
+        "cnn": 83.2
+      },
+      {
+        "subject": 16,
+        "avg_f1": 78.7,
+        "rf": 82.7,
+        "svm": 76.3,
+        "cnn": 77.2
+      },
+      {
+        "subject": 37,
+        "avg_f1": 78.9,
+        "rf": 81.3,
+        "svm": 75.7,
+        "cnn": 79.8
+      },
+      {
+        "subject": 27,
+        "avg_f1": 79.6,
+        "rf": 77.2,
+        "svm": 82.4,
+        "cnn": 79.0
+      },
+      {
+        "subject": 13,
+        "avg_f1": 79.8,
+        "rf": 82.0,
+        "svm": 83.5,
+        "cnn": 74.0
+      }
+    ],
+    "range_pp": 30.0,
+    "correlations": {
+      "pearson_rf_svm": 0.779,
+      "pearson_rf_cnn": 0.642,
+      "pearson_svm_cnn": 0.589
+    }
+  },
+  "class_imbalance": {
+    "total_windows_250ms": 26347,
+    "windows_by_class": {
+      "STDUP": 14686,
+      "UPS": 4550,
+      "DNS": 4069,
+      "WAK": 3042
+    },
+    "imbalance_ratio": 4.83,
+    "percentages": {
+      "STDUP": 55.7,
+      "UPS": 17.3,
+      "DNS": 15.4,
+      "WAK": 11.5
+    }
+  },
+  "generalization_gap_stats": {
+    "RF": {
+      "sd_mean": 83.93,
+      "loso_mean": 71.19,
+      "gap_mean_pp": 12.74,
+      "gap_std_pp": 7.46
+    },
+    "SVM": {
+      "sd_mean": 86.03,
+      "loso_mean": 70.35,
+      "gap_mean_pp": 15.68,
+      "gap_std_pp": 5.52
+    },
+    "CNN": {
+      "sd_mean": 95.16,
+      "loso_mean": 68.16,
+      "gap_mean_pp": 27.0,
+      "gap_std_pp": 10.22
+    }
+  },
+  "lda_status": {
+    "sd_found": true,
+    "loso_found": false
+  }
+}

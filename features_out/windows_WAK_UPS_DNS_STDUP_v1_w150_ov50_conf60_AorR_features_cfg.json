@@ -1,0 +1,9 @@
+{
+  "zc_thr": 1e-06,
+  "wamp_thr": 1e-06,
+  "entropy_bins": 32,
+  "use_entropy": false,
+  "use_wavelet": true,
+  "wavelet_name": "db4",
+  "wavelet_level": 2
+}

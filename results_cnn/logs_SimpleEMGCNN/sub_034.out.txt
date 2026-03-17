@@ -1,0 +1,37 @@
+Subject 34
+Windows: 632
+Classes: {'DNS': 0, 'STDUP': 1, 'UPS': 2, 'WAK': 3}
+Using: env | Norm: zscore
+
+=== Class counts (label id -> count) ===
+{0: 91, 1: 375, 2: 102, 3: 64}
+=== Majority baseline (predict most frequent) ===
+acc=0.5934 bal=0.2500 f1=0.1862 (majority_class=1)
+Device: cuda
+Epoch 01 | loss=1.0354 acc=0.8346 bal=0.7913 f1=0.7889
+Epoch 02 | loss=0.6418 acc=0.8661 bal=0.7558 f1=0.8000
+Epoch 03 | loss=0.4930 acc=0.8819 bal=0.7869 f1=0.8219
+Epoch 04 | loss=0.3810 acc=0.8819 bal=0.7743 f1=0.8196
+Epoch 05 | loss=0.3158 acc=0.9213 bal=0.8471 f1=0.8864
+Epoch 06 | loss=0.2581 acc=0.9449 bal=0.9046 f1=0.9241
+Epoch 07 | loss=0.2115 acc=0.9606 bal=0.9219 f1=0.9451
+Epoch 08 | loss=0.1778 acc=0.9685 bal=0.9431 f1=0.9539
+Epoch 09 | loss=0.1488 acc=0.9606 bal=0.9238 f1=0.9371
+Epoch 10 | loss=0.1265 acc=0.9606 bal=0.9238 f1=0.9371
+Epoch 11 | loss=0.1318 acc=0.9764 bal=0.9570 f1=0.9627
+Epoch 12 | loss=0.1052 acc=0.9764 bal=0.9570 f1=0.9627
+Epoch 13 | loss=0.0933 acc=0.9921 bal=0.9808 f1=0.9883
+Epoch 14 | loss=0.0745 acc=0.9843 bal=0.9615 f1=0.9708
+Epoch 15 | loss=0.0841 acc=0.9685 bal=0.9377 f1=0.9458
+Epoch 16 | loss=0.0742 acc=0.9921 bal=0.9808 f1=0.9883
+Epoch 17 | loss=0.0758 acc=0.9843 bal=0.9774 f1=0.9758
+Epoch 18 | loss=0.0629 acc=0.9843 bal=0.9615 f1=0.9708
+Epoch 19 | loss=0.0665 acc=0.9843 bal=0.9615 f1=0.9708
+Epoch 20 | loss=0.0582 acc=0.9843 bal=0.9615 f1=0.9708
+
+=== CNN RESULT ===
+Accuracy: 0.9843
+Balanced Acc: 0.9615
+F1 macro: 0.9708
+Train time (s): 1.00
+Inference per window (ms): 0.0092

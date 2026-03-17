@@ -1,0 +1,658 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Preprocess EMG (Ablation 150+250)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/preprocess_emg.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--ablation",
+        "--auto-tag"
+      ]
+    },
+    {
+      "name": "Validate NPZ (w150)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/validate_npz.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w150_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w150_ov50_conf60_AorR.csv"
+      ]
+    },
+    {
+      "name": "Validate NPZ (w250)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/validate_npz.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv"
+      ]
+    },
+    {
+      "name": "Extract Features (w150)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/extract_features.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w150_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w150_ov50_conf60_AorR.csv",
+        "--out-dir",
+        "features_out",
+        "--use",
+        "raw"
+      ]
+    },
+    {
+      "name": "Extract Features (w250)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/extract_features.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--out-dir",
+        "features_out",
+        "--use",
+        "raw"
+      ]
+    },
+    {
+      "name": "Train Classical MAIN - w250 BASE - SVM+RF+LDA + save-preds",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_classical_patched.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--feat-set",
+        "base",
+        "--features",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_base.npz",
+        "--meta",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv",
+        "--subjects",
+        "all",
+        "--splits",
+        "5",
+        "--models",
+        "SVM,RF,LDA",
+        "--svm-scale",
+        "--save-preds",
+        "--cv-scheme",
+        "subjdep",
+        "--log-fold-dist"
+      ]
+    },
+    {
+      "name": "Train Classical - w250 EXT - SVM+RF",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_classical_patched.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--feat-set",
+        "ext",
+        "--features",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_ext.npz",
+        "--meta",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv",
+        "--subjects",
+        "all",
+        "--splits",
+        "5",
+        "--models",
+        "SVM,RF",
+        "--svm-scale",
+        "--cv-scheme",
+        "subjdep",
+        "--log-fold-dist"
+      ]
+    },
+    {
+      "name": "Hyperparam Run - SVM only (prompt C + scaling)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_classical_patched.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--feat-set",
+        "base",
+        "--features",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_base.npz",
+        "--meta",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv",
+        "--subjects",
+        "all",
+        "--splits",
+        "5",
+        "--models",
+        "SVM",
+        "--svm-c",
+        "${input:svmC}",
+        "${input:svmScaleFlag}",
+        "--cv-scheme",
+        "subjdep",
+        "--log-fold-dist"
+      ]
+    },
+    {
+      "name": "Hyperparam Run - RF only (prompt trees + depth)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_classical_patched.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--feat-set",
+        "base",
+        "--features",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_base.npz",
+        "--meta",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv",
+        "--subjects",
+        "all",
+        "--splits",
+        "5",
+        "--models",
+        "RF",
+        "--rf-n-estimators",
+        "${input:rfTrees}",
+        "--rf-max-depth",
+        "${input:rfDepth}",
+        "--cv-scheme",
+        "subjdep",
+        "--log-fold-dist"
+      ]
+    },
+    {
+      "name": "Summarize Classical Results - master_classical_results.csv",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/summarize_classical_results_patched.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--results-dir",
+        "results_classical",
+        "--out",
+        "master_classical_results.csv",
+        "${input:writeXlsxFlag}"
+      ]
+    },
+    {
+      "name": "Per-subject metrics (w250 BASE) from saved preds",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/compute_per_subject_metrics.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--meta",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv",
+        "--pred-dir",
+        "results_classical/predictions",
+        "--scheme",
+        "subjdep",
+        "--out",
+        "results_classical/per_subject_metrics_250_base.csv"
+      ]
+    },
+    {
+      "name": "Plot early classical figures (window=250ms)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/plot_early_classical_figs.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--master",
+        "results_classical/master_classical_results.csv",
+        "--window-ms",
+        "250",
+        "--out-dir",
+        "results_classical/figures_early"
+      ]
+    },
+    {
+      "name": "CNN Gate (BEST) - subj 1 - ENV + zscore + report (w250)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_cnn_subjectdep.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--subject",
+        "1",
+        "--use",
+        "env",
+        "--norm",
+        "zscore",
+        "--report"
+      ]
+    },
+    {
+      "name": "CNN Test - prompt subject - RAW + NONE (control)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_cnn_subjectdep.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--subject",
+        "${input:cnnSubject}",
+        "--use",
+        "raw",
+        "--norm",
+        "none",
+        "--report"
+      ]
+    },
+    {
+      "name": "CNN Test - prompt subject - RAW + zscore",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_cnn_subjectdep.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--subject",
+        "${input:cnnSubject}",
+        "--use",
+        "raw",
+        "--norm",
+        "zscore",
+        "--report"
+      ]
+    },
+    {
+      "name": "CNN Test - prompt subject - ENV + NONE (control)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_cnn_subjectdep.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--subject",
+        "${input:cnnSubject}",
+        "--use",
+        "env",
+        "--norm",
+        "none",
+        "--report"
+      ]
+    },
+    {
+      "name": "CNN Test - prompt subject - ENV + zscore",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_cnn_subjectdep.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--subject",
+        "${input:cnnSubject}",
+        "--use",
+        "env",
+        "--norm",
+        "zscore",
+        "--report"
+      ]
+    },
+    {
+      "name": "CNN Sanity - Overfit (prompted) - use/norm/N/eval/dropout/reg",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_cnn_subjectdep.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--subject",
+        "${input:cnnSubject}",
+        "--use",
+        "${input:cnnUse}",
+        "--norm",
+        "${input:cnnNorm}",
+        "--overfit-n",
+        "${input:cnnOverfitN}",
+        "--overfit-eval",
+        "${input:cnnOverfitEval}",
+        "--dropout",
+        "${input:cnnDropout}",
+        "${input:cnnDisableRegFlag}"
+      ]
+    },
+    {
+      "name": "CNN BEST - ALL SUBJECTS (ENV+ZSCORE w250)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run_cnn_all_subjects.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--npz",
+        "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz",
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--use",
+        "env",
+        "--norm",
+        "zscore",
+        "--out",
+        "results_cnn/cnn_subjectdep_w250_env_zscore.csv"
+      ]
+    },
+    {
+      "name": "LOSO Train - Classical (w250 base) SVM+RF (resume, inner=3, flush)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/train_classical_loso.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--features",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_base.npz",
+        "--meta",
+        "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv",
+        "--models",
+        "SVM,RF",
+        "--svm-scale",
+        "--inner-splits",
+        "3",
+        "--flush-preds",
+        "--resume",
+        "--save-preds",
+        "--cv-scheme",
+        "loso",
+        "--out",
+        "${input:losoOutDir}"
+      ]
+    },
+    {
+      "name": "EA: Compute Generalization Gap (SD vs LOSO)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/compute_generalization_gap.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--sd",
+        "results_classical/per_subject_metrics_250_base.csv",
+        "--loso",
+        "${input:losoOutDir}/per_subject_metrics_250_base_loso.csv",
+        "--out",
+        "${input:losoOutDir}/generalization_gap.csv",
+        "--models",
+        "SVM,RF"
+      ]
+    },
+    {
+      "name": "EA: Merge + Plot Generalization (uses generalization_gap.csv)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/merge_plot_generalization.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--gap",
+        "${input:losoOutDir}/generalization_gap.csv",
+        "--outdir",
+        "${input:losoOutDir}/generalization_plots",
+        "--models",
+        "SVM,RF"
+      ]
+    },
+    {
+      "name": "EA: Movement Errors (per-class metrics + top confusions)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/analyze_movement_errors.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--svm-cm",
+        "${input:losoOutDir}/confusion_matrices/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_base__SVM_LOSO_confusion.csv",
+        "--rf-cm",
+        "${input:losoOutDir}/confusion_matrices/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_base__RF_LOSO_confusion.csv",
+        "--outdir",
+        "${input:losoOutDir}/error_analysis/movement",
+        "--topk",
+        "20"
+      ]
+    },
+    {
+      "name": "EA: Subject Difficulty (easy vs hard from LOSO)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/analyze_subject_difficulty.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--gap",
+        "${input:losoOutDir}/generalization_gap.csv",
+        "--models",
+        "SVM,RF",
+        "--metric",
+        "f1_loso",
+        "--quantile",
+        "0.25",
+        "--outdir",
+        "${input:losoOutDir}/error_analysis/subjects"
+      ]
+    },
+    {
+      "name": "EA: Confusion Easy vs Hard (SVM)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/compare_easy_hard_confusion.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--pred",
+        "${input:losoOutDir}/predictions/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_base_SVM_loso_y_pred.npy",
+        "--model",
+        "SVM",
+        "--easy-csv",
+        "${input:losoOutDir}/error_analysis/subjects/SVM_easy_subjects_by_f1_loso.csv",
+        "--hard-csv",
+        "${input:losoOutDir}/error_analysis/subjects/SVM_hard_subjects_by_f1_loso.csv",
+        "--outdir",
+        "${input:losoOutDir}/error_analysis/easy_hard_confusion"
+      ]
+    },
+    {
+      "name": "EA: Confusion Easy vs Hard (RF)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/compare_easy_hard_confusion.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--pred",
+        "${input:losoOutDir}/predictions/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_base_RF_loso_y_pred.npy",
+        "--model",
+        "RF",
+        "--easy-csv",
+        "${input:losoOutDir}/error_analysis/subjects/RF_easy_subjects_by_f1_loso.csv",
+        "--hard-csv",
+        "${input:losoOutDir}/error_analysis/subjects/RF_hard_subjects_by_f1_loso.csv",
+        "--outdir",
+        "${input:losoOutDir}/error_analysis/easy_hard_confusion"
+      ]
+    },
+    {
+      "name": "EA: Subject Metadata Analysis (pick model)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/analyze_subject_metadata.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--loso-metrics",
+        "${input:losoOutDir}/per_subject_metrics_250_base_loso.csv",
+        "--subject-info",
+        "${input:subjectInfoPath}",
+        "--model",
+        "${input:errModel}",
+        "--outdir",
+        "${input:losoOutDir}/error_analysis/metadata"
+      ]
+    },
+    {
+      "name": "EA: Dataset Balance (windows per subject + class distribution)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/dataset_balance_analysis.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--meta",
+        "windows_WAK_UPS_DNS_STDUP_v1_meta_w250_ov50_conf60_AorR.csv",
+        "--outdir",
+        "${input:losoOutDir}/error_analysis/dataset"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "svmC",
+      "type": "promptString",
+      "description": "SVM C value",
+      "default": "5.0"
+    },
+    {
+      "id": "svmScaleFlag",
+      "type": "pickString",
+      "description": "SVM scaling flag",
+      "options": [
+        "--svm-scale",
+        ""
+      ],
+      "default": "--svm-scale"
+    },
+    {
+      "id": "rfTrees",
+      "type": "promptString",
+      "description": "RF n_estimators",
+      "default": "300"
+    },
+    {
+      "id": "rfDepth",
+      "type": "promptString",
+      "description": "RF max_depth (-1 means None in your CLI)",
+      "default": "-1"
+    },
+    {
+      "id": "writeXlsxFlag",
+      "type": "pickString",
+      "description": "Write XLSX as well?",
+      "options": [
+        "--xlsx",
+        ""
+      ],
+      "default": ""
+    },
+    {
+      "id": "cnnSubject",
+      "type": "promptString",
+      "description": "CNN subject id",
+      "default": "1"
+    },
+    {
+      "id": "cnnUse",
+      "type": "pickString",
+      "description": "CNN input representation (--use)",
+      "options": [
+        "raw",
+        "env"
+      ],
+      "default": "env"
+    },
+    {
+      "id": "cnnNorm",
+      "type": "pickString",
+      "description": "CNN normalization (--norm)",
+      "options": [
+        "none",
+        "zscore"
+      ],
+      "default": "zscore"
+    },
+    {
+      "id": "cnnOverfitN",
+      "type": "promptString",
+      "description": "Overfit subset size (--overfit-n). Use 0 to disable.",
+      "default": "128"
+    },
+    {
+      "id": "cnnOverfitEval",
+      "type": "pickString",
+      "description": "Overfit evaluation set (--overfit-eval)",
+      "options": [
+        "train",
+        "test"
+      ],
+      "default": "train"
+    },
+    {
+      "id": "cnnDropout",
+      "type": "promptString",
+      "description": "Dropout probability (--dropout)",
+      "default": "0.3"
+    },
+    {
+      "id": "cnnDisableRegFlag",
+      "type": "pickString",
+      "description": "Disable regularization in overfit mode? (adds --overfit-disable-regularization)",
+      "options": [
+        "--overfit-disable-regularization",
+        ""
+      ],
+      "default": "--overfit-disable-regularization"
+    },
+    {
+      "id": "losoOutDir",
+      "type": "promptString",
+      "description": "LOSO output folder (relative to workspace)",
+      "default": "results_loso_light"
+    },
+    {
+      "id": "errModel",
+      "type": "pickString",
+      "description": "Model for error-analysis scripts",
+      "options": [
+        "SVM",
+        "RF"
+      ],
+      "default": "SVM"
+    },
+    {
+      "id": "subjectInfoPath",
+      "type": "promptString",
+      "description": "Path to SubjectInformation.xlsx (relative or absolute)",
+      "default": "${workspaceFolder}/SIAT_LLMD20230404/SubjectInformation.xlsx"
+    }
+  ]
+}

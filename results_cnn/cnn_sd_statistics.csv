@@ -1,0 +1,2 @@
+metric,mean,std,min,max,q25,median,q75,min_subject,max_subject,low_outlier_threshold (mean-1.5std),high_outlier_threshold (mean+1.5std),n_low_outliers,n_high_outliers
+f1_macro,0.9515699999999999,0.037293604318661966,0.798,1.0,0.93785,0.9592,0.976325,32,27,0.895629593522007,1.007510406477993,3,0
