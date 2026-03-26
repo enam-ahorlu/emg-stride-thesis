@@ -170,7 +170,7 @@ def main() -> None:
     if not MASTER_CSV.exists():
         raise FileNotFoundError(
             f"Master CSV not found: {MASTER_CSV}\n"
-            "Run summarize_classical_results_patched.py first."
+            "Run run_full_pipeline.py or train_classical_loso.py first."
         )
 
     df = load_and_filter(MASTER_CSV)

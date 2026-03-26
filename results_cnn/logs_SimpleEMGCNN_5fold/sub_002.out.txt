@@ -1,0 +1,53 @@
+Subject 2
+Windows: 520
+Classes: {'DNS': 0, 'STDUP': 1, 'UPS': 2, 'WAK': 3}
+Using: env | Norm: zscore
+
+=== Class counts (label id -> count) ===
+{0: 77, 1: 291, 2: 89, 3: 63}
+=== Majority baseline (predict most frequent) ===
+acc=0.5596 bal=0.2500 f1=0.1794 (majority_class=1)
+Device: cuda | 5-fold CV | early stopping patience=5
+
+--- Fold 1/5 ---
+  Epoch 05 | train_loss=0.3815 val_loss=0.3341 test_f1=0.7717 *
+  Epoch 10 | train_loss=0.2031 val_loss=0.3500 test_f1=0.9330 
+  Epoch 12 | train_loss=0.1825 val_loss=0.4993 test_f1=0.9446 
+  Early stop at epoch 12
+  Fold 1 result: acc=0.8942 bal=0.8171 f1=0.8447 (train_time=21.1s)
+
+--- Fold 2/5 ---
+  Epoch 05 | train_loss=0.4237 val_loss=0.5228 test_f1=0.8520 *
+  Epoch 10 | train_loss=0.2085 val_loss=0.2097 test_f1=0.9348 *
+  Epoch 15 | train_loss=0.1282 val_loss=0.4888 test_f1=0.9459 
+  Early stop at epoch 15
+  Fold 2 result: acc=0.9519 bal=0.9171 f1=0.9348 (train_time=6.7s)
+
+--- Fold 3/5 ---
+  Epoch 05 | train_loss=0.3669 val_loss=0.4493 test_f1=0.7038 *
+  Epoch 10 | train_loss=0.1782 val_loss=0.3282 test_f1=0.8077 
+  Epoch 13 | train_loss=0.1461 val_loss=0.3953 test_f1=0.8226 
+  Early stop at epoch 13
+  Fold 3 result: acc=0.8750 bal=0.7983 f1=0.8196 (train_time=2.1s)
+
+--- Fold 4/5 ---
+  Epoch 05 | train_loss=0.3974 val_loss=0.5134 test_f1=0.7099 *
+  Epoch 10 | train_loss=0.2041 val_loss=0.3567 test_f1=0.9168 *
+  Epoch 15 | train_loss=0.1301 val_loss=0.5255 test_f1=0.9612 
+  Epoch 17 | train_loss=0.1238 val_loss=0.5455 test_f1=0.9490 
+  Early stop at epoch 17
+  Fold 4 result: acc=0.9519 bal=0.9245 f1=0.9342 (train_time=2.0s)
+
+--- Fold 5/5 ---
+  Epoch 05 | train_loss=0.4136 val_loss=0.4681 test_f1=0.8673 *
+  Epoch 10 | train_loss=0.2148 val_loss=0.4138 test_f1=0.9241 
+  Epoch 12 | train_loss=0.1988 val_loss=0.4302 test_f1=0.9231 
+  Early stop at epoch 12
+  Fold 5 result: acc=0.9231 bal=0.8956 f1=0.9076 (train_time=0.5s)
+
+=== CNN RESULT (5-fold CV) ===
+Accuracy: 0.9192 ± 0.0344
+Balanced Acc: 0.8705 ± 0.0587
+F1 macro: 0.8882 ± 0.0531
+Train time (s): 32.34
+Inference per window (ms): 0.0239

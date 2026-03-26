@@ -194,6 +194,22 @@ class ModelResult:
 
 
 
+def _get_hp_grid(model_name: str) -> dict:
+    """Return hyperparameter grid for GridSearchCV, matching LOSO pipeline.
+
+    SVM: tune C only (gamma fixed at 'scale', consistent with LOSO).
+    RF:  tune n_estimators only (max_depth fixed at None, consistent with LOSO).
+    LDA: no HP tuning.
+    """
+    if "SVM" in model_name:
+        prefix = "svc__" if "scaled" in model_name.lower() else ""
+        return {f"{prefix}C": [1, 5, 10]}
+    elif "RF" in model_name:
+        return {"n_estimators": [200, 400, 500], "max_depth": [None, 10]}
+    else:
+        return {}  # LDA: no HP tuning
+
+
 def eval_subject_dependent_cv(
     X: np.ndarray,
     y: np.ndarray,
@@ -201,9 +217,12 @@ def eval_subject_dependent_cv(
     model,
     n_splits: int = 5,
     seed: int = 42,
-    log_fold_dist: bool = False,  
+    log_fold_dist: bool = False,
 ) -> Tuple[Dict[str, float], np.ndarray, np.ndarray, np.ndarray]:
-    # Subject-dependent baseline: stratified k-fold across windows.
+    # Subject-dependent baseline: stratified k-fold with nested HP tuning.
+    from sklearn.model_selection import GridSearchCV
+    from sklearn.base import clone
+
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
 
     sv_counts = []
@@ -222,6 +241,8 @@ def eval_subject_dependent_cv(
     pred_times = []
     pred_windows = 0
 
+    hp_grid = _get_hp_grid(model_name)
+
     for fold, (tr, te) in enumerate(skf.split(X, y), start=1):
         X_tr, X_te = X[tr], X[te]
         y_tr, y_te = y[tr], y[te]
@@ -232,16 +253,25 @@ def eval_subject_dependent_cv(
             te_counts = np.bincount(y_te, minlength=n_classes)
             print(f"[{model_name}] fold {fold}: train_counts={tr_counts.tolist()} test_counts={te_counts.tolist()}")
 
-
+        # Nested HP tuning: inner 3-fold CV on training portion of each outer fold
+        fold_model = clone(model)
         t0 = time.perf_counter()
-        model.fit(X_tr, y_tr)
-        # VM diagnostics: support vectors, fraction, iterations 
+        if hp_grid:
+            inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=seed + fold)
+            gs = GridSearchCV(fold_model, hp_grid, cv=inner_cv, scoring="f1_macro",
+                              n_jobs=-1, refit=True)
+            gs.fit(X_tr, y_tr)
+            fold_model = gs.best_estimator_
+            print(f"[{model_name}] fold {fold} best_params: {gs.best_params_}")
+        else:
+            fold_model.fit(X_tr, y_tr)
+        # VM diagnostics: support vectors, fraction, iterations
         try:
             svm_obj = None
-            if hasattr(model, "named_steps") and "svc" in getattr(model, "named_steps", {}):
-                svm_obj = model.named_steps["svc"]
-            elif hasattr(model, "support_"):
-                svm_obj = model
+            if hasattr(fold_model, "named_steps") and "svc" in getattr(fold_model, "named_steps", {}):
+                svm_obj = fold_model.named_steps["svc"]
+            elif hasattr(fold_model, "support_"):
+                svm_obj = fold_model
 
             if svm_obj is not None and hasattr(svm_obj, "support_"):
                 sv_total = int(len(svm_obj.support_))
@@ -260,7 +290,7 @@ def eval_subject_dependent_cv(
             pass
 
         t1 = time.perf_counter()
-        y_hat = model.predict(X_te)
+        y_hat = fold_model.predict(X_te)
         t2 = time.perf_counter()
 
         fit_times.append(t1 - t0)

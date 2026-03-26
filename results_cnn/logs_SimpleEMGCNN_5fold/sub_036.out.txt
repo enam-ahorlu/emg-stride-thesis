@@ -1,0 +1,57 @@
+Subject 36
+Windows: 734
+Classes: {'DNS': 0, 'STDUP': 1, 'UPS': 2, 'WAK': 3}
+Using: env | Norm: zscore
+
+=== Class counts (label id -> count) ===
+{0: 94, 1: 406, 2: 144, 3: 90}
+=== Majority baseline (predict most frequent) ===
+acc=0.5531 bal=0.2500 f1=0.1781 (majority_class=1)
+Device: cuda | 5-fold CV | early stopping patience=5
+
+--- Fold 1/5 ---
+  Epoch 05 | train_loss=0.4129 val_loss=0.0980 test_f1=0.8339 *
+  Epoch 10 | train_loss=0.2574 val_loss=0.0952 test_f1=0.9243 
+  Epoch 11 | train_loss=0.2342 val_loss=0.1472 test_f1=0.9125 
+  Early stop at epoch 11
+  Fold 1 result: acc=0.9048 bal=0.8690 f1=0.8718 (train_time=0.7s)
+
+--- Fold 2/5 ---
+  Epoch 05 | train_loss=0.4684 val_loss=0.2619 test_f1=0.7243 *
+  Epoch 10 | train_loss=0.2501 val_loss=0.1967 test_f1=0.8561 
+  Epoch 13 | train_loss=0.1999 val_loss=0.1705 test_f1=0.9058 
+  Early stop at epoch 13
+  Fold 2 result: acc=0.8912 bal=0.8288 f1=0.8193 (train_time=0.4s)
+
+--- Fold 3/5 ---
+  Epoch 05 | train_loss=0.4723 val_loss=0.0748 test_f1=0.7326 *
+  Epoch 10 | train_loss=0.2477 val_loss=0.0927 test_f1=0.8739 
+  Epoch 11 | train_loss=0.2344 val_loss=0.1337 test_f1=0.8628 
+  Early stop at epoch 11
+  Fold 3 result: acc=0.8776 bal=0.7995 f1=0.8124 (train_time=0.3s)
+
+--- Fold 4/5 ---
+  Epoch 05 | train_loss=0.4228 val_loss=0.3036 test_f1=0.7527 *
+  Epoch 10 | train_loss=0.2484 val_loss=0.2203 test_f1=0.8585 
+  Epoch 15 | train_loss=0.1537 val_loss=0.1925 test_f1=0.9293 
+  Epoch 20 | train_loss=0.1301 val_loss=0.1239 test_f1=0.8787 *
+  Epoch 25 | train_loss=0.0911 val_loss=0.1611 test_f1=0.9350 
+  Epoch 26 | train_loss=0.0952 val_loss=0.2066 test_f1=0.9580 
+  Early stop at epoch 26
+  Fold 4 result: acc=0.9320 bal=0.9091 f1=0.9012 (train_time=0.8s)
+
+--- Fold 5/5 ---
+  Epoch 05 | train_loss=0.4472 val_loss=0.2171 test_f1=0.8177 *
+  Epoch 10 | train_loss=0.2608 val_loss=0.1533 test_f1=0.9336 
+  Epoch 15 | train_loss=0.1802 val_loss=0.1809 test_f1=0.9301 
+  Epoch 20 | train_loss=0.1235 val_loss=0.1733 test_f1=0.9079 
+  Epoch 21 | train_loss=0.1320 val_loss=0.1982 test_f1=0.9459 
+  Early stop at epoch 21
+  Fold 5 result: acc=0.9384 bal=0.9087 f1=0.9079 (train_time=0.7s)
+
+=== CNN RESULT (5-fold CV) ===
+Accuracy: 0.9088 ± 0.0261
+Balanced Acc: 0.8630 ± 0.0486
+F1 macro: 0.8625 ± 0.0448
+Train time (s): 2.95
+Inference per window (ms): 0.0109

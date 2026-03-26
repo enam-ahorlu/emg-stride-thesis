@@ -1,0 +1,4 @@
+comparison,W_plus,W_minus,z,p_value,n_eff,mean_diff_F1,significant_p005,interpretation
+RF_vs_SVM,361.0,459.0,,0.518527,40,-0.0035,False,ns
+RF_vs_CNN,201.0,619.0,,0.004244,40,0.0195,True,p<0.05
+SVM_vs_CNN,185.0,635.0,,0.00196,40,0.023,True,p<0.05

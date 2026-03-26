@@ -381,109 +381,136 @@ def main():
     print("=== Majority baseline (predict most frequent) ===")
     print(f"acc={base['acc']:.4f} bal={base['bal']:.4f} f1={base['f1']:.4f} (majority_class={base['majority_class']})")
 
-    # Stratified split
-    Xtr, Xte, ytr, yte = train_test_split(
-        X, y,
-        test_size=0.2,
-        random_state=args.seed,
-        stratify=y
-    )
+    # --- 5-fold Stratified CV with early stopping ---
+    from sklearn.model_selection import StratifiedKFold
 
-    # -----------------------------
-    # Proper overfit test (PATCHED)
-    # -----------------------------
-    # Old behavior took Xtr[:n], which may accidentally under-sample some classes.
-    # New behavior samples a STRATIFIED RANDOM subset of size n and (by default) evaluates on that TRAIN subset.
     overfit_mode = bool(args.overfit_n and args.overfit_n > 0)
-    if overfit_mode:
-        n = min(int(args.overfit_n), len(Xtr))
-        Xtr, ytr = make_stratified_subset(Xtr, ytr, n=n, seed=args.seed)
-        print(f"\n[OVERFIT TEST] Training on stratified random subset of {len(Xtr)} TRAIN windows.")
-        print("[OVERFIT TEST] Default evaluation is on TRAIN subset (use --overfit-eval test to still check generalization).")
-
-
-    # Overfit sanity settings
     dropout_p = args.dropout
-    freeze_bn = False
+    n_folds = 5
+    patience = 5  # early stopping patience
 
-    if overfit_mode and args.overfit_disable_regularization:
-        dropout_p = 0.0
-        freeze_bn = True
-        print("[OVERFIT TEST] Regularization disabled: dropout=0 and BatchNorm frozen.")
-
-
-    # Normalization (train stats only)
-    if args.norm == "zscore":
-        mu, sd = zscore_fit(Xtr)
-        Xtr = zscore_apply(Xtr, mu, sd)
-        Xte = zscore_apply(Xte, mu, sd)
-
-    train_ds = EMGWindowDataset(Xtr, ytr)
-    test_ds = EMGWindowDataset(Xte, yte)
-
-    train_loader = DataLoader(train_ds, batch_size=args.batch, shuffle=True)
-    test_loader = DataLoader(test_ds, batch_size=args.batch)
-
+    skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=args.seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print("Device:", device)
+    print(f"Device: {device} | {n_folds}-fold CV | early stopping patience={patience}")
 
-    model = SimpleEMGCNN(in_ch=X.shape[1], n_classes=len(label_map), dropout=dropout_p).to(device)
+    fold_accs, fold_bals, fold_f1s = [], [], []
+    y_true_full = np.full(len(y), -1, dtype=np.int64)
+    y_pred_full = np.full(len(y), -1, dtype=np.int64)
+    total_train_time = 0.0
+    latencies = []
 
-    if freeze_bn:
-        freeze_batchnorm(model)
-
-
-    loss_fn = nn.CrossEntropyLoss()
-    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-    # Training
-    t0 = time.perf_counter()
-    for ep in range(args.epochs):
-        loss = train_one_epoch(model, train_loader, loss_fn, opt, device)
+    for fold_i, (tr_idx, te_idx) in enumerate(skf.split(X, y), start=1):
+        print(f"\n--- Fold {fold_i}/{n_folds} ---")
+        Xtr, Xte = X[tr_idx], X[te_idx]
+        ytr, yte = y[tr_idx], y[te_idx]
 
         if overfit_mode:
-            # accuracy on the TRAIN subset, computed two ways:
-            train_acc_eval = accuracy_on_loader(model, train_loader, device, mode="eval")
-            train_acc_trainmode = accuracy_on_loader(model, train_loader, device, mode="train")
+            n = min(int(args.overfit_n), len(Xtr))
+            Xtr, ytr = make_stratified_subset(Xtr, ytr, n=n, seed=args.seed)
+            print(f"[OVERFIT TEST] Using {len(Xtr)} training windows.")
 
-            # what you want to treat as "eval" during overfit debugging:
-            if args.overfit_eval == "train":
-                acc, bal, f1, _, _ = eval_model(model, train_loader, device)
-            else:
-                acc, bal, f1, _, _ = eval_model(model, test_loader, device)
+        # Carve 15% of training data as validation for early stopping
+        val_size = max(1, int(0.15 * len(Xtr)))
+        Xtr_inner, Xval = Xtr[:-val_size], Xtr[-val_size:]
+        ytr_inner, yval = ytr[:-val_size], ytr[-val_size:]
 
-            print(
-                f"Epoch {ep+1:02d} | loss={loss:.4f} "
-                f"train_acc(eval)={train_acc_eval:.4f} train_acc(trainmode)={train_acc_trainmode:.4f} "
-                f"eval_acc={acc:.4f} bal={bal:.4f} f1={f1:.4f}"
-            )
-
+        # Normalization (train stats only)
+        if args.norm == "zscore":
+            mu, sd = zscore_fit(Xtr_inner)
+            Xtr_inner = zscore_apply(Xtr_inner, mu, sd)
+            Xval = zscore_apply(Xval, mu, sd)
+            Xte_norm = zscore_apply(Xte, mu, sd)
         else:
-            acc, bal, f1, _, _ = eval_model(model, test_loader, device)
-            print(f"Epoch {ep+1:02d} | loss={loss:.4f} acc={acc:.4f} bal={bal:.4f} f1={f1:.4f}")
+            Xte_norm = Xte
 
+        train_ds = EMGWindowDataset(Xtr_inner, ytr_inner)
+        val_ds = EMGWindowDataset(Xval, yval)
+        test_ds = EMGWindowDataset(Xte_norm, yte)
 
+        train_loader = DataLoader(train_ds, batch_size=args.batch, shuffle=True)
+        val_loader = DataLoader(val_ds, batch_size=args.batch)
+        test_loader = DataLoader(test_ds, batch_size=args.batch)
 
-    train_time = time.perf_counter() - t0
+        model = SimpleEMGCNN(in_ch=X.shape[1], n_classes=len(label_map), dropout=dropout_p).to(device)
+        loss_fn = nn.CrossEntropyLoss()
+        opt = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    # Final eval + latency
-    if overfit_mode and args.overfit_eval == "train":
-        acc, bal, f1, y_true, y_pred = eval_model(model, train_loader, device)
-        # latency still measured on test set windows (or training subset if no test)
-        latency = _latency_ms_per_window(model, Xte, device=device, n_sample=100) if len(Xte) else float("nan")
-    else:
-        acc, bal, f1, y_true, y_pred = eval_model(model, test_loader, device)
-        latency = _latency_ms_per_window(model, Xte, device=device, n_sample=100)
+        # Training with early stopping
+        best_val_loss = float('inf')
+        best_state = None
+        no_improve = 0
 
-    print("\n=== CNN RESULT ===")
-    print(f"Accuracy: {acc:.4f}")
-    print(f"Balanced Acc: {bal:.4f}")
-    print(f"F1 macro: {f1:.4f}")
+        t0 = time.perf_counter()
+        for ep in range(args.epochs):
+            train_loss = train_one_epoch(model, train_loader, loss_fn, opt, device)
+
+            # Validation loss for early stopping
+            model.eval()
+            val_loss = 0.0
+            val_n = 0
+            with torch.no_grad():
+                for xb, yb in val_loader:
+                    xb, yb = xb.to(device), yb.to(device)
+                    out = model(xb)
+                    val_loss += loss_fn(out, yb).item() * len(yb)
+                    val_n += len(yb)
+            val_loss /= max(val_n, 1)
+
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+                no_improve = 0
+            else:
+                no_improve += 1
+
+            if (ep + 1) % 5 == 0 or no_improve >= patience:
+                _, _, f1_ep, _, _ = eval_model(model, test_loader, device)
+                print(f"  Epoch {ep+1:02d} | train_loss={train_loss:.4f} val_loss={val_loss:.4f} test_f1={f1_ep:.4f} {'*' if no_improve == 0 else ''}")
+
+            if no_improve >= patience:
+                print(f"  Early stop at epoch {ep+1}")
+                break
+
+        fold_train_time = time.perf_counter() - t0
+        total_train_time += fold_train_time
+
+        # Restore best model
+        if best_state is not None:
+            model.load_state_dict(best_state)
+            model.to(device)
+
+        # Evaluate on test fold
+        acc, bal, f1, yt, yp = eval_model(model, test_loader, device)
+        fold_accs.append(acc)
+        fold_bals.append(bal)
+        fold_f1s.append(f1)
+        y_true_full[te_idx] = yt
+        y_pred_full[te_idx] = yp
+
+        lat = _latency_ms_per_window(model, Xte_norm, device=device, n_sample=100)
+        latencies.append(lat)
+
+        print(f"  Fold {fold_i} result: acc={acc:.4f} bal={bal:.4f} f1={f1:.4f} (train_time={fold_train_time:.1f}s)")
+
+    # Aggregate results
+    acc = float(np.mean(fold_accs))
+    bal = float(np.mean(fold_bals))
+    f1 = float(np.mean(fold_f1s))
+    latency = float(np.mean(latencies))
+    train_time = total_train_time
+    y_true = y_true_full
+    y_pred = y_pred_full
+
+    assert np.all(y_true >= 0) and np.all(y_pred >= 0), "Not all samples predicted — CV logic error"
+
+    print(f"\n=== CNN RESULT ({n_folds}-fold CV) ===")
+    print(f"Accuracy: {acc:.4f} ± {np.std(fold_accs, ddof=1):.4f}")
+    print(f"Balanced Acc: {bal:.4f} ± {np.std(fold_bals, ddof=1):.4f}")
+    print(f"F1 macro: {f1:.4f} ± {np.std(fold_f1s, ddof=1):.4f}")
     print(f"Train time (s): {train_time:.2f}")
     print(f"Inference per window (ms): {latency:.4f}")
 
     if args.report:
-        # Label names in id order
         inv = {v: k for k, v in label_map.items()}
         names = [inv[i] for i in range(len(inv))]
 

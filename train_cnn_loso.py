@@ -13,6 +13,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 from sklearn.metrics import f1_score, balanced_accuracy_score, confusion_matrix
+from sklearn.preprocessing import RobustScaler
 import matplotlib.pyplot as plt
 
 import torch.backends.cudnn as cudnn
@@ -22,9 +23,45 @@ cudnn.benchmark = True
 LABELS = ["DNS", "STDUP", "UPS", "WAK"]  # movement types (alphabetical = encode order)
 
 
-def normalize_status_mode_to_str(x) -> str:
+def augment_batch(Xb: torch.Tensor, mode: str, sigma: float, chandrop_p: float, mask_frac: float) -> torch.Tensor:
+    """
+    Apply data augmentation to a training batch in-place (returns augmented tensor).
+
+    Parameters
+    ----------
+    Xb          : (N, C, T) float tensor on device
+    mode        : one of 'none', 'gaussian', 'chandrop', 'timemask', 'combined'
+    sigma       : std of Gaussian noise (relative to data scale)
+    chandrop_p  : per-channel drop probability for chandrop
+    mask_frac   : fraction of T to zero out for timemask
+    """
+    if mode == "none":
+        return Xb
+
+    N, C, T = Xb.shape
+
+    if mode in ("gaussian", "combined"):
+        noise = torch.randn_like(Xb) * sigma
+        Xb = Xb + noise
+
+    if mode in ("chandrop", "combined"):
+        # For each sample independently, zero out channels where rand < chandrop_p
+        # drop_mask shape: (N, C, 1) — broadcast over T
+        drop_mask = (torch.rand(N, C, 1, device=Xb.device) >= chandrop_p).float()
+        Xb = Xb * drop_mask
+
+    if mode in ("timemask", "combined"):
+        mask_len = max(1, int(mask_frac * T))
+        for i in range(N):
+            start = torch.randint(0, max(1, T - mask_len + 1), (1,)).item()
+            Xb[i, :, start:start + mask_len] = 0.0
+
+    return Xb
+
+
+def normalize_label_to_str(x) -> str:
+    """Coerce label values to clean strings (handles numeric '1.0' → '1')."""
     s = str(x).strip()
-    # handle "1.0" style
     if s.endswith(".0") and s[:-2].isdigit():
         s = s[:-2]
     return s
@@ -144,6 +181,43 @@ def apply_norm(X: np.ndarray, mean: np.ndarray, std: np.ndarray):
     return (X - mean) / std
 
 
+def per_subject_zscore_3d(X: np.ndarray, subjects: np.ndarray) -> np.ndarray:
+    """
+    Pre-normalize each subject's windows independently (leak-free).
+    X shape: (N, C, T). Mean/std computed over each subject's own windows
+    and time steps per channel (axes 0 and 2).
+    """
+    X_norm = X.copy()
+    for sid in np.unique(subjects):
+        mask = (subjects == sid)
+        Xs = X[mask]                                  # (N_s, C, T)
+        mu = Xs.mean(axis=(0, 2), keepdims=True)      # (1, C, 1)
+        sd = Xs.std(axis=(0, 2), keepdims=True)       # (1, C, 1)
+        sd = np.where(sd < 1e-8, 1.0, sd)
+        X_norm[mask] = (Xs - mu) / sd
+    return X_norm
+
+
+def apply_norm_robust(X_tr: np.ndarray, X_va: np.ndarray,
+                      X_te: np.ndarray):
+    """
+    RobustScaler (median/IQR) for 3D windows.
+    Reshapes (N,C,T) -> (N, C*T), fits on train only,
+    transforms val/test, then reshapes back to (N,C,T).
+    """
+    N_tr, C, T = X_tr.shape
+    scaler = RobustScaler()
+    X_tr_2d = scaler.fit_transform(X_tr.reshape(N_tr, C * T))
+    X_va_2d = scaler.transform(X_va.reshape(X_va.shape[0], C * T))
+    X_te_2d = scaler.transform(X_te.reshape(X_te.shape[0], C * T))
+    # guard against zero-IQR channels producing NaN
+    for arr in [X_tr_2d, X_va_2d, X_te_2d]:
+        np.nan_to_num(arr, copy=False, nan=0.0)
+    return (X_tr_2d.reshape(N_tr, C, T),
+            X_va_2d.reshape(-1, C, T),
+            X_te_2d.reshape(-1, C, T))
+
+
 def choose_val_subjects(train_subjects: np.ndarray, val_frac: float, seed: int):
     rng = np.random.default_rng(seed)
     subs = np.array(sorted(set(train_subjects.tolist())))
@@ -164,7 +238,7 @@ def class_weights_from_y(y: np.ndarray, n_classes: int):
 def main():
     ap = argparse.ArgumentParser("Leakage-proof CNN LOSO on EMG windows (NPZ + meta)")
     ap.add_argument("--npz", required=True, help="windows_*.npz containing X_env or X_raw")
-    ap.add_argument("--meta", required=True, help="meta CSV aligned 1:1 with NPZ windows (must have subject + status_mode)")
+    ap.add_argument("--meta", required=True, help="meta CSV aligned 1:1 with NPZ windows (must have subject + movement columns)")
     ap.add_argument("--xkey", default="X_env", choices=["X_env", "X_raw"], help="NPZ key to use")
     ap.add_argument("--label-col", default="movement", help="Target label column in meta")
     ap.add_argument("--out", default="results_cnn_loso", help="Output folder")
@@ -178,6 +252,24 @@ def main():
     ap.add_argument("--num-workers", type=int, default=4, help="DataLoader workers (half of CPU cores)")
     ap.add_argument("--pin-memory", action="store_true")
     ap.add_argument("--amp", action="store_true", help="Use mixed precision (GPU only)")
+    ap.add_argument("--norm-mode", default="global",
+                    choices=["none", "global", "per_subject", "robust"],
+                    help="global=per-channel z-score on train fold (current default); "
+                         "none=skip all normalization; "
+                         "per_subject=z-score each subject by own stats before LOSO loop; "
+                         "robust=RobustScaler (median/IQR) fit on train fold.")
+    ap.add_argument("--augment", default="none",
+                    choices=["none", "gaussian", "chandrop", "timemask", "combined"],
+                    help="Data augmentation applied to training batches only. "
+                         "none=no augmentation, gaussian=additive Gaussian noise, "
+                         "chandrop=random channel dropout, timemask=contiguous time masking, "
+                         "combined=all three augmentations applied sequentially.")
+    ap.add_argument("--aug-sigma", type=float, default=0.1,
+                    help="Gaussian noise std relative to normalized data scale (default: 0.1)")
+    ap.add_argument("--aug-chandrop-p", type=float, default=0.2,
+                    help="Per-channel drop probability for chandrop augmentation (default: 0.2)")
+    ap.add_argument("--aug-timemask-frac", type=float, default=0.15,
+                    help="Fraction of T to zero out for timemask augmentation (default: 0.15)")
     args = ap.parse_args()
 
     # Reproducibility seeds
@@ -215,7 +307,7 @@ def main():
     if X.ndim != 3:
         raise ValueError(f"Expected (N,C,T). Got {X.shape}")
 
-    y_str = meta[args.label_col].map(normalize_status_mode_to_str).values
+    y_str = meta[args.label_col].map(normalize_label_to_str).values
     # map to indices 0..6
     label_to_idx = {lab: i for i, lab in enumerate(LABELS)}
     if not set(np.unique(y_str)).issubset(set(LABELS)):
@@ -226,6 +318,21 @@ def main():
     subjects = meta["subject"].astype(int).values
     unique_subjects = sorted(set(subjects.tolist()))
     print(f"[data] X={X.shape} y={y.shape} subjects={len(unique_subjects)} (min={min(unique_subjects)}, max={max(unique_subjects)})")
+
+    # Normalization mode
+    norm_mode = args.norm_mode
+    print(f"[norm] norm_mode = {norm_mode}")
+
+    # Augmentation mode
+    aug_mode = args.augment
+    print(f"[aug] aug_mode = {aug_mode}, sigma={args.aug_sigma}, "
+          f"chandrop_p={args.aug_chandrop_p}, timemask_frac={args.aug_timemask_frac}")
+
+    # Per-subject pre-normalization: applied once before the LOSO loop.
+    # Leak-free because each subject is normalized using only their own windows.
+    if norm_mode == "per_subject":
+        print("[norm] Applying per-subject z-score (3D) before LOSO loop...")
+        X = per_subject_zscore_3d(X, subjects)
 
     # Resume support
     metrics_csv = outdir / "per_subject_metrics_cnn_loso.csv"
@@ -273,11 +380,16 @@ def main():
         X_te = X[test_mask]
         y_te = y[test_mask]
 
-        # train-only normalization
-        mean, std = compute_train_norm(X_tr)
-        X_tr = apply_norm(X_tr, mean, std)
-        X_va = apply_norm(X_va, mean, std)
-        X_te = apply_norm(X_te, mean, std)
+        # Per-fold normalization (conditioned on norm_mode)
+        if norm_mode == "global":
+            mean, std = compute_train_norm(X_tr)
+            X_tr = apply_norm(X_tr, mean, std)
+            X_va = apply_norm(X_va, mean, std)
+            X_te = apply_norm(X_te, mean, std)
+        elif norm_mode == "robust":
+            X_tr, X_va, X_te = apply_norm_robust(X_tr, X_va, X_te)
+        # none: skip all normalization
+        # per_subject: data already normalized before loop — no per-fold step
 
         # datasets/loaders
         ds_tr = WindowsDataset(X_tr, y_tr)
@@ -312,6 +424,16 @@ def main():
             for Xb, yb in loader_tr:
                 Xb = Xb.to(device, non_blocking=True)
                 yb = yb.to(device, non_blocking=True)
+
+                # Apply data augmentation to training batch only (not val/test)
+                if aug_mode != "none":
+                    Xb = augment_batch(
+                        Xb,
+                        mode=aug_mode,
+                        sigma=args.aug_sigma,
+                        chandrop_p=args.aug_chandrop_p,
+                        mask_frac=args.aug_timemask_frac,
+                    )
 
                 optim.zero_grad(set_to_none=True)
 
@@ -358,7 +480,9 @@ def main():
             "f1_macro": f1,
             "bal_acc": balacc,
             "n_windows": int(len(y_true)),
-            "xkey": args.xkey
+            "xkey": args.xkey,
+            "norm_mode": norm_mode,
+            "aug_mode": aug_mode,
         })
 
         all_y_true.append(y_true)
@@ -374,7 +498,7 @@ def main():
             # merge with existing (avoid duplicates)
             prev = pd.read_csv(metrics_csv)
             combined = pd.concat([prev, df_rows], ignore_index=True)
-            combined = combined.drop_duplicates(subset=["model", "subject", "xkey"], keep="last")
+            combined = combined.drop_duplicates(subset=["model", "subject", "xkey", "norm_mode", "aug_mode"], keep="last")
             combined.to_csv(metrics_csv, index=False)
         else:
             df_rows.to_csv(metrics_csv, index=False)
@@ -405,7 +529,7 @@ def main():
 
         # summary
         df = pd.read_csv(metrics_csv)
-        summary = df.groupby(["model", "xkey"], as_index=False).agg(
+        summary = df.groupby(["model", "xkey", "norm_mode"], as_index=False).agg(
             mean_f1=("f1_macro", "mean"),
             std_f1=("f1_macro", "std"),
             mean_balacc=("bal_acc", "mean"),

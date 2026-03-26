@@ -1,0 +1,52 @@
+Subject 6
+Windows: 583
+Classes: {'DNS': 0, 'STDUP': 1, 'UPS': 2, 'WAK': 3}
+Using: env | Norm: zscore
+
+=== Class counts (label id -> count) ===
+{0: 94, 1: 270, 2: 140, 3: 79}
+=== Majority baseline (predict most frequent) ===
+acc=0.4631 bal=0.2500 f1=0.1583 (majority_class=1)
+Device: cuda | 5-fold CV | early stopping patience=5
+
+--- Fold 1/5 ---
+  Epoch 05 | train_loss=0.5032 val_loss=0.1329 test_f1=0.7951 *
+  Epoch 10 | train_loss=0.3473 val_loss=0.1987 test_f1=0.8803 
+  Epoch 13 | train_loss=0.3047 val_loss=0.3373 test_f1=0.8622 
+  Early stop at epoch 13
+  Fold 1 result: acc=0.9060 bal=0.8673 f1=0.8666 (train_time=0.8s)
+
+--- Fold 2/5 ---
+  Epoch 05 | train_loss=0.5249 val_loss=0.1082 test_f1=0.7425 *
+  Epoch 10 | train_loss=0.3493 val_loss=0.1708 test_f1=0.8977 
+  Epoch 13 | train_loss=0.3122 val_loss=0.1623 test_f1=0.8511 
+  Early stop at epoch 13
+  Fold 2 result: acc=0.8462 bal=0.8050 f1=0.8011 (train_time=0.4s)
+
+--- Fold 3/5 ---
+  Epoch 05 | train_loss=0.5776 val_loss=0.1788 test_f1=0.7921 *
+  Epoch 10 | train_loss=0.4051 val_loss=0.1736 test_f1=0.8483 
+  Epoch 11 | train_loss=0.3633 val_loss=0.2003 test_f1=0.9082 
+  Early stop at epoch 11
+  Fold 3 result: acc=0.8718 bal=0.8079 f1=0.8148 (train_time=0.3s)
+
+--- Fold 4/5 ---
+  Epoch 05 | train_loss=0.5596 val_loss=0.2545 test_f1=0.6699 *
+  Epoch 10 | train_loss=0.3926 val_loss=0.1082 test_f1=0.8607 
+  Epoch 14 | train_loss=0.3176 val_loss=0.1202 test_f1=0.8708 
+  Early stop at epoch 14
+  Fold 4 result: acc=0.8448 bal=0.7946 f1=0.7945 (train_time=0.4s)
+
+--- Fold 5/5 ---
+  Epoch 05 | train_loss=0.5355 val_loss=0.1863 test_f1=0.6838 *
+  Epoch 10 | train_loss=0.3339 val_loss=0.1100 test_f1=0.8142 *
+  Epoch 15 | train_loss=0.2446 val_loss=0.1434 test_f1=0.7987 
+  Early stop at epoch 15
+  Fold 5 result: acc=0.8707 bal=0.8196 f1=0.8142 (train_time=0.4s)
+
+=== CNN RESULT (5-fold CV) ===
+Accuracy: 0.8679 ± 0.0249
+Balanced Acc: 0.8189 ± 0.0285
+F1 macro: 0.8182 ± 0.0284
+Train time (s): 2.30
+Inference per window (ms): 0.0094

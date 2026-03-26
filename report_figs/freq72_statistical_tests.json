@@ -1,0 +1,173 @@
+{
+  "feature_set": "freq-72",
+  "norm_mode": "per_subject",
+  "n_subjects": 40,
+  "loso_f1_means": {
+    "SVM": 0.7767,
+    "RF": 0.7732,
+    "CNN": 0.7537
+  },
+  "wilcoxon_tests": {
+    "RF_vs_SVM": {
+      "W_plus": 361.0,
+      "W_minus": 459.0,
+      "z": NaN,
+      "p": 0.518527,
+      "n_eff": 40,
+      "mean_diff": -0.0035
+    },
+    "RF_vs_CNN": {
+      "W_plus": 201.0,
+      "W_minus": 619.0,
+      "z": NaN,
+      "p": 0.004244,
+      "n_eff": 40,
+      "mean_diff": 0.0195
+    },
+    "SVM_vs_CNN": {
+      "W_plus": 185.0,
+      "W_minus": 635.0,
+      "z": NaN,
+      "p": 0.00196,
+      "n_eff": 40,
+      "mean_diff": 0.023
+    }
+  },
+  "confidence_intervals": {
+    "SVM": {
+      "mean": 0.7767,
+      "std": 0.0547,
+      "se": 0.0087,
+      "ci_low": 0.7597,
+      "ci_high": 0.7937,
+      "min": 0.6708,
+      "max": 0.8936,
+      "n": 40
+    },
+    "RF": {
+      "mean": 0.7732,
+      "std": 0.0599,
+      "se": 0.0095,
+      "ci_low": 0.7547,
+      "ci_high": 0.7918,
+      "min": 0.6027,
+      "max": 0.894,
+      "n": 40
+    },
+    "CNN": {
+      "mean": 0.7537,
+      "std": 0.0753,
+      "se": 0.0119,
+      "ci_low": 0.7304,
+      "ci_high": 0.777,
+      "min": 0.5361,
+      "max": 0.8903,
+      "n": 40
+    }
+  },
+  "subject_difficulty": {
+    "hardest_5": [
+      {
+        "subject": 1,
+        "avg_f1": 0.6234,
+        "RF_f1": 0.6027,
+        "SVM_f1": 0.6708,
+        "CNN_f1": 0.5967
+      },
+      {
+        "subject": 5,
+        "avg_f1": 0.6309,
+        "RF_f1": 0.6582,
+        "SVM_f1": 0.6985,
+        "CNN_f1": 0.5361
+      },
+      {
+        "subject": 36,
+        "avg_f1": 0.6877,
+        "RF_f1": 0.7456,
+        "SVM_f1": 0.7041,
+        "CNN_f1": 0.6135
+      },
+      {
+        "subject": 24,
+        "avg_f1": 0.7037,
+        "RF_f1": 0.745,
+        "SVM_f1": 0.7011,
+        "CNN_f1": 0.665
+      },
+      {
+        "subject": 35,
+        "avg_f1": 0.7059,
+        "RF_f1": 0.7012,
+        "SVM_f1": 0.7309,
+        "CNN_f1": 0.6855
+      }
+    ],
+    "easiest_5": [
+      {
+        "subject": 27,
+        "avg_f1": 0.8366,
+        "RF_f1": 0.8275,
+        "SVM_f1": 0.8471,
+        "CNN_f1": 0.8352
+      },
+      {
+        "subject": 11,
+        "avg_f1": 0.8526,
+        "RF_f1": 0.8568,
+        "SVM_f1": 0.8683,
+        "CNN_f1": 0.8327
+      },
+      {
+        "subject": 2,
+        "avg_f1": 0.8535,
+        "RF_f1": 0.8502,
+        "SVM_f1": 0.8729,
+        "CNN_f1": 0.8374
+      },
+      {
+        "subject": 33,
+        "avg_f1": 0.859,
+        "RF_f1": 0.8484,
+        "SVM_f1": 0.8382,
+        "CNN_f1": 0.8903
+      },
+      {
+        "subject": 13,
+        "avg_f1": 0.8818,
+        "RF_f1": 0.894,
+        "SVM_f1": 0.8936,
+        "CNN_f1": 0.8579
+      }
+    ],
+    "range_pp": 25.8,
+    "correlations": {
+      "pearson_RF_SVM": 0.834,
+      "pearson_RF_CNN": 0.813,
+      "pearson_SVM_CNN": 0.797
+    }
+  },
+  "generalization_gap_stats": {
+    "RF": {
+      "sd_mean": 0.843,
+      "loso_mean": 0.7732,
+      "gap_mean_pp": 6.97,
+      "gap_std_pp": 5.76,
+      "p_one_sided": 0.0
+    },
+    "SVM": {
+      "sd_mean": 0.874,
+      "loso_mean": 0.7767,
+      "gap_mean_pp": 9.73,
+      "gap_std_pp": 5.08,
+      "p_one_sided": 0.0
+    },
+    "CNN": {
+      "sd_mean": 0.9043,
+      "loso_mean": 0.7537,
+      "gap_mean_pp": 15.06,
+      "gap_std_pp": 7.85,
+      "p_one_sided": 0.0
+    }
+  }
+}

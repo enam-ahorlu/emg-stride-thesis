@@ -13,7 +13,7 @@ import pandas as pd
 
 from sklearn.model_selection import GroupKFold, GridSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
@@ -21,6 +21,7 @@ from sklearn.metrics import (
     classification_report, confusion_matrix
 )
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.feature_selection import RFE, SelectKBest, mutual_info_classif
 
 
 # ---- helpers copied/compatible with your current conventions ----
@@ -94,6 +95,8 @@ class LosoRow:
     best_params: str
     fit_time_sec: float
     infer_ms_per_window: float
+    feat_sel: str
+    n_features_used: int
 
 
 class ToFloat32(BaseEstimator, TransformerMixin):
@@ -103,6 +106,68 @@ class ToFloat32(BaseEstimator, TransformerMixin):
         return X.astype(np.float32, copy=False)
 
 
+def per_subject_zscore(X: np.ndarray, subjects: np.ndarray) -> np.ndarray:
+    """Pre-normalize each subject's features using only that subject's own
+    mean/std.  This is NOT data leakage — each subject is normalized
+    independently, reducing inter-subject variability while preserving
+    within-subject discriminability.
+
+    Standard approach in sEMG cross-subject literature.
+    """
+    X_norm = X.copy()
+    for sid in np.unique(subjects):
+        mask = (subjects == sid)
+        Xs = X[mask]
+        mu = Xs.mean(axis=0, keepdims=True)
+        sd = Xs.std(axis=0, keepdims=True)
+        sd = np.where(sd < 1e-8, 1.0, sd)
+        X_norm[mask] = (Xs - mu) / sd
+    return X_norm
+
+
+def apply_feature_selection(feat_sel, n_features, Xtr, ytr, Xte):
+    """
+    Fit feature selector on Xtr only, transform both Xtr and Xte.
+    Returns (Xtr_sel, Xte_sel, selector_object_or_None, n_features_used).
+    All fitting on training data only — no leakage.
+    """
+    if feat_sel == "none":
+        return Xtr, Xte, None, Xtr.shape[1]
+
+    n_feat = min(n_features, Xtr.shape[1])
+
+    if feat_sel == "rfe":
+        base_est = RandomForestClassifier(
+            n_estimators=50, random_state=42, n_jobs=4
+        )
+        selector = RFE(
+            estimator=base_est,
+            n_features_to_select=n_feat,
+            step=0.1,
+        )
+        selector.fit(Xtr, ytr)
+        Xtr_sel = selector.transform(Xtr)
+        Xte_sel = selector.transform(Xte)
+        n_selected = int(selector.n_features_)
+        print(f"[feat_sel] RFE selected {n_selected}/{Xtr.shape[1]} features")
+        return Xtr_sel, Xte_sel, selector, n_selected
+
+    elif feat_sel == "mi":
+        selector = SelectKBest(mutual_info_classif, k=n_feat)
+        selector.fit(Xtr, ytr)
+        Xtr_sel = selector.transform(Xtr)
+        Xte_sel = selector.transform(Xte)
+        n_selected = Xtr_sel.shape[1]
+        scores = selector.scores_
+        top_idx = np.argsort(scores)[::-1][:5]
+        print(f"[feat_sel] MI selected {n_selected}/{Xtr.shape[1]} features. "
+              f"Top-5 feature indices: {top_idx.tolist()}")
+        return Xtr_sel, Xte_sel, selector, n_selected
+
+    else:
+        raise ValueError(f"Unknown feat_sel mode: {feat_sel}")
+
+
 def main():
     ap = argparse.ArgumentParser("Leakage-proof LOSO for classical models (nested tuning).")
     ap.add_argument("--features", required=True, help="Path to features .npz (N,F)")
@@ -110,11 +175,22 @@ def main():
     ap.add_argument("--out", default="results_loso", help="Output dir")
     ap.add_argument("--models", default="SVM,RF", help="Comma-separated subset of {SVM,RF}")
     ap.add_argument("--no-scale", action="store_true", help="Disable StandardScaler (NOT recommended; kept for legacy comparison)")
+    ap.add_argument("--norm-mode", default=None,
+                    choices=["none", "global", "per_subject", "robust"],
+                    help="Normalization ablation mode. Overrides --no-scale when set. "
+                         "none=no scaling, global=StandardScaler (default), "
+                         "per_subject=z-score each subject by own stats before LOSO, "
+                         "robust=RobustScaler (median/IQR) in pipeline.")
     ap.add_argument("--inner-splits", type=int, default=5, help="GroupKFold splits for tuning (train subjects only)")
     ap.add_argument("--save-preds", action="store_true", help="Save y_true/y_pred aligned to full meta rows")
     ap.add_argument("--cv-scheme", default="loso", help="Tag for saved preds filenames (default: loso)")
     ap.add_argument("--resume", action="store_true", help="Resume from existing checkpoints in --out")
     ap.add_argument("--flush-preds", action="store_true", help="Save per-subject predictions each fold (recommended for long runs)")
+    ap.add_argument("--feat-sel", default="none", choices=["none", "rfe", "mi"],
+                    help="Feature selection method: none=no selection, rfe=Recursive Feature Elimination "
+                         "(RFE with RF base estimator), mi=Mutual Information SelectKBest")
+    ap.add_argument("--n-features", type=int, default=36,
+                    help="Number of features to select when --feat-sel is not 'none' (default: 36)")
     args = ap.parse_args()
 
     features_path = Path(args.features)
@@ -133,6 +209,23 @@ def main():
     subjects = meta[subj_col].astype(int).to_numpy()
     y, label_map = encode_labels(y_str)
 
+    # ---- Resolve normalization mode ----
+    # --norm-mode takes precedence over legacy --no-scale
+    if args.norm_mode is not None:
+        norm_mode = args.norm_mode
+    elif args.no_scale:
+        norm_mode = "none"
+    else:
+        norm_mode = "global"
+
+    print(f"[info] norm_mode = {norm_mode}")
+    print(f"[info] feat_sel = {args.feat_sel}, n_features = {args.n_features}")
+
+    # Per-subject z-score: pre-normalize BEFORE LOSO loop (leak-free)
+    if norm_mode == "per_subject":
+        print("[norm] Applying per-subject z-score normalization...")
+        X = per_subject_zscore(X, subjects)
+
     inv = {v: k for k, v in label_map.items()}
     labels_sorted = [inv[i] for i in sorted(inv.keys())]
 
@@ -144,6 +237,9 @@ def main():
     ckpt_files = {m: ckpt_dir / f"{features_path.stem}__{m}_subjectwise_ckpt.csv" for m in wanted}
     pred_fold_dir = out_dir / "predictions_folds"
     pred_fold_dir.mkdir(exist_ok=True)
+    feat_mask_dir = out_dir / "feat_masks"
+    if args.feat_sel != "none":
+        feat_mask_dir.mkdir(exist_ok=True)
 
     results: Dict[str, List[LosoRow]] = {m: [] for m in wanted}
 
@@ -157,7 +253,11 @@ def main():
                     done_subjects[m] = set(prev["heldout_subject"].astype(int).tolist())
                 # also preload rows into results so final save still works
                 for _, r in prev.iterrows():
-                    results[m].append(LosoRow(**r.to_dict()))
+                    row_dict = r.to_dict()
+                    # back-fill new fields for older checkpoints that lack them
+                    row_dict.setdefault("feat_sel", args.feat_sel)
+                    row_dict.setdefault("n_features_used", args.n_features)
+                    results[m].append(LosoRow(**row_dict))
 
 
     # full-length prediction buffers (each sample predicted once: by its heldout fold)
@@ -175,8 +275,8 @@ def main():
         te_mask = (subjects == heldout)
         tr_mask = ~te_mask
 
-        Xtr, ytr, gtr = X[tr_mask], y[tr_mask], subjects[tr_mask]
-        Xte, yte = X[te_mask], y[te_mask]
+        Xtr_raw, ytr, gtr = X[tr_mask], y[tr_mask], subjects[tr_mask]
+        Xte_raw, yte = X[te_mask], y[te_mask]
 
         # Inner CV for tuning: subject-group splits on TRAINING SUBJECTS only
         n_train_groups = len(np.unique(gtr))
@@ -188,17 +288,37 @@ def main():
                 print(f"[resume] skip {model_name} heldout Sub{heldout:02d}")
                 continue
 
-            # ---- StandardScaler is ALWAYS used (inside Pipeline → leak-free) ----
-            # Rationale: ensures train-only normalisation within each LOSO
-            # fold; particularly important for frequency-domain features
-            # whose scale differs from time-domain features.
-            use_scaler = not args.no_scale
+            # ---- Feature selection (fit on outer train only, no leakage) ----
+            Xtr, Xte, selector, n_feat_used = apply_feature_selection(
+                args.feat_sel, args.n_features, Xtr_raw, ytr, Xte_raw
+            )
+
+            # Save feature mask per fold if selection was applied
+            if args.feat_sel != "none" and selector is not None:
+                mask_path = feat_mask_dir / f"{features_path.stem}_{model_name}_sub{heldout:02d}_mask.npy"
+                if args.feat_sel == "rfe":
+                    np.save(mask_path, selector.support_)
+                elif args.feat_sel == "mi":
+                    np.save(mask_path, selector.get_support())
+                print(f"[feat_mask] saved -> {mask_path}")
+
+            # ---- Normalization: select scaler based on norm_mode ----
+            # none           → no scaler in pipeline
+            # global         → StandardScaler (train-only, leak-free)
+            # per_subject    → data already pre-normalized; no pipeline scaler needed
+            # robust         → RobustScaler (median/IQR, robust to outliers)
+
+            def _build_scaler_steps():
+                """Return pipeline steps for normalization."""
+                if norm_mode == "global":
+                    return [("scaler", StandardScaler()), ("to32", ToFloat32())]
+                elif norm_mode == "robust":
+                    return [("scaler", RobustScaler()), ("to32", ToFloat32())]
+                else:  # none or per_subject (already pre-normalized)
+                    return []
 
             if model_name == "SVM":
-                steps = []
-                if use_scaler:
-                    steps.append(("scaler", StandardScaler()))
-                    steps.append(("to32", ToFloat32()))
+                steps = _build_scaler_steps()
                 steps.append(("clf", SVC(kernel="rbf", class_weight="balanced", cache_size=500)))
                 pipe = Pipeline(steps)
 
@@ -211,17 +331,14 @@ def main():
                     pipe,
                     param_grid=param_grid,
                     scoring="f1_macro",
-                    cv=inner_cv.split(Xtr, ytr, groups=gtr),
+                    cv=list(inner_cv.split(Xtr, ytr, groups=gtr)),
                     n_jobs=-1,  # parallelise SVM grid search across cores
                     refit=True,
                     verbose=2
                 )
 
             elif model_name == "RF":
-                steps = []
-                if use_scaler:
-                    steps.append(("scaler", StandardScaler()))
-                    steps.append(("to32", ToFloat32()))
+                steps = _build_scaler_steps()
                 steps.append(("clf", RandomForestClassifier(
                     class_weight="balanced",
                     random_state=42,
@@ -238,7 +355,7 @@ def main():
                     pipe,
                     param_grid=param_grid,
                     scoring="f1_macro",
-                    cv=inner_cv.split(Xtr, ytr, groups=gtr),
+                    cv=list(inner_cv.split(Xtr, ytr, groups=gtr)),
                     n_jobs=1,
                     refit=True,
                     verbose=2
@@ -277,6 +394,8 @@ def main():
                 best_params=str(search.best_params_),
                 fit_time_sec=float(t1 - t0),
                 infer_ms_per_window=float(infer_ms),
+                feat_sel=args.feat_sel,
+                n_features_used=int(n_feat_used),
             ))
 
             # checkpoint append

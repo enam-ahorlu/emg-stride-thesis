@@ -1,0 +1,54 @@
+Subject 20
+Windows: 599
+Classes: {'DNS': 0, 'STDUP': 1, 'UPS': 2, 'WAK': 3}
+Using: env | Norm: zscore
+
+=== Class counts (label id -> count) ===
+{0: 85, 1: 349, 2: 95, 3: 70}
+=== Majority baseline (predict most frequent) ===
+acc=0.5826 bal=0.2500 f1=0.1841 (majority_class=1)
+Device: cuda | 5-fold CV | early stopping patience=5
+
+--- Fold 1/5 ---
+  Epoch 05 | train_loss=0.4199 val_loss=0.0588 test_f1=0.6768 *
+  Epoch 10 | train_loss=0.2828 val_loss=0.0306 test_f1=0.7941 
+  Epoch 13 | train_loss=0.2233 val_loss=0.0296 test_f1=0.8669 
+  Early stop at epoch 13
+  Fold 1 result: acc=0.8583 bal=0.7357 f1=0.7516 (train_time=0.7s)
+
+--- Fold 2/5 ---
+  Epoch 05 | train_loss=0.4745 val_loss=0.1246 test_f1=0.6887 *
+  Epoch 10 | train_loss=0.2998 val_loss=0.0303 test_f1=0.7401 
+  Epoch 14 | train_loss=0.2124 val_loss=0.0227 test_f1=0.8525 
+  Early stop at epoch 14
+  Fold 2 result: acc=0.8417 bal=0.7002 f1=0.7068 (train_time=0.4s)
+
+--- Fold 3/5 ---
+  Epoch 05 | train_loss=0.4330 val_loss=0.0955 test_f1=0.6754 *
+  Epoch 10 | train_loss=0.2431 val_loss=0.0311 test_f1=0.9113 
+  Epoch 15 | train_loss=0.1655 val_loss=0.0115 test_f1=0.9410 
+  Epoch 19 | train_loss=0.1263 val_loss=0.0196 test_f1=0.9374 
+  Early stop at epoch 19
+  Fold 3 result: acc=0.9583 bal=0.9170 f1=0.9299 (train_time=0.6s)
+
+--- Fold 4/5 ---
+  Epoch 05 | train_loss=0.5017 val_loss=0.1583 test_f1=0.6455 *
+  Epoch 10 | train_loss=0.2893 val_loss=0.0152 test_f1=0.8881 *
+  Epoch 15 | train_loss=0.1792 val_loss=0.0244 test_f1=0.9152 
+  Epoch 18 | train_loss=0.1683 val_loss=0.0203 test_f1=0.8952 
+  Early stop at epoch 18
+  Fold 4 result: acc=0.9500 bal=0.8992 f1=0.9100 (train_time=0.6s)
+
+--- Fold 5/5 ---
+  Epoch 05 | train_loss=0.4338 val_loss=0.0714 test_f1=0.5657 *
+  Epoch 10 | train_loss=0.2342 val_loss=0.0184 test_f1=0.7998 
+  Epoch 13 | train_loss=0.1843 val_loss=0.0172 test_f1=0.9179 
+  Early stop at epoch 13
+  Fold 5 result: acc=0.8067 bal=0.6303 f1=0.6170 (train_time=0.4s)
+
+=== CNN RESULT (5-fold CV) ===
+Accuracy: 0.8830 ± 0.0676
+Balanced Acc: 0.7765 ± 0.1262
+F1 macro: 0.7831 ± 0.1342
+Train time (s): 2.70
+Inference per window (ms): 0.0091

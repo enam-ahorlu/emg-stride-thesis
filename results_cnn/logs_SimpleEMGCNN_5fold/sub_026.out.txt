@@ -1,0 +1,50 @@
+Subject 26
+Windows: 789
+Classes: {'DNS': 0, 'STDUP': 1, 'UPS': 2, 'WAK': 3}
+Using: env | Norm: zscore
+
+=== Class counts (label id -> count) ===
+{0: 139, 1: 427, 2: 140, 3: 83}
+=== Majority baseline (predict most frequent) ===
+acc=0.5412 bal=0.2500 f1=0.1756 (majority_class=1)
+Device: cuda | 5-fold CV | early stopping patience=5
+
+--- Fold 1/5 ---
+  Epoch 05 | train_loss=0.4328 val_loss=0.0939 test_f1=0.7765 *
+  Epoch 10 | train_loss=0.2632 val_loss=0.1950 test_f1=0.9013 
+  Epoch 12 | train_loss=0.2207 val_loss=0.1289 test_f1=0.9397 
+  Early stop at epoch 12
+  Fold 1 result: acc=0.8797 bal=0.8192 f1=0.8279 (train_time=0.8s)
+
+--- Fold 2/5 ---
+  Epoch 05 | train_loss=0.3960 val_loss=0.1179 test_f1=0.7274 *
+  Epoch 10 | train_loss=0.2343 val_loss=0.1437 test_f1=0.8751 
+  Early stop at epoch 10
+  Fold 2 result: acc=0.8228 bal=0.7158 f1=0.7274 (train_time=0.4s)
+
+--- Fold 3/5 ---
+  Epoch 05 | train_loss=0.4044 val_loss=0.1727 test_f1=0.7824 *
+  Epoch 10 | train_loss=0.2444 val_loss=0.2411 test_f1=0.8568 
+  Early stop at epoch 10
+  Fold 3 result: acc=0.8608 bal=0.7781 f1=0.7824 (train_time=0.4s)
+
+--- Fold 4/5 ---
+  Epoch 05 | train_loss=0.4377 val_loss=0.0922 test_f1=0.7921 *
+  Epoch 10 | train_loss=0.2902 val_loss=0.1338 test_f1=0.8966 
+  Epoch 11 | train_loss=0.2587 val_loss=0.1728 test_f1=0.8921 
+  Early stop at epoch 11
+  Fold 4 result: acc=0.9114 bal=0.8281 f1=0.8385 (train_time=0.4s)
+
+--- Fold 5/5 ---
+  Epoch 05 | train_loss=0.4017 val_loss=0.2170 test_f1=0.7966 
+  Epoch 10 | train_loss=0.2601 val_loss=0.2167 test_f1=0.8042 
+  Epoch 13 | train_loss=0.1920 val_loss=0.2733 test_f1=0.8311 
+  Early stop at epoch 13
+  Fold 5 result: acc=0.8981 bal=0.8497 f1=0.8399 (train_time=0.4s)
+
+=== CNN RESULT (5-fold CV) ===
+Accuracy: 0.8746 ± 0.0347
+Balanced Acc: 0.7982 ± 0.0529
+F1 macro: 0.8032 ± 0.0484
+Train time (s): 2.38
+Inference per window (ms): 0.0100

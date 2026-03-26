@@ -1,0 +1,52 @@
+Subject 13
+Windows: 752
+Classes: {'DNS': 0, 'STDUP': 1, 'UPS': 2, 'WAK': 3}
+Using: env | Norm: zscore
+
+=== Class counts (label id -> count) ===
+{0: 111, 1: 443, 2: 109, 3: 89}
+=== Majority baseline (predict most frequent) ===
+acc=0.5891 bal=0.2500 f1=0.1854 (majority_class=1)
+Device: cuda | 5-fold CV | early stopping patience=5
+
+--- Fold 1/5 ---
+  Epoch 05 | train_loss=0.3307 val_loss=0.0726 test_f1=0.8669 *
+  Epoch 10 | train_loss=0.1659 val_loss=0.1134 test_f1=0.9592 
+  Early stop at epoch 10
+  Fold 1 result: acc=0.9139 bal=0.8371 f1=0.8669 (train_time=0.7s)
+
+--- Fold 2/5 ---
+  Epoch 05 | train_loss=0.3675 val_loss=0.1547 test_f1=0.8041 *
+  Epoch 10 | train_loss=0.1577 val_loss=0.0995 test_f1=0.9288 
+  Epoch 13 | train_loss=0.1174 val_loss=0.0954 test_f1=0.9158 
+  Early stop at epoch 13
+  Fold 2 result: acc=0.9338 bal=0.8873 f1=0.8942 (train_time=0.4s)
+
+--- Fold 3/5 ---
+  Epoch 05 | train_loss=0.3652 val_loss=0.1326 test_f1=0.8387 *
+  Epoch 10 | train_loss=0.1780 val_loss=0.0951 test_f1=0.9223 
+  Epoch 12 | train_loss=0.1490 val_loss=0.0819 test_f1=0.9566 
+  Early stop at epoch 12
+  Fold 3 result: acc=0.9600 bal=0.9318 f1=0.9334 (train_time=0.4s)
+
+--- Fold 4/5 ---
+  Epoch 05 | train_loss=0.3798 val_loss=0.1199 test_f1=0.7709 *
+  Epoch 10 | train_loss=0.1929 val_loss=0.0994 test_f1=0.9305 
+  Epoch 15 | train_loss=0.1140 val_loss=0.1227 test_f1=0.9223 
+  Epoch 16 | train_loss=0.0962 val_loss=0.1868 test_f1=0.9200 
+  Early stop at epoch 16
+  Fold 4 result: acc=0.9133 bal=0.8695 f1=0.8666 (train_time=0.5s)
+
+--- Fold 5/5 ---
+  Epoch 05 | train_loss=0.3422 val_loss=0.1748 test_f1=0.9027 *
+  Epoch 10 | train_loss=0.1710 val_loss=0.2320 test_f1=0.9437 
+  Epoch 13 | train_loss=0.1305 val_loss=0.2337 test_f1=0.9437 
+  Early stop at epoch 13
+  Fold 5 result: acc=0.9667 bal=0.9398 f1=0.9384 (train_time=0.4s)
+
+=== CNN RESULT (5-fold CV) ===
+Accuracy: 0.9375 ± 0.0251
+Balanced Acc: 0.8931 ± 0.0430
+F1 macro: 0.8999 ± 0.0348
+Train time (s): 2.35
+Inference per window (ms): 0.0105
