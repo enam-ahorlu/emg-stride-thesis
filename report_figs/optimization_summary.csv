@@ -1,0 +1,12 @@
+stage,config,svm_f1,rf_f1,cnn_f1,svm_sd,rf_sd,cnn_sd,notes
+Baseline,"Full-72, global norm",0.708,0.722,0.682,0.068,0.080,0.103,Starting point
+Norm only,"Full-72, per_subject norm",0.777,0.773,0.754,0.055,0.060,0.075,Best normalisation
+Feat sel only (global),"RFE-36, global norm",0.709,0.706,---,0.071,0.075,---,Independent feat sel
+Feat sel only (global),"MI-36, global norm",0.716,0.709,---,0.069,0.080,---,Independent feat sel
+Aug only (global),"Gaussian, global norm",---,---,0.673,---,---,0.100,Independent augmentation
+Aug only (global),"ChanDrop, global norm",---,---,0.681,---,---,0.079,Independent augmentation
+Aug only (global),"TimeMask, global norm",---,---,0.664,---,---,0.090,Independent augmentation
+Combined,"RFE-36, per_subject norm",0.780,0.760,---,0.061,0.069,---,Norm + feat sel
+Combined,"Gaussian, per_subject norm",---,---,0.760,---,---,0.071,Norm + augmentation
+Ensemble (SVM+RF),per_subject norm,0.777,---,---,0.055,---,---,2-way voting
+Ensemble (3-way),per_subject norm,---,---,0.792,---,---,0.061,SVM+RF+CNN voting

@@ -149,7 +149,7 @@ if sd_base_csv.exists():
             })
 
 # Freq-72 SD (from results_classical_freq72/)
-sd_freq_dir = ROOT / "results_classical_freq72"
+sd_freq_dir = ROOT / "results_classical_freq72_v2"
 sd_freq_csvs = list(sd_freq_dir.glob("*_subjdep_cv.csv"))
 if sd_freq_csvs:
     fdf = pd.read_csv(sd_freq_csvs[0])
@@ -173,15 +173,15 @@ if sd_freq_csvs:
         })
 
 # CNN SD
-cnn_sd_csv = ROOT / "results_cnn" / "cnn_subjectdep_w250_env_zscore.csv"
+cnn_sd_csv = ROOT / "results_cnn" / "cnn_subjectdep_w250_env_zscore_5fold.csv"
 if cnn_sd_csv.exists():
     csd = pd.read_csv(cnn_sd_csv)
     sd_rows.append({
         "paradigm": "SD",
         "feat_set": "raw-signal",
         "model": "CNN",
-        "f1_macro_mean": float(csd["f1_macro"].mean()),
-        "f1_macro_sd": float(csd["f1_macro"].std(ddof=1)),
+        "f1_macro_mean": float(csd["f1"].mean()),
+        "f1_macro_sd": float(csd["f1"].std(ddof=1)),
         "bal_acc_mean": float(csd["bal_acc"].mean()) if "bal_acc" in csd.columns else 0.0,
         "acc_mean": float(csd["acc"].mean()) if "acc" in csd.columns else 0.0,
         "n_subjects": len(csd),

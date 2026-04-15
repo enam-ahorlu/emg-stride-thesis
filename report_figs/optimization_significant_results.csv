@@ -1,0 +1,17 @@
+category,comparison,condition_A,condition_B,mean_A,mean_B,mean_diff,z,p_value,cohens_d,significant_005,interpretation,n_subjects
+norm,SVM: global→per_subject,SVM global,SVM per_subject,0.708,0.7767,-0.0687,-5.2959,0.0,-1.4769,True,**,40
+norm,RF: global→per_subject,RF global,RF per_subject,0.7219,0.7732,-0.0514,-5.1615,0.0,-1.0376,True,**,40
+norm,CNN: global→per_subject,CNN global,CNN per_subject,0.6816,0.7537,-0.0721,-5.2018,0.0,-0.8805,True,**,40
+featsel_marginal,SVM: full72→mi36 (persubj),SVM full72 persubj,SVM mi36 persubj,0.7767,0.7571,0.0196,3.4813,0.000499,0.5953,True,**,40
+featsel_marginal,SVM: full72→mi27 (persubj),SVM full72 persubj,SVM mi27 persubj,0.7767,0.6851,0.0916,5.484,0.0,1.8296,True,**,40
+featsel_marginal,RF: full72→rfe36 (persubj),RF full72 persubj,RF rfe36 persubj,0.7732,0.7597,0.0135,3.5619,0.000368,0.6768,True,**,40
+featsel_marginal,RF: full72→rfe27 (persubj),RF full72 persubj,RF rfe27 persubj,0.7732,0.755,0.0182,4.0996,4.1e-05,0.7782,True,**,40
+featsel_marginal,RF: full72→mi36 (persubj),RF full72 persubj,RF mi36 persubj,0.7732,0.7472,0.026,4.3819,1.2e-05,0.9081,True,**,40
+featsel_marginal,RF: full72→mi27 (persubj),RF full72 persubj,RF mi27 persubj,0.7732,0.67,0.1033,5.5109,0.0,2.4495,True,**,40
+end_to_end,SVM: baseline→combined (rfe36+persubj),SVM full72 global,SVM rfe36 persubj,0.708,0.7804,-0.0724,-5.3496,0.0,-1.5792,True,**,40
+end_to_end,RF: baseline→combined (full72+persubj),RF full72 global,RF full72 persubj,0.7219,0.7732,-0.0514,-5.1615,0.0,-1.0376,True,**,40
+end_to_end,CNN: baseline→combined (gaussian+persubj),CNN noaug global,CNN gaussian persubj,0.6816,0.7599,-0.0783,-5.2555,0.0,-0.9705,True,**,40
+ensemble,3-way ens vs SVM alone,SVM+RF+CNN ensemble,SVM persubj,0.7917,0.7767,0.015,3.3334,0.000858,0.6039,True,**,40
+ensemble,3-way ens vs RF alone,SVM+RF+CNN ensemble,RF persubj,0.7917,0.7732,0.0184,4.2474,2.2e-05,0.8821,True,**,40
+ensemble,3-way ens vs CNN alone,SVM+RF+CNN ensemble,CNN persubj,0.7917,0.7537,0.038,4.8389,1e-06,1.0739,True,**,40
+ensemble,3-way ens vs SVM+RF ens,SVM+RF+CNN ensemble,SVM+RF ensemble,0.7917,0.7779,0.0138,4.1668,3.1e-05,0.8163,True,**,40
