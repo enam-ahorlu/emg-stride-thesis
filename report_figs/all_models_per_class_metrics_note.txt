@@ -4,18 +4,25 @@ Per-class F1/precision/recall are computed from the AGGREGATE confusion matrix:
 all 40 LOSO held-out predictions are stacked into one pool, then the 4x4 CM is built
 (4 movement classes: DNS, STDUP, UPS, WAK).
 
-This differs from the per-subject mean macro F1 reported in LOSO summaries:
-  RF  macro F1 summary = 0.7119  |  per-class unweighted avg = 0.7158  (diff = 0.0039)
-  SVM macro F1 summary = 0.7035  |  per-class unweighted avg = 0.7058  (diff = 0.0023)
-  CNN macro F1 summary = 0.6816  |  per-class unweighted avg = 0.6807  (diff = 0.0009)
-
-The small discrepancy arises because subjects have different class distributions; the aggregate
-CM weights by sample count, while the per-subject mean weights each subject equally.
+This differs from the per-subject mean macro F1 reported in LOSO summaries.
+The small discrepancy arises because subjects have different class distributions;
+the aggregate CM weights by sample count, while the per-subject mean weights
+each subject equally.
 
 USE:
   - Per-class metrics (this file) -> qualitative: which classes are hardest/easiest?
   - LOSO summary F1              -> headline performance metric for thesis tables
 
+NOTE: Two versions of per-class metrics exist:
+  - all_models_per_class_metrics.csv — baseline (global normalisation)
+  - freq72_all_models_per_class_metrics.csv — optimised (per-subject normalisation, Freq-72)
+The freq72_ version reflects the optimised pipeline and should be used for thesis reporting.
+
+OPTIMISED LOSO PERFORMANCE (per-subject mean macro F1):
+  RF:  0.773 +/- 0.060
+  SVM: 0.777 +/- 0.055
+  CNN: 0.754 +/- 0.075
+
 NOTE ON LDA:
   LDA was evaluated under subject-dependent (SD) 5-fold CV only (not LOSO), so it is
-  absent from this file. LDA SD macro F1 (mean across 40 subjects) = 0.567.
+  absent from both per-class metric files. LDA SD macro F1 (mean across 40 subjects) = 0.567.

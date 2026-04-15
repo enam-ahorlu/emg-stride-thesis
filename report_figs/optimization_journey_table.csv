@@ -1,0 +1,5 @@
+stage_num,stage_label,svm_f1,rf_f1,cnn_f1
+0,Baseline (global norm),0.708,0.722,0.682
+1,Norm (per-subject),0.777,0.773,0.754
+2,Feat Sel / Aug (+ per-subject),0.780,0.773,0.760
+3,Ensemble (3-way),0.792,0.792,0.792

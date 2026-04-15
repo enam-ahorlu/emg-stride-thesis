@@ -1,28 +1,28 @@
 {
   "wilcoxon_tests": {
     "RF_vs_SVM": {
-      "W_plus": 523.0,
+      "W_plus": 297.0,
       "W_minus": 297.0,
-      "z_approx": 1.5189,
-      "p_value": 0.128796,
+      "z_approx": NaN,
+      "p_value": 0.131558,
       "mean_difference": 0.0085,
       "n_effective": 40,
       "significant_at_005": false
     },
     "RF_vs_CNN": {
-      "W_plus": 576.0,
+      "W_plus": 244.0,
       "W_minus": 244.0,
-      "z_approx": 2.2313,
-      "p_value": 0.025664,
+      "z_approx": NaN,
+      "p_value": 0.024973,
       "mean_difference": 0.0304,
       "n_effective": 40,
       "significant_at_005": true
     },
     "SVM_vs_CNN": {
-      "W_plus": 501.0,
+      "W_plus": 319.0,
       "W_minus": 319.0,
-      "z_approx": 1.2232,
-      "p_value": 0.22127,
+      "z_approx": NaN,
+      "p_value": 0.226508,
       "mean_difference": 0.0219,
       "n_effective": 40,
       "significant_at_005": false

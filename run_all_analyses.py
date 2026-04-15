@@ -1,53 +1,26 @@
 #!/usr/bin/env python3
 """
-Run all supplementary analyses — without scipy dependency.
-Implements Wilcoxon signed-rank test manually.
+Run all supplementary analyses — uses scipy for Wilcoxon signed-rank test.
 """
 import os, json, csv, math
 import numpy as np
+from scipy.stats import wilcoxon as scipy_wilcoxon
 
 PROJ = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(PROJ, "analysis_results.json")
 
 results = {}
 
-# --- Manual Wilcoxon signed-rank test (two-sided) ---
+# --- Wilcoxon signed-rank test via scipy (two-sided) ---
 def wilcoxon_signed_rank(x, y):
-    """Two-sided Wilcoxon signed-rank test. Returns (W+, z_approx, p_approx)."""
+    """Two-sided Wilcoxon signed-rank test using scipy.
+    Returns (W_stat, W_stat, z=nan, p, n_eff) to preserve call signature."""
     d = x - y
-    d = d[d != 0]  # remove zeros
-    n = len(d)
-    abs_d = np.abs(d)
-    ranks = np.empty(n)
-    sorted_idx = np.argsort(abs_d)
-    # Assign ranks with tie handling (average)
-    i = 0
-    while i < n:
-        j = i
-        while j < n - 1 and abs_d[sorted_idx[j+1]] == abs_d[sorted_idx[j]]:
-            j += 1
-        avg_rank = (i + j) / 2.0 + 1  # 1-based
-        for k in range(i, j + 1):
-            ranks[sorted_idx[k]] = avg_rank
-        i = j + 1
-
-    W_plus = np.sum(ranks[d > 0])
-    W_minus = np.sum(ranks[d < 0])
-    W = min(W_plus, W_minus)
-
-    # Normal approximation for n >= 10
-    mean_W = n * (n + 1) / 4.0
-    std_W = math.sqrt(n * (n + 1) * (2 * n + 1) / 24.0)
-    z = (W_plus - mean_W) / std_W if std_W > 0 else 0
-
-    # Two-sided p-value from normal approximation
-    p = 2 * (1 - normal_cdf(abs(z)))
-
-    return W_plus, W_minus, z, p, n
-
-def normal_cdf(x):
-    """Approximate standard normal CDF."""
-    return 0.5 * (1 + math.erf(x / math.sqrt(2)))
+    n_eff = int(np.sum(d != 0))  # effective n after dropping zeros
+    if n_eff == 0:
+        return 0.0, 0.0, float('nan'), 1.0, 0
+    stat, p = scipy_wilcoxon(x, y, alternative='two-sided')
+    return stat, stat, float('nan'), p, n_eff
 
 # --- Pearson and Spearman correlation ---
 def pearson_r(x, y):
@@ -301,7 +274,15 @@ print(f"LDA LOSO results: {lda_loso if lda_loso else 'Not found'}")
 
 results["lda_status"] = {"sd_found": lda_found, "loso_found": bool(lda_loso)}
 
-# SAVE
+# SAVE — custom encoder to handle numpy types
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (np.integer,)): return int(obj)
+        if isinstance(obj, (np.floating,)): return float(obj)
+        if isinstance(obj, (np.bool_,)): return bool(obj)
+        if isinstance(obj, np.ndarray): return obj.tolist()
+        return super().default(obj)
+
 with open(OUT, 'w') as f:
-    json.dump(results, f, indent=2)
+    json.dump(results, f, indent=2, cls=NumpyEncoder)
 print(f"\nAll results saved to {OUT}")
