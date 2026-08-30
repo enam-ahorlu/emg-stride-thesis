@@ -1,0 +1,3 @@
+model,condition,macro_f1,f1_DNS,f1_STDUP,f1_UPS,f1_WAK
+RESNET_SE,balanced,0.7605,0.6498,0.9425,0.7463,0.7034
+RESNET_SE,imbalanced,0.7746,0.687,0.9536,0.7419,0.7159

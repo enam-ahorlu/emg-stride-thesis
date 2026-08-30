@@ -1,0 +1,4 @@
+model,f1_mean_over_seeds,f1_sd_over_seeds,n_seeds,seeds
+CNN,0.758,0.0038,3,"7,42,123"
+RF,0.773,0.0003,3,"7,42,123"
+SVM,0.7767,0.0,3,"7,42,123"

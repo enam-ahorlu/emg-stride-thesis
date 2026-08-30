@@ -1,0 +1,2 @@
+arch,f1_macro_mean,f1_macro_sd,bal_acc_mean,acc_mean,n
+resnet_se,0.5487,0.1347,0.5546,0.7374,40

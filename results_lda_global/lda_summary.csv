@@ -1,0 +1,2 @@
+method,norm_mode,f1_macro_mean,f1_macro_sd,n
+LDA,global,0.6278,0.0671,40

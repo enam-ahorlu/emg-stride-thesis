@@ -1,0 +1,3 @@
+config,macro_f1,f1_DNS,f1_STDUP,f1_UPS,f1_WAK,dns_recall,dns_to_wak,subj_min,subj_max,subj_range
+ResNet-SE,0.7664,0.6658,0.9541,0.7441,0.7014,0.6687,0.1121,0.5514,0.8987,0.3474
+"Ensemble(soft,SVM+RF+ResNet-SE)",0.8127,0.7264,0.9675,0.7961,0.7607,0.7122,0.086,0.6201,0.9472,0.3272

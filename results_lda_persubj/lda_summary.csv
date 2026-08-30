@@ -1,0 +1,2 @@
+method,norm_mode,f1_macro_mean,f1_macro_sd,n
+LDA,per_subject,0.6874,0.0721,40
