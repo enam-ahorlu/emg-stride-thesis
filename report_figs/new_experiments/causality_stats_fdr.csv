@@ -1,0 +1,27 @@
+comparison,delta_pp,cohens_d,p
+"Full whitening vs per-subject z-score (alignment ladder, LOSO F1)",-10.1,-2.337,3.637978807091713e-12
+"Per-subject z-score vs global z-score (alignment ladder, LOSO F1)",6.7,1.476,3.074092091992497e-10
+Calibration buffer single_WAK vs mixed100 [SVM],-26.6,-2.902,1e-12
+Calibration buffer single_UPS vs mixed100 [SVM],-31.6,-2.697,1e-12
+Calibration buffer single_DNS vs mixed100 [SVM],-21.8,-1.76,1e-12
+Calibration buffer single_STDUP vs mixed100 [SVM],-39.8,-5.239,1e-12
+Calibration buffer balanced25 vs mixed100 [SVM],-0.1,-0.034,0.50137
+Calibration buffer single_WAK vs mixed100 [SVM (probability)],-22.2,-2.275,1e-12
+Calibration buffer single_UPS vs mixed100 [SVM (probability)],-31.4,-2.809,1e-12
+Calibration buffer single_DNS vs mixed100 [SVM (probability)],-17.4,-1.908,1e-12
+Calibration buffer single_STDUP vs mixed100 [SVM (probability)],-37.0,-4.389,1e-12
+Calibration buffer balanced25 vs mixed100 [SVM (probability)],-0.3,-0.266,0.10581
+Calibration buffer single_WAK vs mixed100 [ResNet-SE+CD],-29.4,-2.734,1e-12
+Calibration buffer single_UPS vs mixed100 [ResNet-SE+CD],-25.8,-2.052,1e-12
+Calibration buffer single_DNS vs mixed100 [ResNet-SE+CD],-20.7,-2.699,1e-12
+Calibration buffer single_STDUP vs mixed100 [ResNet-SE+CD],-47.4,-3.816,1e-12
+Calibration buffer balanced25 vs mixed100 [ResNet-SE+CD],-0.3,-0.202,0.1659
+Calibration buffer single_WAK vs mixed100 [soft ensemble],-25.4,-2.091,1e-12
+Calibration buffer single_UPS vs mixed100 [soft ensemble],-30.3,-2.314,1e-12
+Calibration buffer single_DNS vs mixed100 [soft ensemble],-20.5,-2.23,1e-12
+Calibration buffer single_STDUP vs mixed100 [soft ensemble],-45.0,-4.59,1e-12
+Calibration buffer balanced25 vs mixed100 [soft ensemble],-0.2,-0.249,0.08415
+CORAL (lambda = 0.01) vs per-subject z-score [SVM],-9.2,-1.862,1.8189894035458565e-12
+CORAL (lambda = 0.1) vs per-subject z-score [SVM],-7.9,-1.606,5.4569682106375694e-12
+CORAL (lambda = 1.0) vs per-subject z-score [SVM],-5.3,-1.13,5.844412953592837e-09
+CORAL (lambda = 10.0) vs per-subject z-score [SVM],-4.0,-0.998,1.4608849596697837e-07
