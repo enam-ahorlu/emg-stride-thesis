@@ -1,0 +1,2 @@
+config,model,f1_macro_mean,f1_macro_sd,n
+running,RF,0.7015,0.0512,40

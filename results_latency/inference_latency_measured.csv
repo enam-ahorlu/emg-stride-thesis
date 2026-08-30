@@ -1,0 +1,9 @@
+model,mean_ms,median_ms,sd_ms,p95_ms,min_ms,realtime_vs_125ms
+SVM,1.1161,1.0143,0.3009,1.6776,0.8526,True
+RF,30.5322,29.8665,3.0324,35.7919,25.646,True
+CNN (cpu),0.658,0.5776,0.2128,1.0554,0.5114,True
+ResNet-SE (cpu),2.8051,2.6512,0.5701,3.7799,2.2232,True
+CNN (cuda),0.8012,0.7084,0.2295,1.3114,0.5536,True
+ResNet-SE (cuda),4.0117,3.929,0.523,4.9883,3.1728,True
+Ensemble SVM+RF+ResNet-SE (cpu),35.0125,34.3354,3.0158,40.7779,30.3023,True
+Ensemble SVM+RF+ResNet-SE (cuda),36.8352,36.1187,3.1962,42.2525,31.2549,True

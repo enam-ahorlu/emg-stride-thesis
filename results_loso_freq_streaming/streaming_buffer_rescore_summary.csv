@@ -1,0 +1,9 @@
+config,model,f1_incl,f1_excl,delta_pp
+calib100,RF,0.7066,0.7135,0.69
+calib100,SVM,0.7449,0.7476,0.27
+calib25,RF,0.6773,0.68,0.27
+calib25,SVM,0.708,0.7082,0.02
+calib50,RF,0.6996,0.7021,0.25
+calib50,SVM,0.7344,0.7333,-0.11
+running,RF,0.7022,0.7053,0.31
+running,SVM,0.7392,0.7412,0.2

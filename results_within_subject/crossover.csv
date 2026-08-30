@@ -1,0 +1,3 @@
+model,N_star,note
+SVM,50,smallest N (first-N draw) where regime A >= regime B
+RF,50,smallest N (first-N draw) where regime A >= regime B

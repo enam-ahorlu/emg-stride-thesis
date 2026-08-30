@@ -1,0 +1,5 @@
+subject,config,C,gamma,n_test,n_buffer_excluded,f1_decision_route_incl,f1_decision_route_excl,f1_proba_route_incl,f1_proba_route_excl,disagreement_rate_incl,disagreement_rate_excl
+1,calib100,1.0,scale,690.0,590.0,0.6567,0.6642,0.6483,0.6496,0.0768,0.078
+2,calib100,1.0,scale,520.0,420.0,0.7519,0.7573,0.6965,0.6932,0.0538,0.0429
+3,calib100,1.0,scale,594.0,494.0,0.8153,0.802,0.771,0.7571,0.0438,0.0425
+MEAN,calib100,,,601.3333333333334,501.3333333333333,0.7413,0.7412,0.7053,0.7,0.0581,0.0545

@@ -1,0 +1,2 @@
+method,model,f1_macro_mean,f1_macro_sd,n
+CORAL,RF,0.7466,0.0555,40
