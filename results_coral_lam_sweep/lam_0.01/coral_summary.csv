@@ -1,0 +1,2 @@
+method,model,f1_macro_mean,f1_macro_sd,n
+CORAL,SVM,0.6844,0.0761,40

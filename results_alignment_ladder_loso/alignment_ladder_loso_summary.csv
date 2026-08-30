@@ -1,0 +1,6 @@
+rung,name,f1_mean,f1_sd,n
+0,global_z,0.709404,0.067445,40
+1,mean_center,0.748229,0.061155,40
+2,scale_only,0.718581,0.08038,40
+3,mean_scale,0.7767,0.054726,40
+4,full_whiten_recolor,0.67521,0.06386,40

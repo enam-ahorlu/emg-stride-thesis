@@ -1,0 +1,13 @@
+norm,model,distance,spearman_rho,p,n
+global,SVM,mmd_to_others,-0.2011,0.21333098105404516,40
+global,SVM,mahalanobis,-0.1538,0.34322445555303027,40
+global,RF,mmd_to_others,-0.2111,0.1910850705879917,40
+global,RF,mahalanobis,-0.1107,0.49651337596437595,40
+global,ResNet_SE_CD,mmd_to_others,-0.397,0.011199447472444014,40
+global,ResNet_SE_CD,mahalanobis,-0.363,0.021310820039710642,40
+per_subject,SVM,mmd_to_others,-0.3205,0.04380524481561375,40
+per_subject,SVM,mahalanobis,-0.0583,0.7206170426113669,40
+per_subject,RF,mmd_to_others,-0.0822,0.6141894515611513,40
+per_subject,RF,mahalanobis,0.1287,0.42865651407957917,40
+per_subject,ResNet_SE_CD,mmd_to_others,-0.1206,0.4583894373683087,40
+per_subject,ResNet_SE_CD,mahalanobis,-0.0236,0.8848765411509101,40

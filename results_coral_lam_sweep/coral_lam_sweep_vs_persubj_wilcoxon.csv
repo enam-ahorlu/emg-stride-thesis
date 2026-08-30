@@ -1,0 +1,5 @@
+comparison,n,mean_diff,wilcoxon_W,wilcoxon_p
+coral_lam0.01_vs_persubj_zscore,40,-0.0923,0.0,1.8189894035458565e-12
+coral_lam0.1_vs_persubj_zscore,40,-0.0794,2.0,5.4569682106375694e-12
+coral_lam1.0_vs_persubj_zscore,40,-0.0531,33.0,5.844412953592837e-09
+coral_lam10.0_vs_persubj_zscore,40,-0.0399,58.0,1.4608849596697837e-07

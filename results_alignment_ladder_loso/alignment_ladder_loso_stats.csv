@@ -1,0 +1,3 @@
+comparison,n,mean_diff,wilcoxon_W,wilcoxon_p,cohens_d_paired
+rung4_vs_rung3,40,-0.101491,1.0,3.637978807091713e-12,-2.3375
+rung3_vs_rung0,40,0.067296,16.0,3.0740920919924974e-10,1.4755
