@@ -1,0 +1,8 @@
+comparison,delta_pp,cohens_d,p
+resnet_se vs resnet (SE-attention ablation),2.59,0.54,0.0008
+resnet vs simple_repro (residual-only ablation),-0.39,-0.1,0.4762
+"resnet_se+persubj vs Deep CORAL (same arch, isolates adaptation method)",1.85,0.29,0.0451
+"resnet_se+persubj vs AdaBN post (same arch, isolates adaptation method)",3.97,0.7,0.0001
+AdaBN post vs pre (within-method adaptation effect),3.91,0.61,0.0002
+"STDUP macro-F1 balanced vs imbalanced, SVM",-0.15,-0.16,0.2948
+"STDUP macro-F1 balanced vs imbalanced, RF",-0.96,-0.52,0.0019

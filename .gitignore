@@ -57,3 +57,24 @@ plots/
 # NOTE: features_out/*.npz (3–9 MB each) ARE tracked — they are derived
 # feature matrices small enough for GitHub and useful for reproducibility.
 # results_*/predictions/ .npy files are tracked (< 1 MB total).
+
+# ── RAW ENABL3S DEPOSIT (24 GB, added 30 Aug 2026) ──────────
+# Figshare deposit 5362627: AB*.zip per-subject archives, ten of them
+# individually over GitHub's 100 MB file limit. Obtain from the original
+# authors (Hu, Rouse & Hargrove, 2018) rather than from this repo.
+5362627/
+
+# ── ENABL3S WINDOWED NPZ (292 MB) ───────────────────────────
+# Same policy as the SIAT windowed npz above: the windowed array is too
+# large for GitHub, while the DERIVED feature matrices beside it
+# (features_out_ext/*_features_*.npz, 2-7 MB) ARE tracked.
+features_out_ext/windows_ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60.npz
+
+# ── SECOND VERIFICATION VENV ────────────────────────────────
+.venv-verify/
+
+# ── ENABL3S PER-SUBJECT STAGING CHECKPOINTS (293 MB) ────────
+# Intermediate per-subject windowed arrays written by adapt_external_dataset.py
+# on its way to the derived feature matrices. Regenerable, and the derived
+# matrices beside them are what the pipeline actually consumes.
+features_out_ext/checkpoints/

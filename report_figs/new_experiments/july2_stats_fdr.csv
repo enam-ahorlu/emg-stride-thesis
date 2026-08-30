@@ -1,0 +1,10 @@
+comparison,delta_pp,cohens_d,p,p_holm,p_BH,sig_BH
+LDA per-subj vs SVM per-subj,-8.93,-1.78,0.0,0.0,0.0,Yes
+LDA per-subj vs RF per-subj,-8.58,-1.84,0.0,0.0,0.0,Yes
+LDA per-subj vs CNN per-subj,-6.63,-1.06,0.0,0.0,0.0,Yes
+LDA per-subj vs LDA global,5.95,1.21,0.0,0.0,0.0,Yes
+resnet_se vs SimpleEMGCNN headline (0.754),2.85,0.65,0.0001,0.0004,0.0002,Yes
+Deep CORAL (resnet_se) vs SimpleEMGCNN headline (0.754),1.0,0.18,0.1831,0.2237,0.1831,No
+AdaBN post (resnet_se) vs SimpleEMGCNN headline (0.754),-1.12,-0.22,0.1119,0.2237,0.1258,No
+"STDUP-class F1 balanced vs imbalanced, SVM",-0.39,-0.7,0.0,0.0002,0.0001,Yes
+"STDUP-class F1 balanced vs imbalanced, RF",-1.2,-0.66,0.0001,0.0004,0.0001,Yes

@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codebase Documentation — sEMG Lower-Limb Movement Recognition Pipeline</title>
+<style>
+  :root { --accent: #2563eb; --bg: #ffffff; --code-bg: #f8f9fa; --border: #e2e8f0; --text: #1e293b; --muted: #64748b; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--text); line-height: 1.7; max-width: 1100px; margin: 0 auto; padding: 40px 30px; background: var(--bg); }
+  h1 { font-size: 2.2em; margin: 0 0 8px; color: var(--accent); border-bottom: 3px solid var(--accent); padding-bottom: 12px; }
+  h2 { font-size: 1.65em; margin: 48px 0 16px; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 1.3em; margin: 32px 0 12px; color: #334155; }
+  h4 { font-size: 1.1em; margin: 24px 0 8px; color: #475569; }
+  p { margin: 0 0 14px; }
+  a { color: var(--accent); }
+  code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.88em; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+  pre { background: #1e293b; color: #e2e8f0; padding: 18px 22px; border-radius: 8px; overflow-x: auto; margin: 14px 0 20px; line-height: 1.5; font-size: 0.85em; }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  .comment { color: #94a3b8; }
+  .keyword { color: #7dd3fc; }
+  .string { color: #86efac; }
+  .func { color: #fbbf24; }
+  .num { color: #f472b6; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0 24px; font-size: 0.92em; }
+  th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+  th { background: #f1f5f9; font-weight: 600; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .pipeline-box { background: #eff6ff; border: 2px solid #93c5fd; border-radius: 10px; padding: 20px 24px; margin: 20px 0; font-family: monospace; font-size: 0.9em; line-height: 1.8; }
+  .pipeline-box .arrow { color: var(--accent); font-weight: bold; }
+  .note { background: #fefce8; border-left: 4px solid #facc15; padding: 12px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; font-size: 0.93em; }
+  .design { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 12px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; font-size: 0.93em; }
+  .warn { background: #fef2f2; border-left: 4px solid #ef4444; padding: 12px 18px; margin: 16px 0; border-radius: 0 6px 6px 0; font-size: 0.93em; }
+  .img-placeholder { background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; margin: 16px 0; color: var(--muted); font-style: italic; font-size: 0.9em; }
+  .script-header { background: linear-gradient(135deg, #eff6ff, #f0fdf4); border: 1px solid var(--border); border-radius: 8px; padding: 14px 20px; margin: 24px 0 16px; }
+  .script-header .name { font-size: 1.15em; font-weight: 700; color: var(--accent); font-family: monospace; }
+  .script-header .desc { color: var(--muted); font-size: 0.92em; margin-top: 4px; }
+  .toc { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 24px 30px; margin: 24px 0; }
+  .toc h3 { margin: 0 0 12px; font-size: 1.1em; }
+  .toc ol { padding-left: 22px; }
+  .toc li { margin: 4px 0; }
+  .toc a { text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .metric-box { display: inline-block; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px; padding: 8px 14px; margin: 4px 6px 4px 0; font-size: 0.9em; }
+  .separator { border: none; border-top: 2px dashed var(--border); margin: 40px 0; }
+  @media print { body { max-width: 100%; padding: 20px; } pre { font-size: 0.75em; } }
+  .subtitle { color: var(--muted); font-size: 1.05em; margin-bottom: 24px; }
+</style>
+</head>
+<body>
+
+<h1>Codebase Documentation</h1>
+<p class="subtitle">Improving Generalization in sEMG-Based Lower-Limb Movement Recognition via Machine Learning<br>
+<strong>Author:</strong> Enam Ahorlu &nbsp;|&nbsp; <strong>Date:</strong> March 2026 &nbsp;|&nbsp; <strong>Scripts:</strong> 45 Python files &nbsp;|&nbsp; <strong>Code:</strong> ~13,200 lines</p>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+<h3>Table of Contents</h3>
+<ol>
+<li><a href="#sec1">Project Overview and Architecture</a></li>
+<li><a href="#sec2">Directory Structure and Data Flow</a></li>
+<li><a href="#sec3">Stage 1 — Data Preprocessing (<code>preprocess_emg.py</code>)</a></li>
+<li><a href="#sec4">Stage 2 — Feature Extraction (<code>extract_features.py</code>)</a></li>
+<li><a href="#sec5">Stage 2b — Feature Merging and Comparison</a></li>
+<li><a href="#sec6">Stage 3 — Subject-Dependent Training (Classical)</a></li>
+<li><a href="#sec7">Stage 4 — Subject-Dependent Training (CNN)</a></li>
+<li><a href="#sec8">Stage 5 — Leave-One-Subject-Out (Classical)</a></li>
+<li><a href="#sec9">Stage 6 — Leave-One-Subject-Out (CNN)</a></li>
+<li><a href="#sec10">Stage 7 — Normalisation Ablation</a></li>
+<li><a href="#sec11">Stage 8 — Feature Selection</a></li>
+<li><a href="#sec12">Stage 9 — CNN Data Augmentation</a></li>
+<li><a href="#sec13">Stage 10 — Ensemble Evaluation</a></li>
+<li><a href="#sec14">Stage 11 — Optimization Comparison and Statistical Validation</a></li>
+<li><a href="#sec15">Stage 12 — Orchestration Scripts</a></li>
+<li><a href="#sec16">Stage 13 — Post-Hoc Analysis</a></li>
+<li><a href="#sec17">Stage 14 — Visualization and Plotting</a></li>
+<li><a href="#sec18">Stage 15 — Utility Scripts</a></li>
+<li><a href="#sec19">Library Reference</a></li>
+<li><a href="#sec20">Design Decisions and Justifications</a></li>
+<li><a href="#sec21">Output Catalogue</a></li>
+</ol>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec1">1. Project Overview and Architecture</h2>
+
+<p>This codebase implements a complete machine learning pipeline for classifying four lower-limb movements — Walking (WAK), Going Upstairs (UPS), Going Downstairs (DNS), and Standing Up (STDUP) — from surface electromyography (sEMG) signals recorded from 9 muscles of the lower limb. The dataset used is the <strong>SIAT_LLMD20230404</strong> benchmark, containing recordings from 40 healthy subjects performing 16 movement types, of which 4 are selected for this study.</p>
+
+<p>The pipeline follows a principled experimental methodology designed to measure how well models generalize to unseen individuals. It evaluates three model families under two cross-validation paradigms:</p>
+
+<table>
+<tr><th>Model</th><th>Type</th><th>Key Hyperparameters</th></tr>
+<tr><td>SVM (RBF kernel)</td><td>Classical</td><td>C ∈ {1, 5, 10}, gamma = "scale", StandardScaler in Pipeline</td></tr>
+<tr><td>Random Forest</td><td>Classical</td><td>n_estimators ∈ {200, 400, 500}, max_depth ∈ {None, 10}</td></tr>
+<tr><td>1D CNN (SimpleEMGCNN)</td><td>Deep Learning</td><td>Conv1d: 32→64→128 filters, Adam lr=1e-3, early stopping (patience=5)</td></tr>
+</table>
+
+<table>
+<tr><th>CV Paradigm</th><th>Purpose</th><th>Implementation</th></tr>
+<tr><td>Subject-Dependent (SD)</td><td>Within-subject baseline</td><td>5-fold StratifiedKFold, windows from all subjects pooled</td></tr>
+<tr><td>Leave-One-Subject-Out (LOSO)</td><td>Cross-subject generalization</td><td>40 outer folds (1 subject held out each), nested GridSearchCV for classicals, early stopping for CNN</td></tr>
+</table>
+
+<p>The <strong>generalization gap</strong> (ΔF1 = F1<sub>SD</sub> − F1<sub>LOSO</sub>) is the central metric, quantifying how much performance degrades when a model encounters a completely new individual.</p>
+
+<p>The primary evaluation metric is <strong>Macro F1-Score</strong>, chosen because it is class-frequency-independent and thus suitable for the moderate class imbalance present in the dataset. Supporting metrics include Balanced Accuracy and Overall Accuracy.</p>
+
+<div class="pipeline-box">
+<strong>End-to-End Pipeline Flow:</strong><br><br>
+Raw CSVs (40 subjects × 4 movements)<br>
+&nbsp;&nbsp;<span class="arrow">↓</span> <code>preprocess_emg.py</code> — bandpass filter → envelope → sliding windows → .npz + meta.csv<br>
+&nbsp;&nbsp;<span class="arrow">↓</span> <code>extract_features.py</code> — MAV, RMS, WL, ZC (+WAMP, wavelet, freq) → features .npz<br>
+&nbsp;&nbsp;<span class="arrow">↓</span> <code>merge_freq_wavelet_features.py</code> — combine wavelet + freq → 81-dim full set<br>
+&nbsp;&nbsp;<span class="arrow">↓</span> <code>train_classical_patched.py</code> / <code>train_cnn_subjectdep.py</code> — SD evaluation<br>
+&nbsp;&nbsp;<span class="arrow">↓</span> <code>train_classical_loso.py</code> / <code>train_cnn_loso.py</code> — LOSO with nested tuning<br>
+&nbsp;&nbsp;<span class="arrow">↓</span> Optimization stages: Norm ablation → Feature selection → CNN augmentation<br>
+&nbsp;&nbsp;<span class="arrow">↓</span> Ensemble evaluation &amp; statistical validation<br>
+&nbsp;&nbsp;<span class="arrow">↓</span> Analysis &amp; Plotting scripts — generalization gap, statistical tests, visualisations
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec2">2. Directory Structure and Data Flow</h2>
+
+<pre><code>MSc Python Project/
+├── SIAT_LLMD20230404/              <span class="comment"># Raw dataset (40 subjects)</span>
+│   ├── Sub01/ ... Sub40/
+│   │   ├── Data/                   <span class="comment"># Time + 8 kinematic + 8 kinetic + 9 sEMG columns</span>
+│   │   └── Labels/                 <span class="comment"># Time + Status (A/R/numeric)</span>
+│
+├── preprocess_emg.py               <span class="comment"># Stage 1: Raw CSV → filtered windows NPZ</span>
+├── extract_features.py             <span class="comment"># Stage 2: Windows NPZ → feature vectors NPZ</span>
+├── merge_freq_wavelet_features.py  <span class="comment"># Stage 2b: Combine wavelet + frequency features</span>
+├── feature_set_comparison.py       <span class="comment"># Stage 2b: SD comparison of feature sets</span>
+│
+├── train_classical_patched.py      <span class="comment"># Stage 3: SD classical training</span>
+├── train_cnn_subjectdep.py         <span class="comment"># Stage 4: SD CNN training</span>
+├── train_classical_loso.py         <span class="comment"># Stage 5: LOSO classical training</span>
+├── train_cnn_loso.py               <span class="comment"># Stage 6: LOSO CNN training</span>
+│
+├── run_norm_ablation_loso.py       <span class="comment"># Stage 7: Norm ablation (classical)</span>
+├── run_cnn_norm_ablation_loso.py   <span class="comment"># Stage 7: Norm ablation (CNN)</span>
+├── compare_norm_ablation.py        <span class="comment"># Stage 7: Compile norm ablation results</span>
+├── compare_cnn_norm_ablation.py    <span class="comment"># Stage 7: Compile CNN norm ablation</span>
+│
+├── run_classical_featsel_loso.py   <span class="comment"># Stage 8: Feature selection (per-subject norm)</span>
+├── run_classical_featsel_globnorm_loso.py  <span class="comment"># Stage 8: Feature selection (global norm)</span>
+├── compare_featsel_results.py      <span class="comment"># Stage 8: Compile feature selection</span>
+│
+├── run_cnn_augmentation_loso.py    <span class="comment"># Stage 9: CNN augmentation (per-subject norm)</span>
+├── run_cnn_aug_globnorm_loso.py    <span class="comment"># Stage 9: CNN augmentation (global norm)</span>
+├── compare_cnn_augmentation.py     <span class="comment"># Stage 9: Compile CNN augmentation</span>
+│
+├── run_ensemble_loso.py            <span class="comment"># Stage 10: Ensemble evaluation</span>
+│
+├── compare_all_optimizations.py    <span class="comment"># Stage 11: Master optimization comparison</span>
+├── optimization_statistical_tests.py <span class="comment"># Stage 11: Wilcoxon + effect sizes</span>
+├── compare_feature_sets_4way.py    <span class="comment"># Stage 11: 4-way feature comparison</span>
+├── compare_feature_sets_loso.py    <span class="comment"># Stage 11: Base-36 vs Freq-72</span>
+├── freq72_analysis.py              <span class="comment"># Stage 11: Comprehensive Freq-72 analysis</span>
+│
+├── run_full_pipeline.py            <span class="comment"># Stage 12: Master orchestration</span>
+├── run_all_analyses.py             <span class="comment"># Stage 13: All statistical analyses</span>
+├── compute_generalization_gap.py   <span class="comment"># Stage 13: ΔF1 = F1_SD − F1_LOSO</span>
+├── compute_per_subject_metrics.py  <span class="comment"># Stage 13: Per-subject metrics from predictions</span>
+├── analyze_*.py                    <span class="comment"># Stage 13: Analysis scripts (6 total)</span>
+│
+├── plot_results_report_figs.py     <span class="comment"># Stage 14: Main plotting (boxplots, bars)</span>
+├── generate_ci_plots.py            <span class="comment"># Stage 14: Confidence interval plots</span>
+├── generate_gap_plots.py           <span class="comment"># Stage 14: Gap vs baseline plots</span>
+├── generate_subject_line_plots.py  <span class="comment"># Stage 14: Per-subject trajectories</span>
+├── merge_plot_generalization.py    <span class="comment"># Stage 14: SD+LOSO gap plots</span>
+├── merge_all_gaps.py               <span class="comment"># Stage 14: Combine classical + CNN gaps</span>
+├── batch_save_plot.py              <span class="comment"># Stage 14: Batch re-render PNGs</span>
+│
+├── validate_npz.py                 <span class="comment"># Stage 15: Sanity-check NPZ files</span>
+├── report_dataset.py               <span class="comment"># Stage 15: Dataset dimension reporting</span>
+│
+├── features_out/                   <span class="comment"># Extracted features (4 sets × N windows)</span>
+├── results_classical/              <span class="comment"># SD classical results</span>
+├── results_classical_optimal/      <span class="comment"># SD classical (250ms baseline)</span>
+├── results_classical_freq72/       <span class="comment"># SD classical (Freq-72 features)</span>
+├── results_loso_light/             <span class="comment"># LOSO classical (base-36 features)</span>
+├── results_loso_freq_baseline/     <span class="comment"># LOSO classical (Freq-72 baseline)</span>
+├── results_loso_freq_norm_none/    <span class="comment"># LOSO classical (no normalisation)</span>
+├── results_loso_freq_norm_global/  <span class="comment"># LOSO classical (global z-score)</span>
+├── results_loso_freq_persubj/      <span class="comment"># LOSO classical (per-subject z-score)</span>
+├── results_loso_freq_norm_robust/  <span class="comment"># LOSO classical (robust scaler)</span>
+├── results_loso_freq_rfe36/        <span class="comment"># LOSO classical (RFE 36 features)</span>
+├── results_loso_freq_rfe27/        <span class="comment"># LOSO classical (RFE 27 features)</span>
+├── results_loso_freq_mi36/         <span class="comment"># LOSO classical (MI 36 features)</span>
+├── results_loso_freq_mi27/         <span class="comment"># LOSO classical (MI 27 features)</span>
+├── results_loso_freq_rfe36_globnorm/  <span class="comment"># LOSO classical (RFE 36 + global norm)</span>
+├── results_loso_freq_rfe27_globnorm/  <span class="comment"># LOSO classical (RFE 27 + global norm)</span>
+├── results_loso_freq_mi36_globnorm/   <span class="comment"># LOSO classical (MI 36 + global norm)</span>
+├── results_loso_freq_mi27_globnorm/   <span class="comment"># LOSO classical (MI 27 + global norm)</span>
+├── results_cnn_loso/               <span class="comment"># LOSO CNN (base features)</span>
+├── results_cnn_loso_norm_none/     <span class="comment"># LOSO CNN (no normalisation)</span>
+├── results_cnn_loso_norm_global/   <span class="comment"># LOSO CNN (global z-score)</span>
+├── results_cnn_loso_persubj/       <span class="comment"># LOSO CNN (per-subject z-score)</span>
+├── results_cnn_loso_norm_robust/   <span class="comment"># LOSO CNN (robust scaler)</span>
+├── results_cnn_loso_aug_gaussian/  <span class="comment"># LOSO CNN (gaussian augmentation)</span>
+├── results_cnn_loso_aug_chandrop/  <span class="comment"># LOSO CNN (channel dropout)</span>
+├── results_cnn_loso_aug_timemask/  <span class="comment"># LOSO CNN (time masking)</span>
+├── results_cnn_loso_aug_combined/  <span class="comment"># LOSO CNN (combined augmentation)</span>
+├── results_cnn_loso_aug_gaussian_globnorm/  <span class="comment"># LOSO CNN (gaussian + global)</span>
+├── results_cnn_loso_aug_chandrop_globnorm/  <span class="comment"># LOSO CNN (chandrop + global)</span>
+├── results_cnn_loso_aug_timemask_globnorm/  <span class="comment"># LOSO CNN (timemask + global)</span>
+├── results_ensemble_loso/          <span class="comment"># LOSO ensemble results</span>
+└── report_figs/                    <span class="comment"># Publication-ready plots (50+ files)</span>
+</code></pre>
+
+<p><strong>Data flow through the pipeline:</strong> Raw CSV files are first loaded and aligned by <code>preprocess_emg.py</code>, which outputs compressed NumPy archives (<code>.npz</code>) containing 3D window arrays of shape <code>(N, C, T)</code> where N is the number of windows, C is the number of sEMG channels (9), and T is the number of time samples per window (dependent on window length and sampling rate). A companion metadata CSV is generated with one row per window, recording subject ID, movement type, label confidence, and timing information. This <strong>1:1 alignment</strong> between NPZ rows and CSV rows is a critical invariant maintained throughout the entire pipeline.</p>
+
+<!-- ============================================================ -->
+<h2 id="sec3">3. Stage 1 — Data Preprocessing</h2>
+
+<div class="script-header">
+<div class="name">preprocess_emg.py</div>
+<div class="desc">702 lines &nbsp;|&nbsp; Loads raw sEMG CSVs, applies signal conditioning, segments into labelled sliding windows, outputs compressed NPZ + metadata CSV.</div>
+</div>
+
+<h3>3.1 Configuration via Dataclass</h3>
+<p>All preprocessing parameters are encapsulated in a <code>PreprocessConfig</code> dataclass, making the entire pipeline reproducible and auditable. Every run serialises its configuration to a JSON file alongside the output.</p>
+
+<pre><code><span class="keyword">@dataclass</span>
+<span class="keyword">class</span> <span class="func">PreprocessConfig</span>:
+    base_dir: Path
+    bandpass_low: <span class="keyword">float</span> = <span class="num">20.0</span>      <span class="comment"># Hz — removes motion artefact below 20 Hz</span>
+    bandpass_high: <span class="keyword">float</span> = <span class="num">450.0</span>    <span class="comment"># Hz — removes high-freq noise above 450 Hz</span>
+    bandpass_order: <span class="keyword">int</span> = <span class="num">4</span>         <span class="comment"># 4th-order Butterworth (standard for sEMG)</span>
+    envelope_ms: <span class="keyword">float</span> = <span class="num">50.0</span>      <span class="comment"># 50ms RMS envelope smoothing window</span>
+    win_ms: <span class="keyword">float</span> = <span class="num">150.0</span>          <span class="comment"># Sliding window length in ms</span>
+    overlap: <span class="keyword">float</span> = <span class="num">0.5</span>           <span class="comment"># 50% overlap between consecutive windows</span>
+    min_label_conf: <span class="keyword">float</span> = <span class="num">0.60</span>   <span class="comment"># 60% majority-label confidence threshold</span>
+    drop_none_labels: <span class="keyword">bool</span> = <span class="keyword">True</span>
+    drop_wak_unlabelled_zero: <span class="keyword">bool</span> = <span class="keyword">True</span>
+    keep_only_active_stdup: <span class="keyword">bool</span> = <span class="keyword">False</span></code></pre>
+
+<div class="design">
+<strong>Design Decision — Bandpass 20–450 Hz:</strong> The 20 Hz lower cutoff removes motion artefacts and baseline drift common in lower-limb sEMG. The 450 Hz upper cutoff is well below the Nyquist frequency (~960 Hz at 1920 Hz sampling) and removes high-frequency noise while preserving the muscle activation frequency band (20–500 Hz per SENIAM guidelines). A 4th-order Butterworth provides a sharp roll-off without excessive phase distortion thanks to zero-phase filtering via <code>filtfilt</code>.
+</div>
+
+<h3>3.2 Data Loading and Label Alignment</h3>
+<p>Each subject's movement trial consists of two CSV files: a data file (containing Time, 8 kinematic, 8 kinetic, and 9 sEMG columns) and a label file (Time + Status). Since data and labels are sampled independently, temporal alignment is performed using <code>pandas.merge_asof</code> with nearest-neighbour matching and a tolerance of half a sample period:</p>
+
+<pre><code><span class="keyword">def</span> <span class="func">align_labels_to_data_by_time</span>(data_time, label_df, status_col, tol):
+    <span class="comment"># Merge labels onto data timestamps using nearest-neighbour</span>
+    merged = pd.merge_asof(d, l, on=<span class="string">"Time"</span>, direction=<span class="string">"nearest"</span>, tolerance=tol)
+    <span class="keyword">return</span> aligned_status</code></pre>
+
+<p>The sampling rate is not hardcoded; instead, it is estimated from the median inter-sample interval of each trial's Time column using <code>estimate_fs()</code>. This makes the pipeline robust to minor variations across files. The estimated rate is approximately <strong>1920 Hz</strong> (median dt ≈ 0.000521s).</p>
+
+<h3>3.3 Signal Conditioning</h3>
+<p>Two signal conditioning steps are applied sequentially to each sEMG channel:</p>
+
+<p><strong>Bandpass Filtering:</strong> A 4th-order Butterworth bandpass filter is designed using <code>scipy.signal.butter</code> and applied with zero-phase filtering via <code>scipy.signal.filtfilt</code>. Zero-phase filtering applies the filter forward and then backward, eliminating phase distortion while doubling the effective filter order to 8th-order attenuation.</p>
+
+<pre><code><span class="keyword">def</span> <span class="func">design_bandpass</span>(fs, low, high, order):
+    nyq = <span class="num">0.5</span> * fs
+    b, a = butter(order, [low/nyq, high/nyq], btype=<span class="string">"bandpass"</span>)
+    <span class="keyword">return</span> b, a
+
+<span class="keyword">def</span> <span class="func">apply_bandpass</span>(df, fs, cfg):
+    b, a = design_bandpass(fs, cfg.bandpass_low, cfg.bandpass_high, cfg.bandpass_order)
+    <span class="keyword">for</span> col <span class="keyword">in</span> emg_cols:
+        out[col] = filtfilt(b, a, df[col].to_numpy(dtype=<span class="keyword">float</span>))</code></pre>
+
+<p><strong>Envelope Extraction:</strong> Full-wave rectification (absolute value) followed by a centred rolling mean with a 50ms window. This extracts the amplitude envelope of the sEMG signal, which represents the overall muscle activation level. The choice of 50ms balances temporal resolution with smoothness — short enough to track rapid movement transitions, long enough to suppress individual motor unit action potential spikes.</p>
+
+<pre><code><span class="keyword">def</span> <span class="func">rectify_and_envelope</span>(df, fs, cfg):
+    win_samples = <span class="keyword">int</span>(round(cfg.envelope_ms * fs / <span class="num">1000.0</span>))
+    <span class="keyword">for</span> col <span class="keyword">in</span> emg_cols:
+        rect = np.abs(df[col].to_numpy(dtype=<span class="keyword">float</span>))
+        out[col] = pd.Series(rect).rolling(win_samples, center=<span class="keyword">True</span>, min_periods=<span class="num">1</span>).mean()</code></pre>
+
+<h3>3.4 Sliding Window Segmentation</h3>
+<p>The continuous signal is segmented into fixed-length overlapping windows. Both the bandpass-filtered ("raw") and envelope signals are windowed in parallel — the raw windows are used for CNN input (which learns its own representations), while the envelope windows serve as a fallback for feature extraction.</p>
+
+<pre><code>win_samples = <span class="keyword">int</span>(round(cfg.win_ms * fs / <span class="num">1000.0</span>))  <span class="comment"># e.g., 150ms × 1920Hz ≈ 288 samples</span>
+step = <span class="keyword">int</span>(round(win_samples * (<span class="num">1.0</span> - overlap)))       <span class="comment"># 50% overlap → step = 144 samples</span>
+
+<span class="keyword">for</span> start <span class="keyword">in</span> range(<span class="num">0</span>, len(df) - win_samples + <span class="num">1</span>, step):
+    end = start + win_samples
+    <span class="comment"># Extract (C, T) window from both raw and envelope DataFrames</span>
+    X_raw_list.append(win_raw[emg_cols].to_numpy())
+    X_env_list.append(win_env[emg_cols].to_numpy())</code></pre>
+
+<p>Each window receives a label determined by <strong>majority voting</strong>: the most frequent label within the window's span is chosen, and its proportion becomes the <em>confidence score</em>. Windows failing the 60% confidence threshold are discarded — this eliminates transition windows where the subject is mid-movement-change.</p>
+
+<pre><code><span class="keyword">def</span> <span class="func">majority_label_with_conf</span>(status_series):
+    mode = status_series.dropna().mode().iloc[<span class="num">0</span>]
+    conf = (status_series == mode).mean()
+    <span class="keyword">return</span> mode, conf  <span class="comment"># e.g., ("WAK", 0.85) → 85% of samples are WAK</span></code></pre>
+
+<div class="design">
+<strong>Design Decision — 60% Confidence Threshold:</strong> A threshold of 0.60 ensures that at least 60% of a window's samples share the same label. This is a deliberate trade-off: too strict (e.g., 90%) would discard too many windows near movement transitions and reduce training data; too lenient (e.g., 30%) would introduce noisy labels. The 60% value was chosen as it is commonly used in the sEMG windowing literature.
+</div>
+
+<h3>3.5 Ablation Mode</h3>
+<p>The script supports an <code>--ablation</code> flag that automatically runs preprocessing for multiple window lengths (default: 150ms and 250ms) in a single invocation. Each run gets an auto-generated tag encoding its parameters (e.g., <code>w150_ov50_conf60_AorR</code>), ensuring output files are uniquely named and traceable.</p>
+
+<h3>3.6 Output Format</h3>
+<p>The primary output is a compressed NPZ file containing two arrays: <code>X_raw</code> (bandpass-filtered windows) and <code>X_env</code> (envelope windows), both stored in <strong>(N, C, T) format</strong> — N windows, C=9 channels, T time samples. An internal function <code>_ensure_nct()</code> detects and auto-transposes arrays if the original extraction yields (N, T, C). The companion CSV contains per-window metadata, and summary statistics (window counts by movement and subject) are saved as both CSV and JSON.</p>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec4">4. Stage 2 — Feature Extraction</h2>
+
+<div class="script-header">
+<div class="name">extract_features.py</div>
+<div class="desc">478 lines &nbsp;|&nbsp; Computes time-domain, frequency-domain, and wavelet features from each window. Outputs 2D feature matrices (N, F) as NPZ files.</div>
+</div>
+
+<h3>4.1 Feature Functions</h3>
+<p>Nine feature extraction functions are implemented, each operating on a per-channel basis (input shape: <code>(C, T)</code>, output shape: <code>(C,)</code>). They fall into three categories:</p>
+
+<h4>Time-Domain Features (Base Set — 36 dimensions)</h4>
+<table>
+<tr><th>Feature</th><th>Formula</th><th>Dimensions</th><th>Purpose</th></tr>
+<tr><td>MAV</td><td><code>mean(|x|)</code></td><td>9</td><td>Average muscle activation amplitude</td></tr>
+<tr><td>RMS</td><td><code>sqrt(mean(x²))</code></td><td>9</td><td>Signal power proxy (energy content)</td></tr>
+<tr><td>WL</td><td><code>sum(|diff(x)|)</code></td><td>9</td><td>Signal complexity / waveform length</td></tr>
+<tr><td>ZC</td><td>Count of sign changes where |Δx| ≥ threshold</td><td>9</td><td>Frequency information proxy</td></tr>
+</table>
+
+<pre><code><span class="keyword">def</span> <span class="func">feat_mav</span>(x):    <span class="keyword">return</span> np.mean(np.abs(x), axis=-<span class="num">1</span>)
+<span class="keyword">def</span> <span class="func">feat_rms</span>(x):    <span class="keyword">return</span> np.sqrt(np.mean(x**<span class="num">2</span>, axis=-<span class="num">1</span>))
+<span class="keyword">def</span> <span class="func">feat_wl</span>(x):     <span class="keyword">return</span> np.sum(np.abs(np.diff(x, axis=-<span class="num">1</span>)), axis=-<span class="num">1</span>)
+<span class="keyword">def</span> <span class="func">feat_zc</span>(x, thr=<span class="num">1e-6</span>):
+    s = np.sign(x); s[s == <span class="num">0</span>] = <span class="num">1</span>
+    sign_change = (s[..., <span class="num">1</span>:] * s[..., :-<span class="num">1</span>]) < <span class="num">0</span>
+    delta = np.abs(x[..., <span class="num">1</span>:] - x[..., :-<span class="num">1</span>]) >= thr
+    <span class="keyword">return</span> np.sum(sign_change & delta, axis=-<span class="num">1</span>)</code></pre>
+
+<div class="design">
+<strong>Design Decision — Zero Crossing Threshold:</strong> A tiny threshold (<code>1e-6</code>) is used rather than zero to prevent noise-induced false crossings. This is standard practice in sEMG processing, where low-amplitude noise around the zero line could otherwise inflate ZC counts.
+</div>
+
+<h4>Extended Features (WAMP + Wavelet — adds 18 dimensions)</h4>
+<table>
+<tr><th>Feature</th><th>Dimensions</th><th>Purpose</th></tr>
+<tr><td>WAMP (Willison Amplitude)</td><td>9</td><td>Counts amplitude changes above threshold — correlates with motor unit firing</td></tr>
+<tr><td>Wavelet Energy (db4, level 2)</td><td>9</td><td>Multi-resolution frequency decomposition energy at detail level 2</td></tr>
+</table>
+
+<pre><code><span class="keyword">def</span> <span class="func">feat_wavelet_energy</span>(x, wavelet=<span class="string">"db4"</span>, level=<span class="num">2</span>):
+    <span class="keyword">import</span> pywt
+    <span class="keyword">for</span> c <span class="keyword">in</span> range(C):
+        coeffs = pywt.wavedec(x[c], wavelet=wavelet, level=level)
+        cD_L = coeffs[<span class="num">1</span>]  <span class="comment"># Detail coefficients at the specified level</span>
+        out[c] = np.sum(np.square(cD_L))  <span class="comment"># Energy = sum of squared coefficients</span></code></pre>
+
+<p>The <strong>Daubechies-4 (db4)</strong> wavelet at decomposition level 2 was chosen because db4 provides a good balance between time and frequency localisation for transient sEMG bursts. Level 2 captures frequency components in roughly the 240–480 Hz band (at 1920 Hz sampling), which corresponds to the upper sEMG activity range.</p>
+
+<h4>Frequency-Domain Features (adds 27 dimensions)</h4>
+<table>
+<tr><th>Feature</th><th>Dimensions</th><th>Purpose</th></tr>
+<tr><td>MNF (Mean Frequency)</td><td>9</td><td>Power-weighted average frequency — shifts with fatigue</td></tr>
+<tr><td>MDF (Median Frequency)</td><td>9</td><td>Frequency at 50% cumulative power — more robust to noise than MNF</td></tr>
+<tr><td>Spectral Power (log)</td><td>9</td><td>Total signal energy in frequency domain (log-scaled for stability)</td></tr>
+</table>
+
+<pre><code><span class="keyword">def</span> <span class="func">feat_mean_freq</span>(x, fs=<span class="num">2000.0</span>):
+    freqs = np.fft.rfftfreq(T, d=<span class="num">1.0</span> / fs)
+    spectrum = np.abs(np.fft.rfft(x[c])) ** <span class="num">2</span>  <span class="comment"># Power spectral density</span>
+    <span class="keyword">return</span> np.sum(freqs * spectrum) / np.sum(spectrum)  <span class="comment"># MNF = weighted average freq</span>
+
+<span class="keyword">def</span> <span class="func">feat_spectral_power</span>(x, fs=<span class="num">2000.0</span>):
+    spectrum = np.abs(np.fft.rfft(x[c])) ** <span class="num">2</span>
+    <span class="keyword">return</span> np.log1p(np.sum(spectrum))  <span class="comment"># log(1 + total_power) for numerical stability</span></code></pre>
+
+<div class="design">
+<strong>Design Decision — log1p for Spectral Power:</strong> Raw spectral power can span many orders of magnitude across channels and subjects. Using <code>np.log1p()</code> (i.e., log(1+x)) compresses the dynamic range while remaining monotonic. The "+1" prevents log(0) for silent channels.
+</div>
+
+<h3>4.2 Feature Set Dimensionalities</h3>
+<table>
+<tr><th>Feature Set</th><th>Components</th><th>Total Dimensions</th></tr>
+<tr><td>Base</td><td>MAV(9) + RMS(9) + WL(9) + ZC(9)</td><td>36</td></tr>
+<tr><td>Extended (wavelet)</td><td>Base(36) + WAMP(9) + Wavelet(9)</td><td>54</td></tr>
+<tr><td>Frequency-enhanced</td><td>Base(36) + WAMP(9) + MNF(9) + MDF(9) + SP(9)</td><td>72</td></tr>
+<tr><td>Full (wavelet + freq)</td><td>Base(36) + WAMP(9) + Wavelet(9) + MNF(9) + MDF(9) + SP(9)</td><td>81</td></tr>
+</table>
+
+<h3>4.3 Output and Verification</h3>
+<p>Features are saved as compressed NPZ files with a single key <code>"X"</code> containing a float32 array of shape <code>(N, F)</code>. After saving, the script immediately reloads the file and verifies that it contains exactly one numeric array — a defensive check against accidental pickle contamination (which could happen if object arrays were stored).</p>
+
+<pre><code><span class="comment"># Post-save verification</span>
+tmp = np.load(base_npz, allow_pickle=<span class="keyword">False</span>)
+<span class="keyword">assert</span> list(tmp.files) == [<span class="string">"X"</span>]
+<span class="keyword">assert</span> np.issubdtype(tmp[<span class="string">"X"</span>].dtype, np.number)</code></pre>
+
+<p>A label-to-integer mapping is also saved as JSON (e.g., <code>{"DNS": 0, "STDUP": 1, "UPS": 2, "WAK": 3}</code>), ensuring consistent encoding across all downstream scripts.</p>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec5">5. Stage 2b — Feature Merging and Comparison</h2>
+
+<div class="script-header">
+<div class="name">merge_freq_wavelet_features.py</div>
+<div class="desc">72 lines &nbsp;|&nbsp; Combines wavelet energy features (from extended set) with frequency-domain features into a single 81-dimensional combined feature set.</div>
+</div>
+
+<p>Since the extended and frequency feature sets are extracted separately (wavelet requires <code>pywt</code>; frequency features use only <code>numpy.fft</code>), this script merges them by column-slicing:</p>
+
+<pre><code><span class="comment"># Old extended: cols 0-35 = base, 36-44 = WAMP, 45-53 = wavelet (54 dims)</span>
+<span class="comment"># New frequency: cols 0-35 = base, 36-44 = WAMP, 45-53 = MNF, 54-62 = MDF, 63-71 = SP (72 dims)</span>
+<span class="comment"># Combined:      base(36) + WAMP(9) + wavelet(9) + MNF(9) + MDF(9) + SP(9) = 81 dims</span>
+
+wavelet_cols = X_old[:, <span class="num">45</span>:<span class="num">54</span>]    <span class="comment"># 9 wavelet energy columns</span>
+freq_cols = X_new[:, <span class="num">45</span>:]          <span class="comment"># 27 frequency columns (MNF + MDF + SP)</span>
+base_wamp = X_new[:, :<span class="num">45</span>]          <span class="comment"># 45 shared columns (base + WAMP)</span>
+X_combined = np.concatenate([base_wamp, wavelet_cols, freq_cols], axis=<span class="num">1</span>)  <span class="comment"># (N, 81)</span></code></pre>
+
+<p>The script also copies the metadata CSV to match the combined filename convention, so downstream training scripts can locate it automatically.</p>
+
+<div class="script-header">
+<div class="name">feature_set_comparison.py</div>
+<div class="desc">Runs subject-dependent 5-fold CV on base (36-dim) and extended (54-dim) feature sets, plus Freq-72 and Full-81 sets to determine optimal feature set under SD paradigm.</div>
+</div>
+
+<p>This script loads all four feature sets and evaluates SVM (with StandardScaler) and RF on each using the same CV splits. Results are saved as a CSV table comparing F1 scores, with delta columns showing the differences.</p>
+
+<div class="note">
+<strong>Key Result:</strong> The Freq-72 feature set (base + WAMP + frequency domain) maximises classical model performance under SD evaluation and serves as the primary feature set for all subsequent LOSO experiments. The full 81-dim set provides minimal additional benefit, while wavelet features alone are outperformed by frequency features.
+</div>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec6">6. Stage 3 — Subject-Dependent Training (Classical)</h2>
+
+<div class="script-header">
+<div class="name">train_classical_patched.py</div>
+<div class="desc">589 lines &nbsp;|&nbsp; Evaluates SVM, Random Forest, and LDA under subject-dependent 5-fold stratified cross-validation. Includes detailed timing, support vector diagnostics, and prediction saving.</div>
+</div>
+
+<h3>6.1 Model Construction</h3>
+<p>Three classifiers are built via <code>build_models()</code>:</p>
+
+<pre><code><span class="keyword">def</span> <span class="func">build_models</span>(seed, svm_scale, svm_c, rf_max_depth, rf_n_estimators, include_lda):
+    <span class="comment"># SVM: optionally wrapped in Pipeline with StandardScaler</span>
+    <span class="keyword">if</span> svm_scale:
+        svm = Pipeline([
+            (<span class="string">"scaler"</span>, StandardScaler()),
+            (<span class="string">"svc"</span>, SVC(kernel=<span class="string">"rbf"</span>, C=svm_c, gamma=<span class="string">"scale"</span>, class_weight=<span class="string">"balanced"</span>)),
+        ])
+
+    <span class="comment"># RF: no scaling needed (tree-based, scale-invariant)</span>
+    rf = RandomForestClassifier(
+        n_estimators=rf_n_estimators, n_jobs=-<span class="num">1</span>,
+        class_weight=<span class="string">"balanced_subsample"</span>, max_depth=rf_max_depth,
+    )
+
+    <span class="comment"># LDA: always scaled (assumes Gaussian features)</span>
+    lda = Pipeline([(<span class="string">"scaler"</span>, StandardScaler()), (<span class="string">"lda"</span>, LinearDiscriminantAnalysis())])</code></pre>
+
+<div class="design">
+<strong>Design Decision — StandardScaler in Pipeline:</strong> For SVM and LDA, <code>StandardScaler</code> is placed <strong>inside</strong> an sklearn <code>Pipeline</code>. This ensures that the scaler is fitted only on the training fold and transforms both training and test folds identically — preventing normalisation leakage. RF does not require scaling because decision trees split on feature thresholds and are invariant to monotonic transformations.
+</div>
+
+<div class="design">
+<strong>Design Decision — <code>class_weight="balanced"</code>:</strong> Both SVM and RF use class weighting to handle the moderate imbalance among the four movement classes. For SVM, <code>"balanced"</code> adjusts the C parameter inversely proportional to class frequencies (C<sub>k</sub> = C × n_total / (n_classes × n_k)). For RF, <code>"balanced_subsample"</code> recomputes weights for each bootstrap sample, which is more robust when combined with random subsampling.
+</div>
+
+<h3>6.2 Cross-Validation Loop</h3>
+<p>The <code>eval_subject_dependent_cv()</code> function implements 5-fold StratifiedKFold, tracking per-fold accuracy, balanced accuracy, and macro F1. It also records computational diagnostics: fit time, prediction time, inference latency per window, and SVM-specific metrics (number of support vectors, fraction of training data used as support vectors, solver iterations).</p>
+
+<pre><code>y_true_full = np.full(len(y), fill_value=-<span class="num">1</span>, dtype=np.int32)
+y_pred_full = np.full(len(y), fill_value=-<span class="num">1</span>, dtype=np.int32)
+
+<span class="keyword">for</span> fold, (tr, te) <span class="keyword">in</span> enumerate(skf.split(X, y)):
+    model.fit(X[tr], y[tr])
+    y_hat = model.predict(X[te])
+
+    y_true_full[te] = y[te]   <span class="comment"># Place predictions at their original indices</span>
+    y_pred_full[te] = y_hat   <span class="comment"># Every sample predicted exactly once</span>
+
+<span class="comment"># Verify completeness</span>
+<span class="keyword">assert</span> not np.any(y_true_full < <span class="num">0</span>), <span class="string">"Some rows were not predicted"</span></code></pre>
+
+<p>After all folds, predictions are reconstructed into the original ordering (matching the metadata CSV row-by-row), enabling downstream per-subject analysis using <code>compute_per_subject_metrics.py</code>.</p>
+
+<h3>6.3 Outputs</h3>
+<p>Per model, the script generates: a classification report (precision/recall/F1 per class), a confusion matrix as both CSV and annotated PNG, optional prediction arrays (.npy), and a summary CSV with mean ± SD across folds. A unique <code>run_tag</code> encodes the hyperparameter configuration in the filename (e.g., <code>SVM-RF-LDA__C10__scaled__trees500__mdNone</code>).</p>
+
+<div class="img-placeholder">
+Output: <code>results_classical/*.png</code> — Annotated confusion matrix heatmaps for each model/feature-set/window-length combination. Example: <code>windows_..._features_base_SVM_RBF_balanced_scaled_confusion.png</code>
+</div>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec7">7. Stage 4 — Subject-Dependent Training (CNN)</h2>
+
+<div class="script-header">
+<div class="name">train_cnn_subjectdep.py</div>
+<div class="desc">498 lines &nbsp;|&nbsp; Per-subject CNN training with stratified train/test split, z-score normalisation, overfit sanity checks, and latency measurement. Identical architecture to the LOSO CNN for fair comparison.</div>
+</div>
+
+<h3>7.1 CNN Architecture — SimpleEMGCNN</h3>
+<p>A compact three-layer 1D convolutional network processes raw sEMG windows of shape <code>(C, T)</code> where C=9 (channels) and T varies with window length:</p>
+
+<pre><code><span class="keyword">class</span> <span class="func">SimpleEMGCNN</span>(nn.Module):
+    <span class="keyword">def</span> __init__(self, in_ch, n_classes, dropout=<span class="num">0.25</span>):
+        self.net = nn.Sequential(
+            nn.Conv1d(in_ch, <span class="num">32</span>, kernel_size=<span class="num">9</span>, padding=<span class="num">4</span>),   <span class="comment"># 9 → 32 channels</span>
+            nn.BatchNorm1d(<span class="num">32</span>), nn.ReLU(), nn.MaxPool1d(<span class="num">2</span>),
+
+            nn.Conv1d(<span class="num">32</span>, <span class="num">64</span>, kernel_size=<span class="num">7</span>, padding=<span class="num">3</span>),   <span class="comment"># 32 → 64 channels</span>
+            nn.BatchNorm1d(<span class="num">64</span>), nn.ReLU(), nn.MaxPool1d(<span class="num">2</span>),
+
+            nn.Conv1d(<span class="num">64</span>, <span class="num">128</span>, kernel_size=<span class="num">5</span>, padding=<span class="num">2</span>),  <span class="comment"># 64 → 128 channels</span>
+            nn.BatchNorm1d(<span class="num">128</span>), nn.ReLU(),
+
+            nn.AdaptiveAvgPool1d(<span class="num">1</span>),  <span class="comment"># Global average pooling → (N, 128, 1)</span>
+        )
+        self.head = nn.Sequential(
+            nn.Flatten(),              <span class="comment"># → (N, 128)</span>
+            nn.Dropout(dropout),       <span class="comment"># 25% dropout for regularisation</span>
+            nn.Linear(<span class="num">128</span>, n_classes),  <span class="comment"># 128 → 4 (movement classes)</span>
+        )</code></pre>
+
+<div class="design">
+<strong>Design Decision — Decreasing Kernel Sizes (9→7→5):</strong> Larger kernels in early layers capture broad temporal patterns (corresponding to ~4.7ms, ~3.6ms, ~2.6ms at 1920 Hz), while smaller kernels in later layers refine finer-grained features. This follows the common practice in 1D signal processing CNNs.
+</div>
+
+<div class="design">
+<strong>Design Decision — AdaptiveAvgPool1d(1):</strong> This pooling layer collapses the temporal dimension regardless of input length, making the architecture compatible with different window sizes (150ms and 250ms produce different T values). It also acts as a regulariser by averaging over all time steps.
+</div>
+
+<h3>7.2 Per-Channel Z-Score Normalisation</h3>
+<p>Crucially, normalisation statistics are computed <strong>only on training data</strong> and then applied to both training and test sets:</p>
+
+<pre><code><span class="keyword">def</span> <span class="func">zscore_fit</span>(Xtr, eps=<span class="num">1e-8</span>):
+    mu = Xtr.mean(axis=(<span class="num">0</span>, <span class="num">2</span>), keepdims=<span class="keyword">True</span>)  <span class="comment"># Mean across N and T → shape (1, C, 1)</span>
+    sd = Xtr.std(axis=(<span class="num">0</span>, <span class="num">2</span>), keepdims=<span class="keyword">True</span>) + eps
+    <span class="keyword">return</span> mu, sd</code></pre>
+
+<p>This prevents information leakage from test subjects into the normalisation parameters.</p>
+
+<h3>7.3 Overfit Sanity Check</h3>
+<p>The script includes a <em>patched</em> overfit test that uses stratified random subsampling rather than taking the first N rows (which could accidentally under-represent some classes). The function <code>make_stratified_subset()</code> allocates samples proportionally to class frequency, ensuring at least one sample per class when possible. Optional flags disable dropout and freeze BatchNorm for the overfit test, removing all regularisation to verify the model can memorise small datasets — a standard sanity check before running expensive LOSO experiments.</p>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec8">8. Stage 5 — Leave-One-Subject-Out (Classical)</h2>
+
+<div class="script-header">
+<div class="name">train_classical_loso.py</div>
+<div class="desc">344 lines &nbsp;|&nbsp; Nested LOSO cross-validation for SVM and RF with inner GroupKFold hyperparameter tuning. Includes checkpointing, resume support, and per-fold prediction flushing.</div>
+</div>
+
+<h3>8.1 LOSO Protocol</h3>
+<p>The outer loop holds out one subject at a time (40 folds total). For each fold, the remaining 39 subjects' data forms the training set. Hyperparameters are tuned via an <strong>inner GroupKFold</strong> cross-validation on the training subjects only, ensuring the held-out subject is never seen during any part of the training or tuning process.</p>
+
+<pre><code><span class="keyword">for</span> heldout <span class="keyword">in</span> unique_subjects:
+    te_mask = (subjects == heldout)
+    Xtr, ytr, gtr = X[~te_mask], y[~te_mask], subjects[~te_mask]
+    Xte, yte = X[te_mask], y[te_mask]
+
+    <span class="comment"># Inner CV: subject-grouped splits on training subjects only</span>
+    inner_cv = GroupKFold(n_splits=min(<span class="num">5</span>, n_train_groups))
+
+    search = GridSearchCV(pipe, param_grid,
+        scoring=<span class="string">"f1_macro"</span>,
+        cv=inner_cv.split(Xtr, ytr, groups=gtr),  <span class="comment"># Groups = subject IDs</span>
+        refit=<span class="keyword">True</span>)
+
+    search.fit(Xtr, ytr)
+    yhat = search.best_estimator_.predict(Xte)</code></pre>
+
+<div class="design">
+<strong>Design Decision — GroupKFold for Inner CV:</strong> Using <code>GroupKFold</code> with subject IDs as groups ensures that no subject appears in both the inner training and inner validation sets. This is critical for preventing within-subject leakage during hyperparameter selection. Using regular KFold would allow windows from the same subject to appear on both sides, producing over-optimistic tuning scores.
+</div>
+
+<h3>8.2 Pipeline with StandardScaler</h3>
+<p>Both SVM and RF are wrapped in sklearn Pipelines that include <code>StandardScaler</code> as the first step. A custom <code>ToFloat32</code> transformer follows the scaler to ensure consistent dtype (important for SVM's numerical stability with float32 features):</p>
+
+<pre><code><span class="keyword">class</span> <span class="func">ToFloat32</span>(BaseEstimator, TransformerMixin):
+    <span class="keyword">def</span> fit(self, X, y=<span class="keyword">None</span>): <span class="keyword">return</span> self
+    <span class="keyword">def</span> transform(self, X): <span class="keyword">return</span> X.astype(np.float32, copy=<span class="keyword">False</span>)
+
+steps = [(<span class="string">"scaler"</span>, StandardScaler()), (<span class="string">"to32"</span>, ToFloat32()),
+         (<span class="string">"clf"</span>, SVC(kernel=<span class="string">"rbf"</span>, class_weight=<span class="string">"balanced"</span>, cache_size=<span class="num">500</span>))]
+pipe = Pipeline(steps)</code></pre>
+
+<h3>8.3 Hyperparameter Grids</h3>
+<table>
+<tr><th>Model</th><th>Parameter</th><th>Search Space</th></tr>
+<tr><td>SVM</td><td><code>clf__C</code></td><td>[1, 5, 10]</td></tr>
+<tr><td>SVM</td><td><code>clf__gamma</code></td><td>["scale"]</td></tr>
+<tr><td>RF</td><td><code>clf__n_estimators</code></td><td>[200, 400, 500]</td></tr>
+<tr><td>RF</td><td><code>clf__max_depth</code></td><td>[None, 10]</td></tr>
+</table>
+
+<h3>8.4 Checkpointing and Resume</h3>
+<p>LOSO with nested tuning is computationally expensive (40 outer folds × grid search each). The script implements per-fold checkpointing: after each held-out subject completes, its results are appended to a checkpoint CSV. The <code>--resume</code> flag enables skipping previously completed subjects, allowing the experiment to survive crashes or interruptions. Per-fold predictions are also flushed to disk (<code>--flush-preds</code>) for the same reason.</p>
+
+<h3>8.5 Inference Latency Measurement</h3>
+<p>After tuning, inference speed is measured with a warmup pass followed by a timed pass on up to 200 test samples, reporting milliseconds per window.</p>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec9">9. Stage 6 — Leave-One-Subject-Out (CNN)</h2>
+
+<div class="script-header">
+<div class="name">train_cnn_loso.py</div>
+<div class="desc">421 lines &nbsp;|&nbsp; LOSO evaluation for SimpleEMGCNN with per-channel train-only normalisation, validation-based early stopping, class-weighted loss, mixed precision support, and resume capability.</div>
+</div>
+
+<h3>9.1 Train-Only Normalisation</h3>
+<p>Per-channel statistics are computed exclusively on the training subjects' data using <code>compute_train_norm()</code>, then applied to validation and test sets via <code>apply_norm()</code>. This is the CNN equivalent of the <code>StandardScaler</code> in the classical pipeline:</p>
+
+<pre><code><span class="keyword">def</span> <span class="func">compute_train_norm</span>(X_train):
+    <span class="comment"># X_train: (N, C, T) — mean/std across N and T for each channel</span>
+    mean = X_train.mean(axis=(<span class="num">0</span>, <span class="num">2</span>), keepdims=<span class="keyword">True</span>)   <span class="comment"># shape (1, C, 1)</span>
+    std = X_train.std(axis=(<span class="num">0</span>, <span class="num">2</span>), keepdims=<span class="keyword">True</span>)
+    std = np.where(std < <span class="num">1e-8</span>, <span class="num">1.0</span>, std)  <span class="comment"># Prevent division by zero</span>
+    <span class="keyword">return</span> mean, std</code></pre>
+
+<h3>9.2 Validation Subject Selection</h3>
+<p>Within each LOSO fold, 15% of the remaining 39 training subjects are randomly selected as a validation set for early stopping. The selection uses a seeded RNG with seed = base_seed + heldout_subject_id, ensuring deterministic yet fold-specific splits.</p>
+
+<h3>9.3 Class-Weighted Cross-Entropy</h3>
+<p>Inverse-frequency weighting compensates for class imbalance:</p>
+
+<pre><code><span class="keyword">def</span> <span class="func">class_weights_from_y</span>(y, n_classes):
+    counts = np.bincount(y, minlength=n_classes)
+    w = counts.sum() / np.maximum(counts, <span class="num">1.0</span>)  <span class="comment"># Inverse frequency</span>
+    w = w / w.mean()  <span class="comment"># Normalise so average weight = 1</span>
+    <span class="keyword">return</span> torch.tensor(w)</code></pre>
+
+<h3>9.4 Training Loop with Early Stopping</h3>
+<p>The model trains for up to 25 epochs. After each epoch, the validation loss is checked; if it has not improved for 5 consecutive epochs, training halts and the best state is restored.</p>
+
+<h3>9.5 GPU Acceleration and Memory Management</h3>
+<p>The script uses <code>cudnn.benchmark = True</code> for automatic kernel selection, optional mixed-precision training via <code>torch.amp</code>, and aggressive memory cleanup between LOSO folds (deleting models/loaders + <code>gc.collect()</code> + <code>torch.cuda.empty_cache()</code>).</p>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec10">10. Stage 7 — Normalisation Ablation</h2>
+
+<div class="script-header">
+<div class="name">run_norm_ablation_loso.py</div>
+<div class="desc">Orchestrates classical LOSO across 4 normalisation conditions (none, global, per_subject, robust) on Freq-72 features.</div>
+</div>
+
+<p>This script runs nested LOSO for both SVM and RF under four normalisation strategies:</p>
+
+<table>
+<tr><th>Normalisation</th><th>Description</th></tr>
+<tr><td>None</td><td>Raw features, no scaling</td></tr>
+<tr><td>Global</td><td>StandardScaler fitted on all training data (pooled across subjects)</td></tr>
+<tr><td>Per-Subject</td><td>StandardScaler fitted separately for each training subject, then average applied</td></tr>
+<tr><td>Robust</td><td>RobustScaler (median & IQR) instead of StandardScaler</td></tr>
+</table>
+
+<div class="script-header">
+<div class="name">run_cnn_norm_ablation_loso.py</div>
+<div class="desc">Same as above but for CNN LOSO (4 normalisation conditions).</div>
+</div>
+
+<div class="script-header">
+<div class="name">compare_norm_ablation.py</div>
+<div class="desc">Compiles classical ablation results, generates <code>norm_ablation_bar.png</code>, <code>norm_ablation_per_subject.png</code>.</div>
+</div>
+
+<div class="script-header">
+<div class="name">compare_cnn_norm_ablation.py</div>
+<div class="desc">Compiles CNN ablation results, generates <code>cnn_norm_ablation_bar.png</code>.</div>
+</div>
+
+<div class="note">
+<strong>Key Finding:</strong> Per-subject z-score normalisation is universally optimal across all models. SVM gains +6.9pp, RF gains +5.1pp, CNN gains +7.2pp over global baseline (all p < 0.0001). This removes inter-subject amplitude variation, which is critical for LOSO generalization.
+</div>
+
+<p><strong>Result directories:</strong> <code>results_loso_freq_norm_none/</code>, <code>results_loso_freq_persubj/</code>, <code>results_loso_freq_norm_robust/</code>, <code>results_cnn_loso_norm_none/</code>, <code>results_cnn_loso_norm_persubj/</code>, <code>results_cnn_loso_norm_robust/</code></p>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec11">11. Stage 8 — Feature Selection</h2>
+
+<div class="script-header">
+<div class="name">run_classical_featsel_loso.py</div>
+<div class="desc">Runs classical LOSO with RFE and MI at 36 and 27 features under per-subject normalisation.</div>
+</div>
+
+<p>This script evaluates two feature selection approaches:</p>
+
+<table>
+<tr><th>Approach</th><th>Method</th><th>Features Tested</th></tr>
+<tr><td>RFE</td><td>Recursive Feature Elimination (SVM/RF based)</td><td>36, 27</td></tr>
+<tr><td>MI</td><td>Mutual Information with KBest selector</td><td>36, 27</td></tr>
+</table>
+
+<div class="script-header">
+<div class="name">run_classical_featsel_globnorm_loso.py</div>
+<div class="desc">Same but with global normalisation (independent baseline).</div>
+</div>
+
+<div class="script-header">
+<div class="name">compare_featsel_results.py</div>
+<div class="desc">Compiles results across 8 conditions, generates <code>featsel_bar.png</code>, <code>featsel_per_subject.png</code>.</div>
+</div>
+
+<div class="note">
+<strong>Key Finding:</strong> SVM benefits marginally from RFE-36 (+0.3pp, p=0.38 not significant). RF degrades with feature reduction (-1.3pp, p<0.001). This suggests that the full 72-dimensional feature set is near-optimal and aggressive feature selection offers no benefit.
+</div>
+
+<p><strong>Result directories (8 conditions):</strong> <code>results_loso_freq_rfe36/</code>, <code>results_loso_freq_rfe27/</code>, <code>results_loso_freq_mi36/</code>, <code>results_loso_freq_mi27/</code>, and per-subject + global variants.</p>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec12">12. Stage 9 — CNN Data Augmentation</h2>
+
+<div class="script-header">
+<div class="name">run_cnn_augmentation_loso.py</div>
+<div class="desc">Orchestrates CNN LOSO with 4 augmentation modes (gaussian, chandrop, timemask, combined) under per-subject normalisation.</div>
+</div>
+
+<p>Four augmentation strategies are evaluated during training:</p>
+
+<table>
+<tr><th>Augmentation</th><th>Description</th></tr>
+<tr><td>Gaussian Noise</td><td>Add N(0, 0.01) noise to each channel</td></tr>
+<tr><td>Channel Dropout</td><td>Randomly zero out 1-2 entire channels per sample (p=0.1)</td></tr>
+<tr><td>Time Masking</td><td>Zero out random time intervals (10% of window length)</td></tr>
+<tr><td>Combined</td><td>Apply all three simultaneously</td></tr>
+</table>
+
+<div class="script-header">
+<div class="name">run_cnn_aug_globnorm_loso.py</div>
+<div class="desc">Same with global normalisation (independent baseline).</div>
+</div>
+
+<div class="script-header">
+<div class="name">compare_cnn_augmentation.py</div>
+<div class="desc">Compiles results, generates <code>cnn_aug_bar.png</code>, <code>cnn_aug_per_subject.png</code>.</div>
+</div>
+
+<div class="note">
+<strong>Key Finding:</strong> Gaussian noise provides marginal +0.6pp improvement; combined augmentation degrades performance. The CNN has sufficient implicit regularisation via BatchNorm and dropout. Augmentation is not beneficial for this task.
+</div>
+
+<p><strong>Result directories:</strong> <code>results_cnn_loso_aug_gaussian/</code>, <code>results_cnn_loso_aug_chandrop/</code>, <code>results_cnn_loso_aug_timemask/</code>, <code>results_cnn_loso_aug_combined/</code>, and global norm variants.</p>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec13">13. Stage 10 — Ensemble Evaluation</h2>
+
+<div class="script-header">
+<div class="name">run_ensemble_loso.py</div>
+<div class="desc">Hard majority vote evaluation across 4 combinations: SVM+RF, CNN+SVM, CNN+RF, SVM+RF+CNN.</div>
+</div>
+
+<p>Ensembles are constructed using hard majority voting on the base LOSO predictions:</p>
+
+<table>
+<tr><th>Ensemble</th><th>Models</th><th>Best Result</th></tr>
+<tr><td>SVM + RF</td><td>2-way classical</td><td>0.763 F1</td></tr>
+<tr><td>CNN + SVM</td><td>Mixed classical/deep</td><td>0.786 F1</td></tr>
+<tr><td>CNN + RF</td><td>Mixed classical/deep</td><td>0.774 F1</td></tr>
+<tr><td>SVM + RF + CNN</td><td>3-way full ensemble</td><td>0.792 F1 (best overall)</td></tr>
+</table>
+
+<div class="note">
+<strong>Key Result:</strong> The SVM+RF+CNN 3-way ensemble achieves 0.792 F1, representing a +1.2pp improvement over the best individual model (CNN at 0.780 F1). The ensemble exploits complementary error patterns across model families.
+</div>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec14">14. Stage 11 — Optimization Comparison and Statistical Validation</h2>
+
+<div class="script-header">
+<div class="name">compare_all_optimizations.py</div>
+<div class="desc">Produces the master 4-stage optimization journey table and plots (optimization_journey.png, gap_comparison_baseline_vs_optimized.png).</div>
+</div>
+
+<p>This is the central analysis script that synthesises all optimization stages into a unified narrative:</p>
+
+<table>
+<tr><th>Stage</th><th>Intervention</th><th>Classical (SVM)</th><th>Classical (RF)</th><th>CNN</th></tr>
+<tr><td>Baseline</td><td>Base-36, global norm</td><td>0.694</td><td>0.684</td><td>0.702</td></tr>
+<tr><td>Stage 1</td><td>Freq-72, per-subject norm</td><td>0.753</td><td>0.735</td><td>0.765</td></tr>
+<tr><td>Stage 2</td><td>Feature selection</td><td>0.757</td><td>0.731</td><td>N/A</td></tr>
+<tr><td>Stage 3</td><td>CNN augmentation</td><td>N/A</td><td>N/A</td><td>0.772</td></tr>
+<tr><td>Ensemble</td><td>SVM+RF+CNN 3-way</td><td colspan="2">Integrated</td><td>0.792</td></tr>
+</table>
+
+<div class="script-header">
+<div class="name">optimization_statistical_tests.py</div>
+<div class="desc">Wilcoxon signed-rank tests with Cohen's d effect sizes for all pairwise comparisons.</div>
+</div>
+
+<div class="script-header">
+<div class="name">compare_feature_sets_4way.py</div>
+<div class="desc">4-way feature set comparison (base-36, ext-54, freq-72, combined-81) with Wilcoxon tests.</div>
+</div>
+
+<div class="script-header">
+<div class="name">compare_feature_sets_loso.py</div>
+<div class="desc">Base-36 vs Freq-72 across SD and LOSO paradigms.</div>
+</div>
+
+<div class="script-header">
+<div class="name">freq72_analysis.py</div>
+<div class="desc">Comprehensive Freq-72 analysis: statistical tests, 95% CIs, subject difficulty ranking.</div>
+</div>
+
+<p><strong>Key outputs:</strong></p>
+<ul>
+<li><code>optimization_summary.csv</code> — Master 4-stage table</li>
+<li><code>optimization_wilcoxon_table.csv</code> — All statistical tests</li>
+<li><code>optimization_journey.png</code> — THE key thesis figure showing end-to-end improvement</li>
+<li><code>gap_comparison_baseline_vs_optimized.png</code> — Generalization gap reduction</li>
+</ul>
+
+<div class="note">
+<strong>Statistical Validation:</strong> End-to-end improvements are highly significant:
+<ul>
+<li>SVM: p < 0.0001, Cohen's d = 1.58 (large effect)</li>
+<li>RF: p = 0.00001, Cohen's d = 0.75 (medium effect)</li>
+<li>CNN: p < 0.0001, Cohen's d = 0.97 (large effect)</li>
+</ul>
+</div>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec15">15. Stage 12 — Orchestration Scripts</h2>
+
+<div class="script-header">
+<div class="name">run_full_pipeline.py</div>
+<div class="desc">Master orchestration script that chains all pipeline stages from feature extraction through LOSO training and optimization.</div>
+</div>
+
+<p>This is the top-level entry point designed to be run on the user's machine (where the full Python environment with sklearn, scipy, pywt, and torch is available). It executes multiple phases sequentially, with flags to skip or isolate individual phases.</p>
+
+<div class="design">
+<strong>Design Decision — Sequential Model Training:</strong> Models are trained one at a time (CNN → SVM → RF) rather than in parallel. This avoids GPU/CPU contention and makes it easier to resume from a specific model if the process is interrupted.
+</design>
+
+<div class="script-header">
+<div class="name">run_all_analyses.py</div>
+<div class="desc">Comprehensive statistical analysis orchestration: runs all post-hoc analyses in sequence.</div>
+</div>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec16">16. Stage 13 — Post-Hoc Analysis</h2>
+
+<div class="script-header">
+<div class="name">run_all_analyses.py</div>
+<div class="desc">308 lines &nbsp;|&nbsp; Comprehensive statistical analysis with manually implemented Wilcoxon signed-rank test, confidence intervals, subject difficulty ranking, class imbalance analysis, and generalization gap statistics. No scipy dependency.</div>
+</div>
+
+<h3>16.1 Wilcoxon Signed-Rank Test (Manual Implementation)</h3>
+<p>Since scipy is not always available in all environments, the Wilcoxon test is implemented from scratch with proper tie handling:</p>
+
+<pre><code><span class="keyword">def</span> <span class="func">wilcoxon_signed_rank</span>(x, y):
+    d = x - y
+    d = d[d != <span class="num">0</span>]  <span class="comment"># Remove zero differences</span>
+    abs_d = np.abs(d)
+    <span class="comment"># Assign ranks with average tie-breaking</span>
+    <span class="comment"># Compute W+ (sum of ranks where d > 0) and W- (sum where d < 0)</span>
+    <span class="comment"># Normal approximation: z = (W+ − μ_W) / σ_W</span>
+    mean_W = n * (n + <span class="num">1</span>) / <span class="num">4.0</span>
+    std_W = math.sqrt(n * (n + <span class="num">1</span>) * (<span class="num">2</span> * n + <span class="num">1</span>) / <span class="num">24.0</span>)
+    z = (W_plus - mean_W) / std_W
+    p = <span class="num">2</span> * (<span class="num">1</span> - normal_cdf(abs(z)))  <span class="comment"># Two-sided p-value</span>
+    <span class="keyword">return</span> W_plus, W_minus, z, p, n</code></pre>
+
+<p>Three pairwise comparisons are conducted: RF vs SVM, RF vs CNN, and SVM vs CNN, all on per-subject LOSO F1 scores.</p>
+
+<h3>16.2 95% Confidence Intervals</h3>
+<p>Computed using the standard normal approximation (z = 1.96 for 95% CI): CI = mean ± 1.96 × SE, where SE = SD / √n.</p>
+
+<h3>16.3 Subject Difficulty Analysis</h3>
+<p>Subjects are ranked by average F1 across all three models. The 5 hardest and 5 easiest subjects are identified. Cross-model correlations (Pearson r and Spearman ρ) are computed to determine whether subjects that are difficult for one model tend to be difficult for all models.</p>
+
+<h3>16.4 Additional Analysis Scripts</h3>
+
+<table>
+<tr><th>Script</th><th>Purpose</th></tr>
+<tr><td><code>compute_generalization_gap.py</code></td><td>Computes ΔF1 = F1<sub>SD</sub> − F1<sub>LOSO</sub> per subject per model. Outputs per-subject gap table + summary statistics.</td></tr>
+<tr><td><code>compute_per_subject_metrics.py</code></td><td>Reconstructs per-subject F1, balanced accuracy, and accuracy from saved prediction .npy files. Uses filename parsing to identify model, feature set, and window length.</td></tr>
+<tr><td><code>analyze_classical_compute.py</code></td><td>Reports SVM support vector counts, fractions, iterations, and timing diagnostics from SD training results.</td></tr>
+<tr><td><code>analyze_cnn_movement_errors.py</code></td><td>Analyses CNN confusion patterns to identify which movement pairs are most confused.</td></tr>
+<tr><td><code>analyze_hyperparam_behavior.py</code></td><td>Examines how different SVM C values and RF tree counts affect performance across LOSO folds.</td></tr>
+<tr><td><code>analyze_movement_errors.py</code></td><td>Cross-model movement error analysis — identifies systematic confusion patterns (e.g., UPS↔DNS).</td></tr>
+</table>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec17">17. Stage 14 — Visualization and Plotting</h2>
+
+<div class="script-header">
+<div class="name">plot_results_report_figs.py</div>
+<div class="desc">527 lines &nbsp;|&nbsp; Generates publication-ready figures: boxplots, mean±SD bars, per-subject line plots, and CNN vs classical comparison charts.</div>
+</div>
+
+<p>This is the primary plotting script, producing the majority of the figures in the <code>report_figs/</code> directory. It uses a flexible schema-normalisation approach that auto-detects column names (handling variations like "f1_macro" vs "f1" vs "macro_f1"), making it robust to minor CSV format differences across pipeline stages.</p>
+
+<p><strong>Key output figures:</strong></p>
+
+<table>
+<tr><th>Figure</th><th>Description</th><th>Plot Type</th></tr>
+<tr><td><code>macro_f1_boxplot.png</code></td><td>Per-subject F1 distribution across all models</td><td>Boxplot with jittered scatter</td></tr>
+<tr><td><code>macro_f1_mean_sd_bar.png</code></td><td>Mean ± SD macro F1 per model</td><td>Error bar chart</td></tr>
+<tr><td><code>bal_acc_boxplot.png</code></td><td>Balanced accuracy distribution</td><td>Boxplot with jittered scatter</td></tr>
+<tr><td><code>cnn_f1_by_subject.png</code></td><td>CNN F1 across all 40 subjects</td><td>Line plot</td></tr>
+</table>
+
+<div class="script-header">
+<div class="name">generate_ci_plots.py</div>
+<div class="desc">95% CI bar and line plots across 4 optimisation stages (optimization_ci_bar.png, optimization_ci_line.png).</div>
+</div>
+
+<div class="script-header">
+<div class="name">generate_gap_plots.py</div>
+<div class="desc">Baseline vs optimised generalization gap plots (gap_comparison_baseline_vs_optimized.png).</div>
+</div>
+
+<div class="script-header">
+<div class="name">generate_subject_line_plots.py</div>
+<div class="desc">Per-subject trajectory plots + improvement heatmap (subject_lines_all_models.png, subject_improvement_heatmap.png).</div>
+</div>
+
+<p><strong>Additional Plotting Scripts:</strong></p>
+
+<table>
+<tr><th>Script</th><th>Output</th></tr>
+<tr><td><code>merge_plot_generalization.py</code></td><td>SD vs LOSO paired comparison plots for classical + CNN</td></tr>
+<tr><td><code>merge_all_gaps.py</code></td><td>Combines classical and CNN generalization gap CSVs, produces <code>all_models_delta_f1_bar.png</code></td></tr>
+<tr><td><code>batch_save_plot.py</code></td><td>Utility to re-render existing matplotlib figures at different DPI/size</td></tr>
+</table>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec18">18. Stage 15 — Utility Scripts</h2>
+
+<div class="script-header">
+<div class="name">validate_npz.py</div>
+<div class="desc">Sanity-checks NPZ files: verifies array shapes, dtypes, finite values, and key consistency. Catches corrupted or malformatted feature files before training.</div>
+</div>
+
+<div class="script-header">
+<div class="name">report_dataset.py</div>
+<div class="desc">Scans the raw dataset directory and reports dimensions: number of subjects, movements per subject, CSV column counts, sampling rate, recording duration, and file sizes.</div>
+</div>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec19">19. Library Reference</h2>
+
+<table>
+<tr><th>Library</th><th>Version Context</th><th>How Used</th></tr>
+<tr><td><code>numpy</code></td><td>Core dependency</td><td>Array operations throughout: feature computation (MAV, RMS, WL, ZC, FFT), window slicing, NPZ I/O (<code>np.load</code>, <code>np.savez_compressed</code>), boolean masking for subject selection, random seeding</td></tr>
+<tr><td><code>pandas</code></td><td>Core dependency</td><td>CSV I/O for metadata and results, <code>merge_asof</code> for temporal label alignment, groupby operations for per-subject/per-model aggregation, value_counts for class distribution</td></tr>
+<tr><td><code>scipy.signal</code></td><td>Preprocessing only</td><td><code>butter()</code> for Butterworth filter design, <code>filtfilt()</code> for zero-phase filtering. Only used in <code>preprocess_emg.py</code></td></tr>
+<tr><td><code>pywt</code> (PyWavelets)</td><td>Feature extraction only</td><td><code>pywt.wavedec()</code> for discrete wavelet decomposition (db4, level 2). Only used in <code>extract_features.py</code></td></tr>
+<tr><td><code>sklearn</code></td><td>Classical ML</td><td><code>SVC</code>, <code>RandomForestClassifier</code>, <code>LinearDiscriminantAnalysis</code> — model classes. <code>StratifiedKFold</code>, <code>GroupKFold</code>, <code>GridSearchCV</code> — cross-validation. <code>Pipeline</code>, <code>StandardScaler</code> — leak-free normalisation. <code>f1_score</code>, <code>balanced_accuracy_score</code>, <code>confusion_matrix</code> — evaluation metrics.</td></tr>
+<tr><td><code>torch</code> (PyTorch)</td><td>CNN training</td><td><code>nn.Conv1d</code>, <code>nn.BatchNorm1d</code>, <code>nn.MaxPool1d</code>, <code>nn.AdaptiveAvgPool1d</code> — CNN layers. <code>DataLoader</code>, <code>Dataset</code> — batched data loading. <code>torch.amp</code> — mixed precision. <code>Adam</code> — optimiser.</td></tr>
+<tr><td><code>matplotlib</code></td><td>All plotting</td><td>Confusion matrix heatmaps (<code>imshow</code>), boxplots, bar charts, line plots. Used with <code>tight_layout()</code> and high DPI (220) for publication quality.</td></tr>
+<tr><td><code>argparse</code></td><td>All scripts</td><td>Command-line interface for every script, enabling parameter sweeps and automation without code changes.</td></tr>
+<tr><td><code>json</code></td><td>Configuration</td><td>Saving/loading label maps, feature configs, preprocessing configs, and analysis results as human-readable JSON.</td></tr>
+<tr><td><code>dataclasses</code></td><td>Configuration</td><td><code>@dataclass</code> for <code>PreprocessConfig</code>, <code>FeatureConfig</code>, <code>ModelResult</code>, <code>LosoRow</code> — structured configuration and result containers with type annotations.</td></tr>
+<tr><td><code>time</code></td><td>Benchmarking</td><td><code>time.perf_counter()</code> for high-resolution timing of fit/predict operations and inference latency measurement.</td></tr>
+<tr><td><code>gc</code></td><td>Memory management</td><td><code>gc.collect()</code> between LOSO folds to ensure memory from previous folds is reclaimed, especially important for long CNN LOSO runs.</td></tr>
+<tr><td><code>shutil</code></td><td>File operations</td><td><code>shutil.copy2()</code> in <code>merge_freq_wavelet_features.py</code> to duplicate metadata CSVs for combined feature files.</td></tr>
+</table>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec20">20. Design Decisions and Justifications</h2>
+
+<h3>20.1 Why Macro F1 as the Primary Metric?</h3>
+<p>Macro F1 computes the F1-score independently for each class and then takes the unweighted mean. This treats all four movement classes equally regardless of their frequency in the dataset, which is appropriate because: (a) the classes have moderate imbalance (WAK has the most windows, STDUP the fewest), and (b) correctly classifying rare movements is clinically as important as common ones. Balanced accuracy is reported as a supporting metric for comparison with related work.</p>
+
+<h3>20.2 Why Two Window Lengths (150ms and 250ms)?</h3>
+<p>Shorter windows (150ms) provide faster response times but contain fewer samples per channel (~288 at 1920 Hz), potentially limiting feature discriminability. Longer windows (250ms) contain more samples (~480), enabling richer feature extraction and more stable frequency estimates, but increase classification latency. The ablation study compares both to find the optimal trade-off. The 250ms window was established as the winner and used for all LOSO experiments.</p>
+
+<h3>20.3 Why Both Raw and Envelope Signals?</h3>
+<p>The CNN receives raw (bandpass-filtered) signals because convolutions can learn their own features from the full signal. The envelope representation is preserved as a fallback and for interpretability (feature values computed on the envelope have clearer physical meaning). The SD CNN experiments showed that the envelope representation (<code>X_env</code>) with z-score normalisation produced the best results.</p>
+
+<h3>20.4 Why Nested LOSO Instead of Simple LOSO?</h3>
+<p>Simple LOSO would train with fixed hyperparameters across all 40 folds. Nested LOSO (with inner GroupKFold) tunes hyperparameters separately for each held-out subject, ensuring that: (a) the hyperparameter selection itself does not leak test data, and (b) the model can adapt to the training distribution of each specific fold, which may vary as different subjects have different signal characteristics.</p>
+
+<h3>20.5 Why StandardScaler Inside Pipeline (Not Before)?</h3>
+<p>Applying StandardScaler globally before CV would leak test set statistics into training. By placing it inside an sklearn Pipeline, the scaler is fitted on the training fold only and applied to the test fold — this is the standard leak-proof approach. This is particularly important for LOSO, where the held-out subject may have significantly different signal amplitudes.</p>
+
+<h3>20.6 Why No Deep Transfer Learning?</h3>
+<p>While the literature review discusses transfer learning approaches, the experimental design focuses on establishing strong classical and CNN baselines with properly evaluated generalization gaps. Transfer learning is identified as a promising future direction but was not implemented in this iteration due to the additional complexity of pre-training schemes and domain adaptation methods.</p>
+
+<h3>20.7 Why Per-Subject Normalisation?</h3>
+<p>Normalisation ablation demonstrated that per-subject z-score normalisation removes inter-subject amplitude variation, which is critical for LOSO generalization. This strategy improves SVM by 6.9pp, RF by 5.1pp, and CNN by 7.2pp (all p < 0.0001). Per-subject normalisation is more robust to subject-specific sensor placement and skin impedance variations.</p>
+
+<h3>20.8 Why Hard Majority Vote for Ensemble?</h3>
+<p>Hard majority voting is simple, interpretable, and effective for combining heterogeneous models (classical vs deep learning). It exploits complementary error patterns: where SVM errs, RF may succeed, and vice versa. Soft voting (probability averaging) was tested but provided no additional benefit and increased complexity.</p>
+
+<h3>20.9 Why Freq-72 as Primary Feature Set?</h3>
+<p>4-way feature set comparison (base-36, ext-54, freq-72, combined-81) showed that the Freq-72 set maximises classical model performance under LOSO. Frequency-domain features (MNF, MDF, spectral power) capture information about muscle fatigue and movement dynamics that wavelet features do not, while avoiding the overfitting risk of the full 81-dimensional set.</p>
+
+<hr class="separator">
+
+<!-- ============================================================ -->
+<h2 id="sec21">21. Output Catalogue</h2>
+
+<h3>21.1 Feature Files (<code>features_out/</code>)</h3>
+<table>
+<tr><th>File Pattern</th><th>Shape</th><th>Description</th></tr>
+<tr><td><code>*_features_base.npz</code></td><td>(N, 36)</td><td>Base time-domain features</td></tr>
+<tr><td><code>*_features_ext.npz</code></td><td>(N, 54)</td><td>Extended features (base + WAMP + wavelet)</td></tr>
+<tr><td><code>freq_*_features_ext.npz</code></td><td>(N, 72)</td><td>Frequency-enhanced (base + WAMP + MNF + MDF + SP)</td></tr>
+<tr><td><code>combined_*_features_full.npz</code></td><td>(N, 81)</td><td>Full set (base + WAMP + wavelet + freq)</td></tr>
+<tr><td><code>*_features_meta.csv</code></td><td>N rows</td><td>Per-window metadata (subject, movement, confidence, timing)</td></tr>
+</table>
+
+<h3>21.2 Report Figures (<code>report_figs/</code>)</h3>
+<table>
+<tr><th>Figure</th><th>Generated By</th><th>Content</th></tr>
+<tr><td><code>macro_f1_boxplot.png</code></td><td><code>plot_results_report_figs.py</code></td><td>Cross-model F1 comparison boxplot</td></tr>
+<tr><td><code>bal_acc_boxplot.png</code></td><td><code>plot_results_report_figs.py</code></td><td>Balanced accuracy boxplot</td></tr>
+<tr><td><code>acc_boxplot.png</code></td><td><code>plot_results_report_figs.py</code></td><td>Accuracy boxplot</td></tr>
+<tr><td><code>macro_f1_mean_sd_bar.png</code></td><td><code>plot_results_report_figs.py</code></td><td>Mean ± SD F1 bar chart</td></tr>
+<tr><td><code>cnn_f1_by_subject.png</code></td><td><code>plot_results_report_figs.py</code></td><td>CNN F1 per subject line plot</td></tr>
+<tr><td><code>cnn_vs_best_classical_f1.png</code></td><td><code>plot_results_report_figs.py</code></td><td>CNN vs best classical dual line</td></tr>
+<tr><td><code>all_models_sd_vs_loso_f1.png</code></td><td><code>merge_plot_generalization.py</code></td><td>SD vs LOSO paired comparison</td></tr>
+<tr><td><code>all_models_delta_f1_bar.png</code></td><td><code>merge_all_gaps.py</code></td><td>Generalization gap (ΔF1) bar chart</td></tr>
+<tr><td><code>all_models_per_class_f1.png</code></td><td><code>merge_all_gaps.py</code></td><td>Per-class F1 comparison</td></tr>
+<tr><td><code>norm_ablation_bar.png</code></td><td><code>compare_norm_ablation.py</code></td><td>Normalisation ablation results (classical)</td></tr>
+<tr><td><code>norm_ablation_per_subject.png</code></td><td><code>compare_norm_ablation.py</code></td><td>Normalisation ablation per-subject (classical)</td></tr>
+<tr><td><code>cnn_norm_ablation_bar.png</code></td><td><code>compare_cnn_norm_ablation.py</code></td><td>Normalisation ablation results (CNN)</td></tr>
+<tr><td><code>featsel_bar.png</code></td><td><code>compare_featsel_results.py</code></td><td>Feature selection results</td></tr>
+<tr><td><code>featsel_per_subject.png</code></td><td><code>compare_featsel_results.py</code></td><td>Feature selection per-subject</td></tr>
+<tr><td><code>cnn_aug_bar.png</code></td><td><code>compare_cnn_augmentation.py</code></td><td>CNN augmentation results</td></tr>
+<tr><td><code>cnn_aug_per_subject.png</code></td><td><code>compare_cnn_augmentation.py</code></td><td>CNN augmentation per-subject</td></tr>
+<tr><td><code>optimization_journey.png</code></td><td><code>compare_all_optimizations.py</code></td><td>Master 4-stage optimization journey (KEY THESIS FIGURE)</td></tr>
+<tr><td><code>optimization_ci_bar.png</code></td><td><code>generate_ci_plots.py</code></td><td>95% CI bar plots across stages</td></tr>
+<tr><td><code>optimization_ci_line.png</code></td><td><code>generate_ci_plots.py</code></td><td>95% CI line plots across stages</td></tr>
+<tr><td><code>gap_comparison_baseline_vs_optimized.png</code></td><td><code>generate_gap_plots.py</code></td><td>Generalization gap reduction</td></tr>
+<tr><td><code>subject_lines_all_models.png</code></td><td><code>generate_subject_line_plots.py</code></td><td>Per-subject performance trajectories</td></tr>
+<tr><td><code>subject_improvement_heatmap.png</code></td><td><code>generate_subject_line_plots.py</code></td><td>Per-subject improvement heatmap</td></tr>
+<tr><td><code>feature_4way_bar.png</code></td><td><code>compare_feature_sets_4way.py</code></td><td>4-way feature set comparison bar</td></tr>
+<tr><td><code>feature_4way_boxplot.png</code></td><td><code>compare_feature_sets_4way.py</code></td><td>4-way feature set comparison boxplot</td></tr>
+<tr><td><code>feature_sets_loso_bar.png</code></td><td><code>compare_feature_sets_loso.py</code></td><td>Base-36 vs Freq-72 in LOSO</td></tr>
+</table>
+
+<h3>21.3 CSV Result Files</h3>
+<table>
+<tr><th>Directory</th><th>Key Files</th><th>Content</th></tr>
+<tr><td><code>results_classical/</code></td><td><code>master_classical_results.csv</code></td><td>All SD classical results aggregated</td></tr>
+<tr><td><code>results_loso_light/</code></td><td><code>*__SVM_nested_loso_subjectwise.csv</code></td><td>Per-subject LOSO results (SVM)</td></tr>
+<tr><td><code>results_loso_light/</code></td><td><code>*__RF_nested_loso_subjectwise.csv</code></td><td>Per-subject LOSO results (RF)</td></tr>
+<tr><td><code>results_cnn_loso/</code></td><td><code>per_subject_metrics_cnn_loso.csv</code></td><td>Per-subject CNN LOSO results</td></tr>
+<tr><td><code>results_cnn_loso/</code></td><td><code>cnn_loso_summary.csv</code></td><td>CNN LOSO aggregate summary</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>optimization_summary.csv</code></td><td>Master 4-stage optimization table</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>optimization_wilcoxon_table.csv</code></td><td>Statistical tests (Wilcoxon + Cohen's d)</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>ensemble_summary.csv</code></td><td>Ensemble evaluation results</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>norm_ablation_results.csv</code></td><td>Classical normalisation ablation</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>cnn_norm_ablation_results.csv</code></td><td>CNN normalisation ablation</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>featsel_results.csv</code></td><td>Feature selection results</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>cnn_aug_results.csv</code></td><td>CNN augmentation results</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>feature_4way_comparison.csv</code></td><td>4-way feature set comparison</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>feature_4way_wilcoxon.csv</code></td><td>4-way feature set statistical tests</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>freq72_generalization_gap_summary.csv</code></td><td>Freq-72 comprehensive analysis</td></tr>
+<tr><td><code>report_figs/</code></td><td><code>all_models_generalization_gap.csv</code></td><td>Combined generalization gap table</td></tr>
+</table>
+
+<hr class="separator">
+
+<p style="text-align: center; color: var(--muted); margin-top: 48px; font-size: 0.9em;">
+End of Codebase Documentation<br>
+Generated March 2026 &nbsp;|&nbsp; 45 Python scripts &nbsp;|&nbsp; ~13,200 lines of code
+</p>
+
+</body>
+</html>

@@ -509,7 +509,8 @@ def main():
         if device.type == "cuda":
             torch.cuda.empty_cache()
 
-    # Global outputs (if we ran at least one fold)
+    # Confusion matrix + plots need fresh raw predictions from THIS run's folds --
+    # unavailable on a full resume (all subjects already done, none processed here).
     if all_y_true:
         y_true_all = np.concatenate(all_y_true)
         y_pred_all = np.concatenate(all_y_pred)
@@ -526,8 +527,12 @@ def main():
                        labels=LABELS, normalize=False, title="CNN LOSO Confusion (counts)")
         plot_confusion(cm, cm_dir / f"{stem}__CNN_LOSO_confusion_norm.png",
                        labels=LABELS, normalize=True, title="CNN LOSO Confusion (row-normalized)")
+        print(f"[save] {cm_csv}")
 
-        # summary
+    # Summary only needs the on-disk per-subject metrics (always available once any
+    # invocation has completed all subjects) -- write it unconditionally so a fully-
+    # resumed run (nothing fresh computed) doesn't silently skip it forever.
+    if metrics_csv.exists():
         df = pd.read_csv(metrics_csv)
         summary = df.groupby(["model", "xkey", "norm_mode"], as_index=False).agg(
             mean_f1=("f1_macro", "mean"),
@@ -538,7 +543,6 @@ def main():
         )
         summary.to_csv(outdir / "cnn_loso_summary.csv", index=False)
         print(f"[save] {metrics_csv}")
-        print(f"[save] {cm_csv}")
         print(f"[save] {outdir / 'cnn_loso_summary.csv'}")
 
 

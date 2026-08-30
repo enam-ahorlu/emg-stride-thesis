@@ -1,0 +1,13 @@
+run,K_per_class,f1_mean,f1_sd,n,lift_pp_vs_K0
+original_seed42_ft15,0,0.7491,0.0748,40,0.0
+original_seed42_ft15,5,0.6348,0.0863,40,-11.4
+original_seed42_ft15,10,0.7376,0.0811,40,-1.2
+original_seed42_ft15,20,0.7665,0.0916,40,1.7
+mechanism_ft3,0,0.7499,0.0755,40,0.0
+mechanism_ft3,5,0.7575,0.0773,40,0.8
+mechanism_ft3,10,0.7782,0.0773,40,2.8
+mechanism_ft3,20,0.782,0.071,40,3.2
+robustness_seed7,0,0.7517,0.0747,40,0.0
+robustness_seed7,5,0.6439,0.0876,40,-10.8
+robustness_seed7,10,0.7468,0.0843,40,-0.5
+robustness_seed7,20,0.7691,0.0911,40,1.7

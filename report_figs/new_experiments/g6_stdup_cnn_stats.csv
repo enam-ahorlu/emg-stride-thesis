@@ -1,0 +1,3 @@
+comparison,delta_pp,cohens_d,p
+"STDUP-class F1 balanced vs imbalanced, CNN",-1.04,-0.402,0.0006285761915710272
+"STDUP-class F1 balanced vs imbalanced, RESNET_SE",-1.12,-0.42,0.0008436624721070984

@@ -1,0 +1,5 @@
+comparison,delta_pp,cohens_d,p
+ResNet-SE augmentation: Gaussian Noise vs No Augmentation,-0.4,-0.098,0.40493773964954016
+ResNet-SE augmentation: Channel Dropout vs No Augmentation,5.73,1.201,3.1632225727662444e-09
+ResNet-SE augmentation: Time Masking vs No Augmentation,-0.12,-0.028,0.8471556244439853
+ResNet-SE augmentation: Combined vs No Augmentation,5.11,1.007,7.284143066499382e-08

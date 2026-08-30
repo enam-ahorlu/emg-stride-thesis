@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import time
 import gc
 from dataclasses import dataclass
@@ -71,6 +72,23 @@ def save_confusion_png_csv(cm: np.ndarray, labels: List[str], out_dir: Path, ste
     fig.savefig(out_dir / f"{stem}_confusion.png", dpi=160)
     plt.close(fig)
 
+def load_best_params_lookup(reuse_dir: Path, features_stem: str, model_name: str) -> Dict[int, Dict[str, object]]:
+    """Read an existing *_subjectwise.csv (from a prior GridSearchCV run) and
+    return {heldout_subject: {param_name_without_clf_prefix: value}} so a
+    cheap refit can reuse the already-selected hyperparameters instead of
+    re-running GridSearchCV."""
+    csv_path = reuse_dir / f"{features_stem}__{model_name}_nested_loso_subjectwise.csv"
+    if not csv_path.exists():
+        raise FileNotFoundError(f"--save-proba needs prior best_params at {csv_path}")
+    df = pd.read_csv(csv_path)
+    out = {}
+    for _, row in df.iterrows():
+        params = ast.literal_eval(row["best_params"])
+        clean = {k.replace("clf__", ""): v for k, v in params.items()}
+        out[int(row["heldout_subject"])] = clean
+    return out
+
+
 def infer_ms_per_window(model, Xte: np.ndarray, n_sample: int = 200) -> float:
     if Xte.shape[0] == 0:
         return float("nan")
@@ -125,7 +143,7 @@ def per_subject_zscore(X: np.ndarray, subjects: np.ndarray) -> np.ndarray:
     return X_norm
 
 
-def apply_feature_selection(feat_sel, n_features, Xtr, ytr, Xte):
+def apply_feature_selection(feat_sel, n_features, Xtr, ytr, Xte, seed=42):
     """
     Fit feature selector on Xtr only, transform both Xtr and Xte.
     Returns (Xtr_sel, Xte_sel, selector_object_or_None, n_features_used).
@@ -138,7 +156,7 @@ def apply_feature_selection(feat_sel, n_features, Xtr, ytr, Xte):
 
     if feat_sel == "rfe":
         base_est = RandomForestClassifier(
-            n_estimators=50, random_state=42, n_jobs=4
+            n_estimators=50, random_state=seed, n_jobs=4
         )
         selector = RFE(
             estimator=base_est,
@@ -191,7 +209,30 @@ def main():
                          "(RFE with RF base estimator), mi=Mutual Information SelectKBest")
     ap.add_argument("--n-features", type=int, default=36,
                     help="Number of features to select when --feat-sel is not 'none' (default: 36)")
+    ap.add_argument("--seed", type=int, default=42,
+                    help="Random seed for RF and RFE base estimator (default: 42). "
+                         "Exposed so seed-stability sweeps can vary it.")
+    ap.add_argument("--n-jobs", type=int, default=1,
+                    help="Parallel workers for SVM's GridSearchCV. KEEP AT 1: deadlocks "
+                         "under repeated calls in a detached process on Windows.")
+    ap.add_argument("--rf-n-jobs", type=int, default=1,
+                    help="Parallel workers for RandomForestClassifier's own tree-building "
+                         "(within one fit). Safe to raise (e.g. 3-6) for real speed; RF's "
+                         "own GridSearchCV is always sequential (n_jobs=1) regardless.")
+    ap.add_argument("--save-proba", action="store_true",
+                    help="Cheap refit (no GridSearchCV) reusing best_params from "
+                         "--reuse-params-dir; saves predict_proba per held-out subject to "
+                         "--proba-out/{MODEL}_sub{K:02d}.npz (keys: proba [n,4] in LABELS "
+                         "order [DNS,STDUP,UPS,WAK], y_true [n]).")
+    ap.add_argument("--proba-out", default="results_ensemble_v2/proba",
+                    help="Output dir for --save-proba npz files.")
+    ap.add_argument("--reuse-params-dir", default="results_loso_freq_persubj",
+                    help="Dir containing prior *_nested_loso_subjectwise.csv to source "
+                         "best_params from when --save-proba is set.")
     args = ap.parse_args()
+
+    # Reproducibility: seed NumPy (SVM is deterministic; RF/RFE use --seed below)
+    np.random.seed(args.seed)
 
     features_path = Path(args.features)
     meta_path = Path(args.meta)
@@ -228,8 +269,21 @@ def main():
 
     inv = {v: k for k, v in label_map.items()}
     labels_sorted = [inv[i] for i in sorted(inv.keys())]
+    # LABELS order used across the ensemble-v2 pipeline; encode_labels sorts
+    # alphabetically so this must equal [DNS,STDUP,UPS,WAK] under the current classes.
+    LABELS = ["DNS", "STDUP", "UPS", "WAK"]
+    assert labels_sorted == LABELS, f"label order mismatch: {labels_sorted} != {LABELS}"
 
     wanted = [m.strip().upper() for m in args.models.split(",") if m.strip()]
+
+    best_params_lookup: Dict[str, Dict[int, Dict[str, object]]] = {}
+    if args.save_proba:
+        proba_out_dir = Path(args.proba_out)
+        proba_out_dir.mkdir(parents=True, exist_ok=True)
+        reuse_dir = Path(args.reuse_params_dir)
+        for m in wanted:
+            best_params_lookup[m] = load_best_params_lookup(reuse_dir, features_path.stem, m)
+            print(f"[save-proba] loaded {len(best_params_lookup[m])} reused best_params for {m} from {reuse_dir}")
 
     ckpt_dir = out_dir / "checkpoints"
     ckpt_dir.mkdir(exist_ok=True)
@@ -290,7 +344,7 @@ def main():
 
             # ---- Feature selection (fit on outer train only, no leakage) ----
             Xtr, Xte, selector, n_feat_used = apply_feature_selection(
-                args.feat_sel, args.n_features, Xtr_raw, ytr, Xte_raw
+                args.feat_sel, args.n_features, Xtr_raw, ytr, Xte_raw, seed=args.seed
             )
 
             # Save feature mask per fold if selection was applied
@@ -317,7 +371,46 @@ def main():
                 else:  # none or per_subject (already pre-normalized)
                     return []
 
-            if model_name == "SVM":
+            if args.save_proba:
+                # ---- Cheap refit path: reuse already-selected best_params, no GridSearchCV ----
+                proba_npz = Path(args.proba_out) / f"{model_name}_sub{heldout:02d}.npz"
+                if args.resume and proba_npz.exists():
+                    print(f"[resume] skip save-proba {model_name} heldout Sub{heldout:02d} (npz exists)")
+                    done_subjects.setdefault(model_name, set()).add(int(heldout))
+                    continue
+
+                reused = best_params_lookup[model_name][int(heldout)]
+                if model_name == "SVM":
+                    steps = _build_scaler_steps()
+                    steps.append(("clf", SVC(kernel="rbf", class_weight="balanced", cache_size=500,
+                                              probability=True, random_state=args.seed, **reused)))
+                    pipe = Pipeline(steps)
+                elif model_name == "RF":
+                    steps = _build_scaler_steps()
+                    steps.append(("clf", RandomForestClassifier(
+                        class_weight="balanced", random_state=args.seed,
+                        n_jobs=args.rf_n_jobs, **reused
+                    )))
+                    pipe = Pipeline(steps)
+                else:
+                    continue
+
+                t0 = time.perf_counter()
+                pipe.fit(Xtr, ytr)
+                t1 = time.perf_counter()
+
+                best = pipe
+                yhat = best.predict(Xte)
+                best_params_str = str({f"clf__{k}": v for k, v in reused.items()})
+
+                proba_raw = best.predict_proba(Xte)
+                clf_classes = best.named_steps["clf"].classes_.astype(int)
+                proba_full = np.zeros((proba_raw.shape[0], len(LABELS)), dtype=np.float64)
+                proba_full[:, clf_classes] = proba_raw  # remap to full LABELS-order columns
+                np.savez(proba_npz, proba=proba_full, y_true=yte.astype(np.int32, copy=False))
+                print(f"[save-proba] {model_name} Sub{heldout:02d} -> {proba_npz}")
+
+            elif model_name == "SVM":
                 steps = _build_scaler_steps()
                 steps.append(("clf", SVC(kernel="rbf", class_weight="balanced", cache_size=500)))
                 pipe = Pipeline(steps)
@@ -332,17 +425,24 @@ def main():
                     param_grid=param_grid,
                     scoring="f1_macro",
                     cv=list(inner_cv.split(Xtr, ytr, groups=gtr)),
-                    n_jobs=-1,  # parallelise SVM grid search across cores
+                    n_jobs=args.n_jobs,  # 1 = sequential (memory-safe on Windows)
                     refit=True,
                     verbose=2
                 )
+
+                t0 = time.perf_counter()
+                search.fit(Xtr, ytr)
+                t1 = time.perf_counter()
+                best = search.best_estimator_
+                yhat = best.predict(Xte)
+                best_params_str = str(search.best_params_)
 
             elif model_name == "RF":
                 steps = _build_scaler_steps()
                 steps.append(("clf", RandomForestClassifier(
                     class_weight="balanced",
-                    random_state=42,
-                    n_jobs=-1
+                    random_state=args.seed,
+                    n_jobs=args.rf_n_jobs
                 )))
                 pipe = Pipeline(steps)
 
@@ -360,15 +460,15 @@ def main():
                     refit=True,
                     verbose=2
                 )
+
+                t0 = time.perf_counter()
+                search.fit(Xtr, ytr)
+                t1 = time.perf_counter()
+                best = search.best_estimator_
+                yhat = best.predict(Xte)
+                best_params_str = str(search.best_params_)
             else:
                 continue
-
-            t0 = time.perf_counter()
-            search.fit(Xtr, ytr)
-            t1 = time.perf_counter()
-
-            best = search.best_estimator_
-            yhat = best.predict(Xte)
 
             if args.flush_preds:
                 # Save only this subject's predictions (safe, small, resume-friendly)
@@ -391,7 +491,7 @@ def main():
                 acc=float(acc),
                 bal_acc=float(bal),
                 f1_macro=float(f1),
-                best_params=str(search.best_params_),
+                best_params=best_params_str,
                 fit_time_sec=float(t1 - t0),
                 infer_ms_per_window=float(infer_ms),
                 feat_sel=args.feat_sel,
@@ -432,10 +532,16 @@ def main():
         }
         pd.DataFrame([summary]).to_csv(out_dir / f"{features_path.stem}__{model_name}_nested_loso_summary.csv", index=False)
 
-        # Global report + confusion
+        # Global report + confusion (only buildable from predictions computed in THIS run;
+        # a fully-resumed model has no fresh window-level predictions -- checkpoints only
+        # store per-subject aggregate metrics, not raw predictions, unless --flush-preds
+        # was used. Skip gracefully rather than crash: the summary CSV above (what
+        # run_seed_stability.py and other callers actually consume) is already saved.)
         yhat_full = y_pred_full[model_name]
         if (yhat_full < 0).any():
-            raise RuntimeError(f"Some samples were never predicted for model={model_name}. Check LOSO loop.")
+            print(f"[warn] model={model_name}: no fresh predictions this run (fully resumed "
+                  f"from checkpoint) -- skipping report/confusion-matrix/--save-preds for it.")
+            continue
         rep = classification_report(y, yhat_full, target_names=labels_sorted, digits=4, zero_division=0)
         (out_dir / "reports").mkdir(exist_ok=True)
         with open(out_dir / "reports" / f"{features_path.stem}__{model_name}_LOSO_report.txt", "w", encoding="utf-8") as f:
@@ -444,17 +550,15 @@ def main():
         cm = confusion_matrix(y, yhat_full)
         save_confusion_png_csv(cm, labels_sorted, out_dir / "confusion_matrices", f"{features_path.stem}__{model_name}_LOSO")
 
-    # Save full predictions aligned to meta (so your compute_per_subject_metrics.py works)
-    if args.save_preds:
-        pred_dir = out_dir / "predictions"
-        pred_dir.mkdir(exist_ok=True)
-        stem = features_path.stem
-        scheme = args.cv_scheme
-
-        for model_name in wanted:
+        # Save full predictions aligned to meta (so your compute_per_subject_metrics.py works)
+        if args.save_preds:
+            pred_dir = out_dir / "predictions"
+            pred_dir.mkdir(exist_ok=True)
+            stem = features_path.stem
+            scheme = args.cv_scheme
             np.save(pred_dir / f"{stem}_{model_name}_{scheme}_y_true.npy", y.astype(np.int32, copy=False))
-            np.save(pred_dir / f"{stem}_{model_name}_{scheme}_y_pred.npy", y_pred_full[model_name].astype(np.int32, copy=False))
-        print(f"[save] preds -> {pred_dir}")
+            np.save(pred_dir / f"{stem}_{model_name}_{scheme}_y_pred.npy", yhat_full.astype(np.int32, copy=False))
+            print(f"[save] preds -> {pred_dir}")
 
     print("DONE")
 

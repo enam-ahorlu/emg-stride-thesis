@@ -1,0 +1,4 @@
+K,n_worse,n_better,n_unchanged,pct_worse,mean_lift
+K5,39,1,0,97.5,-0.1143
+K10,23,17,0,57.5,-0.0115
+K20,18,22,0,45.0,0.0174

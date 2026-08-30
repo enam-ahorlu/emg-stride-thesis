@@ -1,0 +1,4 @@
+comparison,delta_pp,cohens_d,p
+"ResNet-SE calibration K=5 vs K=0 (3-epoch, pooled 5-draw, n=200)",0.88,0.171,0.025797213958514646
+"ResNet-SE calibration K=10 vs K=0 (3-epoch, pooled 5-draw, n=200)",2.67,0.464,4.1121108249757133e-10
+"ResNet-SE calibration K=20 vs K=0 (3-epoch, pooled 5-draw, n=200)",4.28,0.762,3.556489145867538e-19

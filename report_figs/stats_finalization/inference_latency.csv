@@ -1,0 +1,4 @@
+model,infer_ms_per_window,sd
+SVM,1.0587,1.2961
+RF,0.5686,0.2624
+CNN,0.0116,

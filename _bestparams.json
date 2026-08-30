@@ -1,0 +1,326 @@
+{
+  "SVM": {
+    "1": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "2": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "3": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "4": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "5": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "6": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "7": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "8": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "9": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "10": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "11": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "12": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "13": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "14": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "15": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "16": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "17": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "18": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "19": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "20": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "21": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "22": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "23": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "24": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "25": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "26": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "27": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "28": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "29": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "30": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "31": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "32": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "33": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "34": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "35": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "36": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "37": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "38": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "39": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    },
+    "40": {
+      "clf__C": 1,
+      "clf__gamma": "scale"
+    }
+  },
+  "RF": {
+    "1": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "2": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "3": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "4": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "5": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "6": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "7": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "8": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "9": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "10": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "11": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "12": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "13": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "14": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "15": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "16": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "17": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "18": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "19": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "20": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "21": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "22": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "23": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "24": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "25": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "26": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 200
+    },
+    "27": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "28": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "29": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "30": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "31": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "32": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "33": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "34": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "35": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "36": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "37": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    },
+    "38": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "39": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 400
+    },
+    "40": {
+      "clf__max_depth": null,
+      "clf__n_estimators": 500
+    }
+  }
+}

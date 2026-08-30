@@ -1,0 +1,4 @@
+model,SIAT_global,SIAT_persubj,SIAT_delta_pp,ENABL3S_global,ENABL3S_persubj,ENABL3S_delta_pp
+SVM,0.708,0.777,6.9,0.554,0.657,10.3
+RF,0.722,0.773,5.1,0.525,0.636,11.1
+CNN,0.682,0.754,7.2,0.387,0.556,16.9

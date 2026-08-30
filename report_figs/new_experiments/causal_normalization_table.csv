@@ -1,0 +1,7 @@
+normaliser,SVM_f1,RF_f1
+global,0.708,0.7219
+calib-25,0.708,0.6772
+calib-50,0.7344,0.6991
+calib-100,0.7449,0.7067
+running,0.7392,0.7015
+transductive,0.7767,0.7731

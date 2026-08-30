@@ -1,0 +1,7 @@
+comparison,delta_pp,cohens_d,p
+ResNet-SE ENABL3S per-subject vs global norm,8.94,0.683,0.064453125
+"Deep CORAL (resnet_se, ENABL3S) vs per-subject headline (0.565)",-4.07,-0.326,0.556640625
+"AdaBN post vs pre (resnet_se, ENABL3S)",9.9,0.747,0.037109375
+"AdaBN post (resnet_se, ENABL3S) vs per-subject headline (0.565)",-2.35,-0.375,0.275390625
+Best ensemble-v2 (SVM+RF+RESNET_SE weighted_soft) vs hard vote (ENABL3S),0.76,0.822,0.048828125
+Best ensemble-v2 (SVM+RF+RESNET_SE weighted_soft) vs best single model SVM (ENABL3S),3.62,0.816,0.02734375

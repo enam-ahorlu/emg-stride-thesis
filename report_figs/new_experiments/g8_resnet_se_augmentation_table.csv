@@ -1,0 +1,6 @@
+augmentation,f1_mean,ci_lo,ci_hi,delta_pp,cohens_d,p
+No Augmentation,0.7822,0.755,0.804,0.0,0.0,-
+Gaussian Noise,0.7782,0.752,0.8,-0.4,-0.098,0.404938
+Channel Dropout,0.8395,0.816,0.857,5.73,1.201,0.0
+Time Masking,0.781,0.753,0.804,-0.12,-0.028,0.847156
+Combined,0.8333,0.811,0.85,5.11,1.007,0.0

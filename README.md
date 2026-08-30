@@ -55,7 +55,7 @@ Reference: Liang, T., Zhang, Q., Liu, X., Lou, L., & Cao, H. (2023). A wearable 
 ## Project Structure
 
 ```
-MSc Python Project/
+06_Code/
 ├── README.md                          ← this file
 │
 ├── ── PIPELINE SCRIPTS ──────────────────────────────────────

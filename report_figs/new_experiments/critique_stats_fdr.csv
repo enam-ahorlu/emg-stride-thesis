@@ -1,0 +1,20 @@
+comparison,delta_pp,cohens_d,p,n
+"E1: MMD-to-others, per-subject norm vs global norm",-6.16,-1.166,1.8189894035458565e-12,40
+"E1: Mahalanobis, per-subject norm vs global norm",-156.4,-2.929,1.8189894035458565e-12,40
+"E3: causal calib25 (buffer-excl) vs transductive, SVM+RESNET_SE soft",-7.19,-1.345,1.2732925824820995e-10,40
+"E3: causal calib50 (buffer-excl) vs transductive, SVM+RESNET_SE soft",-4.66,-1.101,3.1632225727662444e-09,40
+"E3: causal calib100 (buffer-excl) vs transductive, SVM+RESNET_SE soft",-4.11,-1.125,2.6917405193671584e-08,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=5",-25.11,-2.661,3.637978807091713e-12,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=10",-16.85,-1.502,8.130882633849978e-10,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=20",-11.92,-1.024,2.535471139708534e-07,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=50",1.69,0.178,0.2162961354260915,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=100",5.52,0.394,0.009781997654499719,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=5",-23.15,-2.86,1.8189894035458565e-12,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=10",-16.17,-1.532,2.293745637871325e-09,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=20",-13.95,-1.213,1.5819750842638314e-08,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=50",2.21,0.296,0.06822422074037604,40
+"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=100",0.64,0.031,0.7694801456255036,40
+E5: SVM+RF_calibrated(isotonic)+RESNET_SE [soft] vs headline SVM+RESNET_SE [soft],-1.58,-1.029,2.822944225044921e-07,40
+E5: best RF-calibrated(isotonic)-inclusive ensemble (SVM+RF+RESNET_SE [stacking]) vs headline SVM+RESNET_SE [soft],0.25,0.191,0.24792719178185507,40
+E5: SVM+RF_calibrated(sigmoid)+RESNET_SE [soft] vs headline SVM+RESNET_SE [soft],-1.92,-1.247,1.5819750842638314e-08,40
+E5: best RF-calibrated(sigmoid)-inclusive ensemble (SVM+RF+RESNET_SE [stacking]) vs headline SVM+RESNET_SE [soft],0.19,0.141,0.3753805605592788,40

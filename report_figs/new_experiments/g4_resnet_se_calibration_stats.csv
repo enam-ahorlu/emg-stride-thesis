@@ -1,0 +1,4 @@
+comparison,delta_pp,cohens_d,p
+"ResNet-SE calibration K=5 vs K=0 (3-epoch, single-draw)",-2.13,-0.317,0.051399685278738616
+"ResNet-SE calibration K=10 vs K=0 (3-epoch, single-draw)",1.74,0.317,0.1617874718067469
+"ResNet-SE calibration K=20 vs K=0 (3-epoch, single-draw)",2.46,0.425,0.01650634321049438

@@ -1,0 +1,9 @@
+comparison,delta_pp,cohens_d,p
+Causal AdaBN calib25 vs global-norm baseline,-3.9,-0.455,0.005831649234096403
+Causal AdaBN calib25 vs full-session AdaBN,-7.82,-1.203,6.748450687155128e-10
+Causal AdaBN calib50 vs global-norm baseline,-0.98,-0.14,0.3611039877814619
+Causal AdaBN calib50 vs full-session AdaBN,-4.9,-0.932,1.055741449818015e-06
+Causal AdaBN calib100 vs global-norm baseline,0.12,0.017,0.8785070700851065
+Causal AdaBN calib100 vs full-session AdaBN,-3.79,-0.732,2.104776467604097e-05
+Causal AdaBN running vs global-norm baseline,-16.05,-1.834,2.546585164964199e-11
+Causal AdaBN running vs full-session AdaBN,-19.97,-3.177,1.8189894035458565e-12

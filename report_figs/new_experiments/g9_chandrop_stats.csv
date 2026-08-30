@@ -1,0 +1,11 @@
+comparison,delta_pp,cohens_d,p
+"ResNet-SE+CD vs base ResNet-SE (SIAT, per-subject norm)",5.94,1.222,2.293745637871325e-09
+ResNet-SE+CD vs SVM (SIAT),6.48,1.418,1.9444996723905206e-09
+ResNet-SE+CD vs RF (SIAT),6.83,1.667,1.8189894035458565e-11
+"New best ensemble (SVM+RESNET_SE [stacking], chandrop) vs old best-ensemble reference (0.815)",4.53,1.594,1.2732925824820995e-11
+"ResNet-SE+CD per-subject vs Deep CORAL (CD backbone, SIAT)",1.59,0.442,0.001770566779669025
+"ResNet-SE+CD per-subject vs AdaBN post (CD backbone, SIAT)",2.34,0.564,0.0009936344267771346
+"AdaBN post vs pre (CD backbone, SIAT)",3.08,0.593,0.00029818139228154905
+ResNet-SE+CD ENABL3S per-subject vs global norm,13.24,0.858,0.013671875
+"Best ensemble (SVM+RESNET_SE [soft], chandrop, ENABL3S) vs hard vote",2.12,1.306,0.00390625
+"Best ensemble (SVM+RESNET_SE [soft], chandrop, ENABL3S) vs best single model SVM",6.72,1.413,0.005859375

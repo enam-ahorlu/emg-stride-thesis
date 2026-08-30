@@ -1,0 +1,2 @@
+comparison,delta_pp,cohens_d,p
+ResNet-SE SD vs LOSO (generalization gap),-20.89,-1.332,5.029505700804293e-09

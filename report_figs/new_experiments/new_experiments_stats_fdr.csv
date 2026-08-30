@@ -1,0 +1,12 @@
+comparison,delta_pp,cohens_d,p,p_holm,p_BH,sig_BH
+SVM external per-subj vs global (n=10),10.3,1.03,0.0137,0.041,0.0167,Yes
+RF external per-subj vs global (n=10),11.1,0.77,0.0371,0.0742,0.0408,Yes
+CNN external per-subj vs global (n=10),16.9,1.04,0.0039,0.0156,0.0054,Yes
+"Per-subj vs CORAL, SVM",5.3,1.13,0.0,0.0,0.0,Yes
+"Per-subj vs CORAL, RF",2.7,0.95,0.0,0.0,0.0,Yes
+"Causal calib-100 vs global, SVM",3.7,0.79,0.0,0.0,0.0,Yes
+"Causal calib-100 vs global, RF",-1.5,-0.23,0.1538,0.1538,0.1538,No
+"Causal calib-100 vs transductive, SVM",-3.2,-1.03,0.0,0.0,0.0,Yes
+"Causal calib-100 vs transductive, RF",-6.6,-1.43,0.0,0.0,0.0,Yes
+Calibration (3 ep) K=10 vs K=0,2.8,0.64,0.0004,0.0021,0.0007,Yes
+Calibration (3 ep) K=20 vs K=0,3.2,0.78,0.0,0.0001,0.0,Yes

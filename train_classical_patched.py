@@ -2,15 +2,16 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import numpy as np
 import pandas as pd
-import time  
-import matplotlib.pyplot as plt  
-import sys  
+import time
+import matplotlib.pyplot as plt
+import sys
 
 
 from sklearn.model_selection import StratifiedKFold
@@ -210,6 +211,12 @@ def _get_hp_grid(model_name: str) -> dict:
         return {}  # LDA: no HP tuning
 
 
+def _fold_ckpt_paths(ckpt_dir: Path, model_name: str, fold: int):
+    npz_path = ckpt_dir / f"{model_name}_fold{fold}.npz"
+    json_path = ckpt_dir / f"{model_name}_fold{fold}.json"
+    return npz_path, json_path
+
+
 def eval_subject_dependent_cv(
     X: np.ndarray,
     y: np.ndarray,
@@ -218,10 +225,16 @@ def eval_subject_dependent_cv(
     n_splits: int = 5,
     seed: int = 42,
     log_fold_dist: bool = False,
+    gs_n_jobs: int = 1,
+    ckpt_dir: Optional[Path] = None,
+    resume: bool = False,
 ) -> Tuple[Dict[str, float], np.ndarray, np.ndarray, np.ndarray]:
     # Subject-dependent baseline: stratified k-fold with nested HP tuning.
     from sklearn.model_selection import GridSearchCV
     from sklearn.base import clone
+
+    if ckpt_dir is not None:
+        ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
 
@@ -244,6 +257,31 @@ def eval_subject_dependent_cv(
     hp_grid = _get_hp_grid(model_name)
 
     for fold, (tr, te) in enumerate(skf.split(X, y), start=1):
+        # Fold-level resume: StratifiedKFold(shuffle=True, random_state=seed) is
+        # deterministic, so `te` (and thus y_te) is identical across restarts --
+        # safe to skip re-fitting an already-checkpointed fold and reuse its
+        # saved prediction directly, no need to persist `te` itself.
+        if ckpt_dir is not None and resume:
+            npz_path, json_path = _fold_ckpt_paths(ckpt_dir, model_name, fold)
+            if npz_path.exists() and json_path.exists():
+                d = np.load(npz_path)
+                y_hat = d["y_pred"]
+                with open(json_path, "r", encoding="utf-8") as f:
+                    fold_summary = json.load(f)
+                y_te = y[te]
+                accs.append(fold_summary["acc"]); bals.append(fold_summary["bal_acc"]); f1s.append(fold_summary["f1"])
+                fit_times.append(fold_summary["fit_time"]); pred_times.append(fold_summary["pred_time"])
+                pred_windows += int(len(te))
+                if fold_summary.get("sv_total") is not None:
+                    sv_counts.append(fold_summary["sv_total"]); sv_fracs.append(fold_summary["sv_frac"])
+                    if fold_summary.get("sv_niter") is not None:
+                        sv_niters.append(fold_summary["sv_niter"])
+                y_true_full[te] = y_te
+                y_pred_full[te] = y_hat
+                fold_id_full[te] = fold
+                print(f"[resume] {model_name} fold {fold}/{n_splits}: already done, skipping fit -> {npz_path.name}")
+                continue
+
         X_tr, X_te = X[tr], X[te]
         y_tr, y_te = y[tr], y[te]
 
@@ -258,13 +296,19 @@ def eval_subject_dependent_cv(
         t0 = time.perf_counter()
         if hp_grid:
             inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=seed + fold)
+            # n_jobs MUST stay 1 here: GridSearchCV's own n_jobs>1 deadlocks under
+            # repeated calls (once per outer fold) in a detached process on Windows
+            # (loky reusable executor hangs on the 2nd+ .fit()). RF's own internal
+            # tree-building n_jobs (set in build_models) is the safe place to parallelize.
             gs = GridSearchCV(fold_model, hp_grid, cv=inner_cv, scoring="f1_macro",
-                              n_jobs=-1, refit=True)
+                              n_jobs=gs_n_jobs, refit=True)
             gs.fit(X_tr, y_tr)
             fold_model = gs.best_estimator_
+            best_params_str = str(gs.best_params_)
             print(f"[{model_name}] fold {fold} best_params: {gs.best_params_}")
         else:
             fold_model.fit(X_tr, y_tr)
+            best_params_str = None
         # VM diagnostics: support vectors, fraction, iterations
         try:
             svm_obj = None
@@ -310,6 +354,33 @@ def eval_subject_dependent_cv(
             f"acc={accs[-1]:.4f}, bal_acc={bals[-1]:.4f}, f1_macro={f1s[-1]:.4f}"
         )
 
+        # Checkpoint this fold immediately: a later kill (e.g. during fold+1) will
+        # then only need to redo the in-flight fold, never one already finished.
+        if ckpt_dir is not None:
+            npz_path, json_path = _fold_ckpt_paths(ckpt_dir, model_name, fold)
+            np.savez_compressed(npz_path, y_pred=y_hat.astype(np.int32, copy=False))
+            fold_summary = {
+                "fold": fold, "acc": accs[-1], "bal_acc": bals[-1], "f1": f1s[-1],
+                "fit_time": fit_times[-1], "pred_time": pred_times[-1],
+                "best_params": best_params_str,
+                "sv_total": sv_counts[-1] if sv_counts else None,
+                "sv_frac": sv_fracs[-1] if sv_fracs else None,
+                "sv_niter": sv_niters[-1] if sv_niters else None,
+            }
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(fold_summary, f, indent=2)
+            print(f"[checkpoint] {model_name} fold {fold}/{n_splits} -> {npz_path.name}")
+
+        # Free the fold's GridSearchCV state (up to 18 fitted candidates per fold,
+        # some with 500 unbounded-depth trees) before the next fold allocates fresh
+        # ones -- without this, memory doesn't get returned promptly on Windows and
+        # accumulates fold-over-fold (observed: fold 1 always fine, fold 2 always
+        # spikes past the ceiling at the exact same point).
+        del fold_model
+        if hp_grid:
+            del gs
+        gc.collect()
+
     # Every row must have been predicted exactly once
     if np.any(y_true_full < 0) or np.any(y_pred_full < 0):
         raise RuntimeError('Some CV rows were not assigned predictions. Check CV loop logic.')
@@ -338,7 +409,7 @@ def eval_subject_dependent_cv(
     return summary, y_true_all, y_pred_all, fold_id_full
 
 
-def build_models(seed: int = 42, svm_scale: bool = False, svm_c: float = 5.0, rf_max_depth=None, rf_n_estimators: int = 300, include_lda: bool = True):
+def build_models(seed: int = 42, svm_scale: bool = False, svm_c: float = 5.0, rf_max_depth=None, rf_n_estimators: int = 300, include_lda: bool = True, rf_n_jobs: int = 6):
     # Balanced SVM baseline
     if svm_scale:
         svm = Pipeline([
@@ -360,11 +431,13 @@ def build_models(seed: int = 42, svm_scale: bool = False, svm_c: float = 5.0, rf
         )
         svm_name = "SVM_RBF_balanced"
 
-    # Balanced RF baseline
+    # Balanced RF baseline. n_jobs bounded (not -1/all-cores): RF's own tree-building
+    # parallelism is safe under repeated calls, but using all 16 logical cores risks
+    # the same memory-spike/kill pattern found elsewhere this session with high n_jobs.
     rf = RandomForestClassifier(
         n_estimators=int(rf_n_estimators),
         random_state=seed,
-        n_jobs=-1,
+        n_jobs=int(rf_n_jobs),
         class_weight="balanced_subsample",
         max_depth=rf_max_depth,
     )
@@ -427,6 +500,15 @@ def main():
         default=300,
         help="RF number of trees (n_estimators). Used for sweep / convergence checks."
     )
+    ap.add_argument("--rf-n-jobs", type=int, default=6,
+                    help="Parallel workers for RandomForestClassifier's own tree-building. "
+                         "Kept well below -1 (all cores) to avoid memory spikes.")
+    ap.add_argument("--gs-n-jobs", type=int, default=1,
+                    help="Parallel workers for the inner GridSearchCV. KEEP AT 1: deadlocks "
+                         "under repeated calls (once per outer fold) in a detached process on Windows.")
+    ap.add_argument("--resume", action="store_true",
+                    help="Resume: skip a model's full CV re-run if its checkpoint JSON "
+                         "already exists in --out (per-model granularity, not per-fold).")
 
 
 
@@ -499,7 +581,8 @@ def main():
     svm_c=float(args.svm_c),
     rf_max_depth=rf_depth,
     rf_n_estimators=int(args.rf_n_estimators),
-    include_lda=True
+    include_lda=True,
+    rf_n_jobs=int(args.rf_n_jobs),
     )
 
     wanted = {m.strip().upper() for m in args.models.split(',') if m.strip()}
@@ -520,11 +603,21 @@ def main():
 
     results_rows = []
     for name, model in models.items():
+        ckpt_path = out_dir / f"{features_path.stem}_{name}_ckpt.json"
+        if args.resume and ckpt_path.exists():
+            with open(ckpt_path, "r", encoding="utf-8") as f:
+                results_rows.append(json.load(f))
+            print(f"[resume] {name}: already done, skipping full CV -> {ckpt_path}")
+            continue
+
         print(f"\n==== MODEL: {name} ====")
+        fold_ckpt_dir = out_dir / "fold_checkpoints"
         summary, y_true_all, y_pred_all, fold_id_all = eval_subject_dependent_cv(
             X_sub, y_int, model_name=name, model=model,
             n_splits=args.splits, seed=args.seed,
-            log_fold_dist=args.log_fold_dist
+            log_fold_dist=args.log_fold_dist,
+            gs_n_jobs=int(args.gs_n_jobs),
+            ckpt_dir=fold_ckpt_dir, resume=args.resume,
         )
 
 
@@ -604,6 +697,11 @@ def main():
 
             ).__dict__
         )
+        # Checkpoint this model's result so --resume can skip a redundant full
+        # CV re-run if a later model (or the whole script) gets killed and restarted.
+        with open(ckpt_path, "w", encoding="utf-8") as f:
+            json.dump(results_rows[-1], f, indent=2)
+        print(f"[checkpoint] {name} -> {ckpt_path}")
 
     # Save results
     run_tag = build_run_tag(args)
