@@ -44,7 +44,7 @@ Thumbs.db
 # (LICENSE, README) is superseded by this repo's root-level files.
 emg-stride-thesis/
 
-# ── CLAUDE SESSION DATA ──────────────────────────────────────
+# ── EDITOR / TOOL SESSION DATA ───────────────────────────────
 .claude/
 
 # ── LARGE LOG FILES ─────────────────────────────────────────

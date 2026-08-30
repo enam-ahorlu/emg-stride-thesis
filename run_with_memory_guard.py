@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------------
 # Memory-guarded supervisor for the long LOSO experiments.
 #
-# Automates exactly what Claude Code used to do by hand: launch an experiment,
+# Automates exactly what was previously done by hand: launch an experiment,
 # watch system memory, and if it gets dangerously high, kill the run and
 # relaunch it with --resume so it continues from the last checkpointed subject
 # instead of starting over. It also relaunches automatically if the child

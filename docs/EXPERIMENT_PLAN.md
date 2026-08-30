@@ -12,7 +12,7 @@ Shared inputs:
 - `META = features_out/freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv`
 - `NPZ  = windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR.npz`  (raw envelopes for the CNN)
 
-Status legend:  [DONE] already run this pass · [RUN] to be run by Claude Code.
+Status legend:  [DONE] already run this pass · [RUN] to be run this pass.
 
 ---
 

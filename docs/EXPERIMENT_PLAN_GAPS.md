@@ -1,6 +1,6 @@
 # EXPERIMENT_PLAN_GAPS.md — close the G1–G7 gaps (headline models under-validated)
 
-**Why.** The robustness/deployability leg was built around the *original* models (SVM, RF, SimpleEMGCNN) and never re-run on the models that became the headline: **ResNet-SE** (best single, 0.782) and the **soft-vote ensemble** (best overall, 0.815). This plan extends every under-covered analysis to those models so the strongest claim is not the least-validated one. Same conventions as the other plans: run from `06_Code/` with the venv, `--resume`, subjectwise + summary CSVs. [RUN] = Claude Code.
+**Why.** The robustness/deployability leg was built around the *original* models (SVM, RF, SimpleEMGCNN) and never re-run on the models that became the headline: **ResNet-SE** (best single, 0.782) and the **soft-vote ensemble** (best overall, 0.815). This plan extends every under-covered analysis to those models so the strongest claim is not the least-validated one. Same conventions as the other plans: run from `06_Code/` with the venv, `--resume`, subjectwise + summary CSVs. [RUN] = still to be run.
 
 **Shared SIAT inputs:** `FEAT`, `META`, `NPZ` as in EXPERIMENT_PLAN.md.
 **ENABL3S inputs:** the feature/window/meta files produced by `adapt_external_dataset.py` (root `5362627/`); confirm their exact paths from that script (the same ones the existing `results_ext_cnn_*` used). ENABL3S = 10 subjects, 7 channels (56-D features).

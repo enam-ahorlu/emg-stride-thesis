@@ -122,7 +122,7 @@ Real lessons learned running these on a 16GB-RAM machine with fluctuating backgr
    (Put everything after the literal `--`. The guard adds `--resume` for you if you forget it
    — so any script it wraps must accept that flag, even as a no-op.)
 6. **Root cause of most kills was NOT a bug in these scripts** — it's a genuine resource race
-   between a fluctuating ~9–13GB baseline (Windows + the Claude Code app + whatever background
+   between a fluctuating ~9–13GB baseline (Windows + the editor + whatever background
    apps are open) and each job's own peak memory need, both landing in the same 4–8GB band on
    a 16.9GB machine. The checkpointing above guarantees eventual completion regardless of how
    many times that race is lost; it doesn't make individual runs fast.

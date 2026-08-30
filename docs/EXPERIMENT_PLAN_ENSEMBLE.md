@@ -6,7 +6,7 @@
 
 **Blocker.** Only **hard** predictions were saved (no probabilities), and ResNet-SE saved **no per-window predictions**. So soft/weighted/stacking and any ResNet-SE ensemble require regenerating per-window **class probabilities**. This plan does that, then runs the combiner (already written: `ensemble_v2_combine.py`).
 
-Run from `06_Code/` with the project venv (`.venv`, GPU auto for CNNs). Status: [RUN] = to be run by Claude Code.
+Run from `06_Code/` with the project venv (`.venv`, GPU auto for CNNs). Status: [RUN] = still to be run.
 
 ---
 
