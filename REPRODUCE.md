@@ -5,7 +5,7 @@ This file maps every headline number, table, and figure in the thesis to the scr
 ## Environment
 - Python 3.10, packages in `requirements.txt` (pin exact versions with `pip freeze`).
 - Fixed random seed **42** throughout (NumPy, scikit-learn, PyTorch — `torch.manual_seed` + `torch.cuda.manual_seed_all`). The CNN validation split is seeded per fold as `seed + held-out-subject id`.
-- Git commit of record: **9c09e70** (`main`).
+- Version of record: **v1.0.0** (tag on `main`), archived at https://doi.org/10.5281/zenodo.22179743
 
 ## Dataset
 - **SIAT-LLMD** — Wei, W., Tan, F., Zhang, H., Mao, H., Fu, M., Samuel, O. W., & Li, G. (2023). *Surface electromyogram, kinematic, and kinetic dataset of lower limb walking for movement intent recognition.* Scientific Data, 10, 358. https://doi.org/10.1038/s41597-023-02263-3
