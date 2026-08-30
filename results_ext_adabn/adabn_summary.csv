@@ -1,0 +1,2 @@
+method,arch,f1_pre_adabn_mean,f1_macro_mean,f1_macro_sd,n
+AdaBN,resnet_se,0.4425,0.5415,0.063,10

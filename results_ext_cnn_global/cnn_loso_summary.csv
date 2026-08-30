@@ -1,0 +1,2 @@
+model,xkey,norm_mode,mean_f1,std_f1,mean_balacc,std_balacc,subjects
+CNN,X_env,global,0.386692480301225,0.15299185271289722,0.5148865619516156,0.11949356716567279,10

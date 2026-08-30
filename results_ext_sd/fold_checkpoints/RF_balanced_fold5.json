@@ -1,0 +1,12 @@
+{
+  "fold": 5,
+  "acc": 0.8964305326743548,
+  "bal_acc": 0.7487780701167963,
+  "f1": 0.8053764040910203,
+  "fit_time": 748.2859884999925,
+  "pred_time": 1.0892507000244223,
+  "best_params": "{'max_depth': None, 'n_estimators': 500}",
+  "sv_total": null,
+  "sv_frac": null,
+  "sv_niter": null
+}

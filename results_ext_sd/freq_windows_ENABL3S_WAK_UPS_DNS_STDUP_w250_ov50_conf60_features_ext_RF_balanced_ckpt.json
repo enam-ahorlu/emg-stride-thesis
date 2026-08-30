@@ -1,0 +1,23 @@
+{
+  "model": "RF_balanced",
+  "n_samples": 45525,
+  "n_features": 56,
+  "subjects": "156,185,186,188,189,190,191,192,193,194",
+  "cv_splits": 5,
+  "acc_mean": 0.8994398682042833,
+  "bal_acc_mean": 0.7565041862245293,
+  "f1_macro_mean": 0.8115696132238746,
+  "acc_std": 0.003580517681621071,
+  "bal_acc_std": 0.0074125755876207275,
+  "f1_macro_std": 0.006603914150103865,
+  "fit_time_mean_sec": 756.4965892199892,
+  "pred_time_mean_sec": 1.069721440016292,
+  "infer_time_per_window_ms": 0.11748725315939507,
+  "svm_c": 5.0,
+  "svm_scale": 1,
+  "rf_n_estimators": 300,
+  "rf_max_depth": -1,
+  "sv_support_vectors_mean": NaN,
+  "sv_frac_mean": NaN,
+  "sv_n_iter_mean": NaN
+}
