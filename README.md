@@ -197,9 +197,11 @@ programme. Start there rather than here.
 
 ## Archive and citation
 
-The repository is archived on Zenodo. Release **v1.0.0** (30 August 2026) is at
-https://doi.org/10.5281/zenodo.22179743; a later release covers the September work and is the
-version the thesis cites as its version of record.
+The repository is archived on Zenodo. The current release is **v1.1.0**, at
+https://doi.org/10.5281/zenodo.22684107, and it is the version of record the thesis cites. The
+concept identifier https://doi.org/10.5281/zenodo.22179742 always resolves to the most recent
+version. The earlier v1.0.0 snapshot (30 August 2026), which predates the September work, remains
+at https://doi.org/10.5281/zenodo.22179743.
 
 ```
 Ahorlu, E. (2026). Cross-subject generalization in surface electromyography-based
