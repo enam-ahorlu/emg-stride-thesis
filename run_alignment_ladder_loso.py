@@ -216,6 +216,11 @@ def main():
     ap.add_argument("--inner-splits", type=int, default=5)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--verbose", type=int, default=0)
+    ap.add_argument("--no-gate", action="store_true",
+                    help="skip the 250 ms reproduction gates (rung 3 vs 0.7767, rung 0 vs "
+                         "0.708). Use when --out targets a non-250 ms feature set via "
+                         "LADDER_FEAT / LADDER_META. The rung-4 vs rung-3 over-alignment "
+                         "falsification check still runs.")
     ap.add_argument("--subjects", default=None,
                     help="restrict to a subject subset, e.g. '1-20' or '3,7,9'. "
                          "Lets one rung be split across processes; summary/gates only "
@@ -258,7 +263,11 @@ def main():
     print("\n================  VALIDATION GATES  ================")
     sm = summ.set_index("rung")
     gate_ok = True
-    if 3 in sm.index:
+    if args.no_gate:
+        print(f"[GATES] --no-gate set: skipping the 250 ms reproduction gates "
+              f"(rung 3 vs {GATE_RUNG3_F1}, rung 0 vs {GATE_RUNG0_F1}). "
+              f"The rung-4 vs rung-3 over-alignment check below still runs.")
+    elif 3 in sm.index:
         f3 = float(sm.loc[3, "f1_mean"])
         d3 = abs(f3 - GATE_RUNG3_F1)
         ok3 = d3 <= GATE_RUNG3_TOL
@@ -267,7 +276,7 @@ def main():
               f"|diff|={d3:.4f}  tol={GATE_RUNG3_TOL}  -> {'PASS' if ok3 else 'FAIL'}")
     else:
         print("[GATE rung 3] NOT RUN")
-    if 0 in sm.index:
+    if (not args.no_gate) and 0 in sm.index:
         f0 = float(sm.loc[0, "f1_mean"])
         gap = f0 - GATE_RUNG0_F1
         print(f"[GATE rung 0] f1_mean={f0:.4f}  vs published global baseline {GATE_RUNG0_F1}  "

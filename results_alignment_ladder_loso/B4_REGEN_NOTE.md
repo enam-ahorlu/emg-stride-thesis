@@ -1,0 +1,3 @@
+# B4.1 regeneration note (2026-09-03)
+
+alignment_ladder_full.csv, alignment_ladder_loso_summary.csv and alignment_ladder_loso_stats.csv were regenerated from the five complete ladder_loso_{0..4}_SVM_subjectwise.csv files. The per-subject means reproduce Table 4.16 (0.7094 / 0.7482 / 0.7186 / 0.7767 / 0.6752) to within 0.001. Originals are in `_ARCHIVE/prebackups/b4_ladder_20260903/`. The geometry columns (mmd_removed_pct, w1_removed_pct, subject_probe_bal_acc, silhouette_by_class) were not touched. New paired Wilcoxon contrasts rung1/2/4_vs_rung0 and rung4_vs_rung3 are reported for the FDR recompute; Section 4.17 was not edited.

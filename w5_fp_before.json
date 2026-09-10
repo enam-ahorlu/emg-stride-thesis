@@ -1,0 +1,20 @@
+{
+  "resnet": {
+    "rng_sha256": "5b93fad08d47bd3b6a2a775dfcb4406e5099035244258757596aa31e800317df",
+    "params_sha256": "764e8c93e8bc33e10ab6828d1387d38fff6dadb0f7c22493a6b95e8cdcfcfdeb",
+    "n_params": 546020,
+    "count_params": 546020
+  },
+  "resnet_se": {
+    "rng_sha256": "66b446a39cc3b6ef86737a7a3b8f0c3f8b2e5a4484df5775fd710e10e18188a8",
+    "params_sha256": "92d2a7b10c3e616d27b311f5185b63bbd4e9b9440ac0d9efd3d22e05337d2bbc",
+    "n_params": 557276,
+    "count_params": 557276
+  },
+  "resnet_nores": {
+    "rng_sha256": "2278392b87eebfa4a9da775735be329e11f9ddad2779b7b2d14967e67ac4c4e9",
+    "params_sha256": "2cb4f4ba120205ad8784309700801c8f96adb7b3232a465f1b6ef0068d6d69d3",
+    "n_params": 535396,
+    "count_params": 535396
+  }
+}

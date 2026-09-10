@@ -1,0 +1,128 @@
+{
+  "programme": "channel-dropout parity",
+  "outcome_letters": {
+    "P0": "done",
+    "P1": "S",
+    "P2": "X",
+    "P3": "R",
+    "P5": "M",
+    "P6": "V",
+    "P7": "M"
+  },
+  "comparator_gate_ok": true,
+  "new_arm_states": {
+    "results_p5_subset_resnet_se": {
+      "dir": "results_p5_subset_resnet_se",
+      "status": "present",
+      "rows": 40,
+      "unique_subjects": 40,
+      "duplicate_rows": false,
+      "mean_f1": 0.836,
+      "complete_40": true
+    },
+    "results_p6_gainjitter_resnet_se_sd0.40": {
+      "dir": "results_p6_gainjitter_resnet_se_sd0.40",
+      "status": "present",
+      "rows": 40,
+      "unique_subjects": 40,
+      "duplicate_rows": false,
+      "mean_f1": 0.8477,
+      "complete_40": true
+    },
+    "results_p6_mpchandrop_resnet_se_sd0.40": {
+      "dir": "results_p6_mpchandrop_resnet_se_sd0.40",
+      "status": "present",
+      "rows": 40,
+      "unique_subjects": 40,
+      "duplicate_rows": false,
+      "mean_f1": 0.835,
+      "complete_40": true
+    },
+    "results_p6_gainjitter_resnet_se_sd0.30": {
+      "dir": "results_p6_gainjitter_resnet_se_sd0.30",
+      "status": "present",
+      "rows": 40,
+      "unique_subjects": 40,
+      "duplicate_rows": false,
+      "mean_f1": 0.837,
+      "complete_40": true
+    },
+    "results_p6_gainjitter_resnet_se_sd0.50": {
+      "dir": "results_p6_gainjitter_resnet_se_sd0.50",
+      "status": "present",
+      "rows": 40,
+      "unique_subjects": 40,
+      "duplicate_rows": false,
+      "mean_f1": 0.8486,
+      "complete_40": true
+    }
+  },
+  "fdr_family_new_paired_tests": [
+    {
+      "test": "P-1a cost p0.1->p0.2",
+      "p_raw": 4.7302397433668375e-05
+    },
+    {
+      "test": "P-1a cost p0.2->p0.3",
+      "p_raw": 0.10289067040321243
+    },
+    {
+      "test": "P-1a cost p0.3->p0.5",
+      "p_raw": 0.06414752090131515
+    },
+    {
+      "test": "P-2 per-subject rank consistency, CD vs baseline",
+      "p_raw": 1.8586324586067349e-06
+    },
+    {
+      "test": "P-3 external CD vs no aug, per-subject norm",
+      "p_raw": 0.001953125
+    },
+    {
+      "test": "P-3 external CD vs no aug, global norm",
+      "p_raw": 0.275390625
+    },
+    {
+      "test": "P-5 subset vs channel dropout",
+      "p_raw": 0.34032321635640983
+    },
+    {
+      "test": "P-5 subset vs no augmentation",
+      "p_raw": 1.000444171950221e-10
+    },
+    {
+      "test": "P-6 C1 channel dropout vs mean-preserving chandrop",
+      "p_raw": 0.30106151267864334
+    },
+    {
+      "test": "P-6 C2 mean-preserving chandrop vs gain jitter",
+      "p_raw": 0.01302583178403438
+    },
+    {
+      "test": "P-6 ext matched-variance SD 0.30 (FDR family)",
+      "p_raw": 0.40493773964954016
+    },
+    {
+      "test": "P-6 ext matched-variance SD 0.40 (cross-check, SD 0.40 already in core)",
+      "p_raw": 0.02884993747647968
+    },
+    {
+      "test": "P-6 ext matched-variance SD 0.50 (FDR family)",
+      "p_raw": 2.275137376273051e-07
+    },
+    {
+      "test": "P-7 D1 mean-preserving chandrop vs channel dropout p0.5",
+      "p_raw": 4.098819044884294e-05
+    },
+    {
+      "test": "P-7 D2 gain jitter sd0.50 vs mean-preserving chandrop",
+      "p_raw": 0.002638970910993521
+    }
+  ],
+  "fdr_family_count_listed": 15,
+  "fdr_family_count_additive": 14,
+  "section_4_17_edited": false,
+  "thesis_files_edited": false,
+  "deep_model_of_record_changed": false,
+  "p4_started": false
+}

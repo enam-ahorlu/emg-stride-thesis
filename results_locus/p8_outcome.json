@@ -1,0 +1,192 @@
+{
+  "stage": "P-8",
+  "column_to_channel": {
+    "layout": "feature-major, channel = col % 9, family = col // 9",
+    "families": [
+      "MAV",
+      "RMS",
+      "WL",
+      "ZC",
+      "WAMP",
+      "MNF",
+      "MDF",
+      "SpectralPower"
+    ],
+    "channels": {
+      "0": {
+        "muscle": "TFL",
+        "columns": [
+          0,
+          9,
+          18,
+          27,
+          36,
+          45,
+          54,
+          63
+        ]
+      },
+      "1": {
+        "muscle": "RF",
+        "columns": [
+          1,
+          10,
+          19,
+          28,
+          37,
+          46,
+          55,
+          64
+        ]
+      },
+      "2": {
+        "muscle": "VM",
+        "columns": [
+          2,
+          11,
+          20,
+          29,
+          38,
+          47,
+          56,
+          65
+        ]
+      },
+      "3": {
+        "muscle": "SMB",
+        "columns": [
+          3,
+          12,
+          21,
+          30,
+          39,
+          48,
+          57,
+          66
+        ]
+      },
+      "4": {
+        "muscle": "Upper TA",
+        "columns": [
+          4,
+          13,
+          22,
+          31,
+          40,
+          49,
+          58,
+          67
+        ]
+      },
+      "5": {
+        "muscle": "Lower TA",
+        "columns": [
+          5,
+          14,
+          23,
+          32,
+          41,
+          50,
+          59,
+          68
+        ]
+      },
+      "6": {
+        "muscle": "Lateral GC",
+        "columns": [
+          6,
+          15,
+          24,
+          33,
+          42,
+          51,
+          60,
+          69
+        ]
+      },
+      "7": {
+        "muscle": "Medial GC",
+        "columns": [
+          7,
+          16,
+          25,
+          34,
+          43,
+          52,
+          61,
+          70
+        ]
+      },
+      "8": {
+        "muscle": "SOL",
+        "columns": [
+          8,
+          17,
+          26,
+          35,
+          44,
+          53,
+          62,
+          71
+        ]
+      }
+    }
+  },
+  "matrix_overall_mean_f1": 0.5149772355747627,
+  "per_channel_mean_f1": {
+    "TFL": 0.5037680308806022,
+    "RF": 0.469448233289557,
+    "VM": 0.476560665246123,
+    "SMB": 0.5219264074555414,
+    "Upper TA": 0.5476821936335313,
+    "Lower TA": 0.5697594658129648,
+    "Lateral GC": 0.5252557035204554,
+    "Medial GC": 0.5012795980965115,
+    "SOL": 0.5191148222375788
+  },
+  "consensus_ranking": [
+    "Lower TA",
+    "Upper TA",
+    "Lateral GC",
+    "SMB",
+    "SOL",
+    "TFL",
+    "Medial GC",
+    "VM",
+    "RF"
+  ],
+  "frac_cells_near_chance": 0.0,
+  "consensus_score_sd": 0.3732697500036753,
+  "testA": {
+    "agreement": 0.16675213675213674,
+    "null_mean": 0.0002522628205128206,
+    "null_97_5": 0.02991559829059828,
+    "perm_p": 9.999000099990002e-05
+  },
+  "testB1": {
+    "rho": 0.14865563711272115,
+    "perm_p": 0.35496450354964504,
+    "holm_p": 0.35496450354964504,
+    "predicted_sign": "positive",
+    "sign_consistent": true
+  },
+  "testB2": {
+    "rho": -0.22617429636468311,
+    "perm_p": 0.16428357164283572,
+    "holm_p": 0.32856714328567144,
+    "predicted_sign": "negative",
+    "sign_consistent": true
+  },
+  "testC": {
+    "rho": 0.25,
+    "perm_p": 0.5118488151184881,
+    "predicted_sign": "positive"
+  },
+  "outcome": "I",
+  "outcome_meaning": "Idiosyncratic but inconsequential. The channel ordering is weakly shared: Test A agreement is +0.167, reliably above its shuffle null (p = 9.999e-05) but far below the +1.000 ceiling, so orderings differ substantially between people. That difference does not significantly predict who is hard (B1 Holm p = 0.355) or who benefits (B2 Holm p = 0.329). Every directional check is consistent with the second-locus account (B1 positive, B2 negative, C positive, all as predicted) but none survives correction at n = 40, so this is a consistent-but-underpowered negative, not a refutation. Report both, claim neither; Section 4.8.2 keeps its current scope.",
+  "operationalization": {
+    "near_ceiling_ge": 0.8,
+    "low_lt": 0.3,
+    "above_null": "Test A perm p < 0.05"
+  }
+}

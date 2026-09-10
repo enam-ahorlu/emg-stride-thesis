@@ -1,0 +1,80 @@
+{
+  "stage": "S-1",
+  "grid_outcome": "H",
+  "grid_meaning": "Hierarchy holds. STDUP stays top even restricted to active windows, so the biomechanical reading was right after all and the current section 4.3 / 5.3 correction is over-stated. Report as prominently as outcome C would be.",
+  "per_class_f1_active_only": {
+    "SVM": {
+      "DNS": 0.7167574107683,
+      "STDUP": 0.8444553483807654,
+      "UPS": 0.7618490345231129,
+      "WAK": 0.733125
+    },
+    "RF": {
+      "DNS": 0.7176910493105866,
+      "STDUP": 0.8308711156393276,
+      "UPS": 0.768329766865638,
+      "WAK": 0.7323991220665204
+    }
+  },
+  "published_per_class_f1": {
+    "SVM": {
+      "DNS": 0.677,
+      "STDUP": 0.961,
+      "UPS": 0.763,
+      "WAK": 0.702
+    },
+    "RF": {
+      "DNS": 0.662,
+      "STDUP": 0.96,
+      "UPS": 0.754,
+      "WAK": 0.709
+    }
+  },
+  "normalization_delta": [
+    {
+      "model": "SVM",
+      "persubj_mean": 0.766695876108338,
+      "global_mean": 0.6713448278565002,
+      "delta_pp": 9.53510482518378,
+      "bca_lo_pp": 7.732749446485637,
+      "bca_hi_pp": 11.430334496456169,
+      "wilcoxon_p": 3.456079866737127e-11,
+      "cohens_d": 1.5627222007885577,
+      "published_delta_pp": 6.900000000000006,
+      "drift_pp": 2.635104825183774,
+      "escalate": false
+    },
+    {
+      "model": "RF",
+      "persubj_mean": 0.7656221930678833,
+      "global_mean": 0.6990043226429611,
+      "delta_pp": 6.6617870424922145,
+      "bca_lo_pp": 5.251182161653255,
+      "bca_hi_pp": 8.534768505501104,
+      "wilcoxon_p": 2.4920154828578234e-10,
+      "cohens_d": 1.2611168818196061,
+      "published_delta_pp": 5.100000000000005,
+      "drift_pp": 1.5617870424922096,
+      "escalate": false
+    }
+  ],
+  "escalate_normalization_delta": false,
+  "deep_arm_mean_f1": 0.8228585023495972,
+  "deep_arm_n": 40,
+  "deep_arm_per_class_f1": {
+    "DNS": 0.80396961529037,
+    "STDUP": 0.8752997601918465,
+    "UPS": 0.8103049907578558,
+    "WAK": 0.7821530644649095
+  },
+  "deep_arm_hierarchy": [
+    "STDUP",
+    "UPS",
+    "DNS",
+    "WAK"
+  ],
+  "deep_arm_consistent_with_H": true,
+  "class_counts_ok": true,
+  "thesis_files_edited": false,
+  "section_4_17_touched": false
+}

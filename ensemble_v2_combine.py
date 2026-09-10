@@ -68,9 +68,18 @@ for m in avail:
     model_f1[m]=float(np.mean(fs)); print(f"  {m}: {model_f1[m]:.4f}")
 
 def subject_probs(subset, s):
-    yt = P[subset[0]][s][0]
-    n = min(len(P[m][s][0]) for m in subset)
-    yt = yt[:n]
+    # B4.4: the member probability files must be row-aligned per subject. This
+    # used to silently truncate to the shortest via min(); it is now an
+    # assertion, so a real mismatch fails loudly instead of averaging
+    # misaligned rows. Verified 3 September 2026 that this does not fire.
+    lens = [len(P[m][s][0]) for m in subset]
+    assert len(set(lens)) == 1, \
+        f"subject {s}: models {subset} disagree on window count {lens}"
+    n = lens[0]
+    yt = P[subset[0]][s][0][:n]
+    for m in subset[1:]:
+        assert np.array_equal(P[m][s][0][:n], yt), \
+            f"subject {s}: y_true differs between {subset[0]} and {m}"
     stack = np.stack([P[m][s][1][:n] for m in subset])   # [n_models, n, 4]
     return yt, stack
 
@@ -140,7 +149,10 @@ if ref in subjectwise:
         except Exception: p=np.nan
         df.loc[df.ensemble==k,"p_vs_current"]=p
 df.to_csv(OUT/"ensemble_v2_summary.csv", index=False)
-pd.DataFrame(subjectwise).to_csv(OUT/"ensemble_v2_subjectwise.csv", index=False)
+# B4.4: write an explicit subject column. The rows are in SUBS order; without
+# the column the 40 rows are positional and fragile once published.
+_sw = pd.DataFrame(subjectwise); _sw.insert(0, "subject", SUBS)
+_sw.to_csv(OUT/"ensemble_v2_subjectwise.csv", index=False)
 print("\n=== ranked ensembles ===")
 print(df.to_string(index=False))
 print("\nwrote", OUT/"ensemble_v2_summary.csv")

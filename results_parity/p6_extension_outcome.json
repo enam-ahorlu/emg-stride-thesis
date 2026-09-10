@@ -1,0 +1,85 @@
+{
+  "stage": "P-6 extension",
+  "verdict": "DIVERGE",
+  "verdict_text": "DIVERGE. The curves separate materially at SD 0.50 (+2.81 pp). Where they diverge says how the form matters; report the location and direction, do not average it away.",
+  "noaug_mean": 0.7822033495580412,
+  "chandrop_curve": [
+    {
+      "sd": 0.3,
+      "mean_f1": 0.8310874755054687
+    },
+    {
+      "sd": 0.4,
+      "mean_f1": 0.8375641099558194
+    },
+    {
+      "sd": 0.458,
+      "mean_f1": 0.8372862159128983
+    },
+    {
+      "sd": 0.5,
+      "mean_f1": 0.8205079989841686
+    }
+  ],
+  "gainjitter_curve": [
+    {
+      "sd": 0.3,
+      "mean_f1": 0.8369564093601969
+    },
+    {
+      "sd": 0.4,
+      "mean_f1": 0.8477085825159909
+    },
+    {
+      "sd": 0.5,
+      "mean_f1": 0.8486224444253022
+    }
+  ],
+  "matched_points": [
+    {
+      "sd": 0.3,
+      "cd_dir": "results_cd_rate_p0.1",
+      "gj_dir": "results_p6_gainjitter_resnet_se_sd0.30",
+      "cd_mean": 0.8310874755054687,
+      "gj_mean": 0.8369564093601969,
+      "delta_pp": 0.5868933854727929,
+      "lo_pp": -0.6605945546818912,
+      "hi_pp": 1.9090275073926137,
+      "p_raw": 0.40493773964954016,
+      "d": 0.1391202229401906,
+      "pos": 22,
+      "neg": 18,
+      "p_holm": 0.40493773964954016
+    },
+    {
+      "sd": 0.4,
+      "cd_dir": "results_cd_rate_p0.2",
+      "gj_dir": "results_p6_gainjitter_resnet_se_sd0.40",
+      "cd_mean": 0.8375641099558194,
+      "gj_mean": 0.8477085825159909,
+      "delta_pp": 1.014447256017147,
+      "lo_pp": 0.14570379381165657,
+      "hi_pp": 1.8735191491653973,
+      "p_raw": 0.02884993747647968,
+      "d": 0.3630701959145904,
+      "pos": 26,
+      "neg": 14,
+      "p_holm": 0.05769987495295936
+    },
+    {
+      "sd": 0.5,
+      "cd_dir": "results_cd_rate_p0.5",
+      "gj_dir": "results_p6_gainjitter_resnet_se_sd0.50",
+      "cd_mean": 0.8205079989841686,
+      "gj_mean": 0.8486224444253022,
+      "delta_pp": 2.8114445441133626,
+      "lo_pp": 1.9723998932675526,
+      "hi_pp": 3.822967197575052,
+      "p_raw": 2.275137376273051e-07,
+      "d": 0.9476066990308699,
+      "pos": 35,
+      "neg": 5,
+      "p_holm": 6.825412128819153e-07
+    }
+  ]
+}

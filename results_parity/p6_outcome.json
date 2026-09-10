@@ -1,0 +1,77 @@
+{
+  "stage": "P-6",
+  "n": 40,
+  "arm_means": {
+    "no_aug": 0.7822033495580412,
+    "chandrop": 0.8394900592540072,
+    "gainjitter": 0.8477085825159909,
+    "mpchandrop": 0.8349581779094543
+  },
+  "C1_chandrop_vs_mpchandrop": {
+    "label": "C1 channel dropout vs mean-preserving chandrop",
+    "mean_a": 0.8394900592540072,
+    "mean_b": 0.8349581779094543,
+    "delta_pp": 0.45318813445530015,
+    "lo_pp": -0.2352478706710987,
+    "hi_pp": 1.3600779875042321,
+    "p_raw": 0.30106151267864334,
+    "d": 0.17689333244983022,
+    "n": 40,
+    "p_holm": 0.30106151267864334
+  },
+  "C2_mpchandrop_vs_gainjitter": {
+    "label": "C2 mean-preserving chandrop vs gain jitter",
+    "mean_a": 0.8349581779094543,
+    "mean_b": 0.8477085825159909,
+    "delta_pp": -1.2750404606536627,
+    "lo_pp": -2.1818477288236844,
+    "hi_pp": -0.3554384433724466,
+    "p_raw": 0.01302583178403438,
+    "d": -0.4283627313167466,
+    "n": 40,
+    "p_holm": 0.02605166356806876
+  },
+  "vs_noaug": {
+    "chandrop": {
+      "label": "channel dropout vs no aug",
+      "mean_a": 0.8394900592540072,
+      "mean_b": 0.7822033495580412,
+      "delta_pp": 5.728670969596612,
+      "lo_pp": 4.342088808860247,
+      "hi_pp": 7.274809280591871,
+      "p_raw": 3.1632225727662444e-09,
+      "d": 1.2005977277421354,
+      "n": 40
+    },
+    "mpchandrop": {
+      "label": "mean-preserving chandrop vs no aug",
+      "mean_a": 0.8349581779094543,
+      "mean_b": 0.7822033495580412,
+      "delta_pp": 5.275482835141313,
+      "lo_pp": 4.058150745210258,
+      "hi_pp": 6.6515259396510515,
+      "p_raw": 6.748450687155128e-10,
+      "d": 1.245234762560353,
+      "n": 40
+    },
+    "gainjitter": {
+      "label": "gain jitter vs no aug",
+      "mean_a": 0.8477085825159909,
+      "mean_b": 0.7822033495580412,
+      "delta_pp": 6.550523295794976,
+      "lo_pp": 5.297588047554583,
+      "hi_pp": 8.106559803162623,
+      "p_raw": 3.456079866737127e-11,
+      "d": 1.445523646902919,
+      "n": 40
+    }
+  },
+  "arm_gaps_vs_noaug_pp": {
+    "gain jitter sd=0.40": 6.550523295794974,
+    "mean-preserving chandrop": 5.275482835141309,
+    "channel dropout p=0.2": 5.728670969596605
+  },
+  "outcome": "V",
+  "outcome_meaning": "Variance is what matters. Neither contrast reaches 2.0 pp with Holm significance: the mean shift does nothing material and the form does nothing material. What the class does is inject per-channel multiplicative variance. This is the cleanest version of the finding and section 4.8.2 should state it as the operative property. Note: C2 (form) is Holm-significant at -1.28 pp (Holm p = 0.0261) but below the 2.0 pp materiality floor, so it is a detectable but immaterial effect and does not change the letter; report the number, not a claim.",
+  "extension_core_coherent": true
+}

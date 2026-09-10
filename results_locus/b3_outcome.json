@@ -1,0 +1,52 @@
+{
+  "stage": "B3",
+  "verdict": "3.2_works",
+  "per_subject_silhouette_mean_by_rung": {
+    "0": 0.05498608965204595,
+    "1": 0.05498608965204593,
+    "2": 0.062004505520193945,
+    "3": 0.062004505520193945,
+    "4": 0.02397120195342211
+  },
+  "published_pooled_silhouette_by_rung": [
+    0.008,
+    0.019,
+    0.008,
+    0.023,
+    -0.006
+  ],
+  "paired_rung3_vs_rung4": {
+    "label": "rung 3 (mean+scale) vs rung 4",
+    "mean_delta": 0.038033303566771835,
+    "bca_lo": 0.032240026397202685,
+    "bca_hi": 0.044374592987823924,
+    "p_raw": 1.8189894035458565e-12,
+    "d": 1.905487155965459,
+    "pos": 40,
+    "neg": 0
+  },
+  "paired_rung3_vs_rung0": {
+    "label": "rung 3 (mean+scale) vs rung 0",
+    "mean_delta": 0.007018415868148002,
+    "bca_lo": 0.004597619597480063,
+    "bca_hi": 0.010095809157026285,
+    "p_raw": 9.59746103035286e-06,
+    "d": 0.7770888672274431,
+    "pos": 32,
+    "neg": 8
+  },
+  "within_subject_spearman": {
+    "n_defined": 40,
+    "mean": 0.43672148221383755,
+    "median": 0.46169025843831935,
+    "wilcoxon_vs0_p": 1.2542466582896108e-06,
+    "pos": 35,
+    "neg": 4
+  },
+  "new_paired_wilcoxon_tests_for_fdr_family": {
+    "rung3_vs_rung4_silhouette": 1.8189894035458565e-12,
+    "rung3_vs_rung0_silhouette": 9.59746103035286e-06
+  },
+  "table_4_16_note": "MMD removed is 'n/a' at the baseline rung in Table 4.16 while the 4.13.2 correlation treats it as 0.0; reconcile.",
+  "section_3_4": "decision point for Enam; not resolved here"
+}

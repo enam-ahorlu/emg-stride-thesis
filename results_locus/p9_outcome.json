@@ -1,0 +1,179 @@
+{
+  "stage": "P-9",
+  "arms": 4,
+  "scope": "transfer only; per-subject coupling retired (underpowered by design)",
+  "section_3_2_gate": {
+    "results_p9_atten_resnet_noaug": {
+      "maxdiff": 0.0,
+      "pass": true
+    },
+    "results_p9_atten_resnet_chandrop": {
+      "maxdiff": 0.0,
+      "pass": true
+    },
+    "results_p9_atten_resnet_se_noaug": {
+      "maxdiff": 0.0,
+      "pass": true
+    },
+    "results_p9_atten_resnet_se_chandrop": {
+      "maxdiff": 0.0,
+      "pass": true
+    }
+  },
+  "reproduction_check_3_5a": {
+    "gate_pp": 3.0,
+    "pass": true,
+    "arms": [
+      {
+        "arm": "A1 resnet none",
+        "p9_cost_pp": 86.88345667578545,
+        "original_pp": 84.211,
+        "diff_pp": 2.6724566757854546,
+        "within_gate": true,
+        "p9_f1": 0.7611,
+        "original_f1": 0.7684,
+        "f1_diff_pp": -0.7299999999999973
+      },
+      {
+        "arm": "A2 resnet chandrop",
+        "p9_cost_pp": 13.402797442437919,
+        "original_pp": 15.029,
+        "diff_pp": -1.626202557562081,
+        "within_gate": true,
+        "p9_f1": 0.8247,
+        "original_f1": 0.8251,
+        "f1_diff_pp": -0.039999999999995595
+      }
+    ]
+  },
+  "a1_a2_reproduction_spread_pp": 2.6724566757854546,
+  "reduction_factors": {
+    "original": 5.603233748087032,
+    "resnet_A1_A2": {
+      "est": 6.482486738229902,
+      "ci": [
+        5.107528352222989,
+        8.538576289928804
+      ]
+    },
+    "resnet_se_A3_A4": {
+      "est": 6.119680713231464,
+      "ci": [
+        4.942521862069744,
+        7.845964804957174
+      ]
+    }
+  },
+  "summed_cost_pp": {
+    "A1": 86.88345667578545,
+    "A2": 13.402797442437919,
+    "A3": 81.76912276925,
+    "A4": 13.36166486471355
+  },
+  "f1_mean": {
+    "A1": 0.7611,
+    "A2": 0.8247,
+    "A3": 0.7746,
+    "A4": 0.8352
+  },
+  "paired_backbone_reduction_diff_pp": {
+    "mean": -5.073201328811083,
+    "bca_lo": -13.758637156459889,
+    "bca_hi": 2.6233193430603685,
+    "p_raw": 0.34716529149409325
+  },
+  "backbone_outcome": "S",
+  "backbone_meaning": "Split vindicated. The resnet_se occlusion reduction (6.12x, 95% [4.94, 7.85]) matches the SE-free one (6.48x, 95% [5.11, 8.54]) to within the A1/A2 reproduction spread: |difference| 0.36x against a 0.88x shift on a pure re-run, overlapping bootstrap intervals, and a per-subject paired backbone difference of -5.07 pp (95% BCa [-13.76, +2.62], p = 0.347) that is not distinguishable from zero. The mechanism findings transfer across backbones, measured rather than assumed. Section 4.8.2 may keep quoting either figure provided it names the backbone, and the G1 warrant is retrospectively supported on a mechanism quantity.",
+  "transfer": {
+    "resnet": {
+      "label": "resnet",
+      "drop_crit": 1.0,
+      "censoring": {
+        "noaug": 0.08888888888888889,
+        "chandrop": 0.36944444444444446
+      },
+      "agreement": {
+        "noaug": 0.14974469874961657,
+        "chandrop": 0.03773288782127914,
+        "noaug_boot95": [
+          0.10929594355579794,
+          0.23994653499746496
+        ]
+      },
+      "null_p": {
+        "noaug": 9.999000099990002e-05,
+        "chandrop": 0.009799020097990201
+      },
+      "null_975": {
+        "chandrop": 0.02923255292127607
+      },
+      "paired_consistency": {
+        "mean_delta": -0.11201181092833745,
+        "bca_lo": -0.14740525097666216,
+        "bca_hi": -0.07169844674636577,
+        "p_raw": 8.847995559335686e-06,
+        "d": -0.8946940357756409,
+        "pos": 6,
+        "neg": 34
+      },
+      "subject_swap_p": 0.007399260073992601,
+      "shrink_control": {
+        "shrink_factor": 0.6133489093687539,
+        "noise_sigma": 0.9736273482007853,
+        "sim_agreement_mean": 0.0024021612556405104,
+        "sim_agreement_sd": 0.012301459497494978
+      },
+      "model_vs_data": "tracks_data",
+      "letter": "U",
+      "meaning": "censoring on the augmented arm is 36.9% even at the 1.0 pp criterion, above the 30% limit; a third measure has failed. Do not commission a fourth."
+    },
+    "resnet_se": {
+      "label": "resnet_se",
+      "drop_crit": 1.0,
+      "censoring": {
+        "noaug": 0.07222222222222222,
+        "chandrop": 0.375
+      },
+      "agreement": {
+        "noaug": 0.09896169154990375,
+        "chandrop": 0.06286589512822988,
+        "noaug_boot95": [
+          0.061421698762133735,
+          0.19351216834062832
+        ]
+      },
+      "null_p": {
+        "noaug": 9.999000099990002e-05,
+        "chandrop": 0.0006999300069993001
+      },
+      "null_975": {
+        "chandrop": 0.030389338356368707
+      },
+      "paired_consistency": {
+        "mean_delta": -0.036095796421673904,
+        "bca_lo": -0.07455775679485246,
+        "bca_hi": 0.0014702355909773927,
+        "p_raw": 0.07932943338346377,
+        "d": -0.2891667870660738,
+        "pos": 14,
+        "neg": 26
+      },
+      "subject_swap_p": 0.2288771122887711,
+      "shrink_control": {
+        "shrink_factor": 0.579538487875065,
+        "noise_sigma": 1.0125632740332384,
+        "sim_agreement_mean": 0.0010238260599885092,
+        "sim_agreement_sd": 0.013061923585235008
+      },
+      "model_vs_data": "tracks_data",
+      "letter": "U",
+      "meaning": "censoring on the augmented arm is 37.5% even at the 1.0 pp criterion, above the 30% limit; a third measure has failed. Do not commission a fourth."
+    }
+  },
+  "transfer_letters": {
+    "resnet": "U",
+    "resnet_se": "U"
+  },
+  "transfer_backbones_disagree": false,
+  "coupling": "retired; underpowered by design (~151 subjects at rho -0.226, ~351 at +0.149)"
+}

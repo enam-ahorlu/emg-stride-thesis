@@ -1,0 +1,4 @@
+sd,cd_dir,gj_dir,cd_mean,gj_mean,delta_pp,lo_pp,hi_pp,p_raw,d,pos,neg,p_holm
+0.3,results_cd_rate_p0.1,results_p6_gainjitter_resnet_se_sd0.30,0.83109,0.83696,0.58689,-0.66059,1.90903,0.40494,0.13912,22,18,0.40494
+0.4,results_cd_rate_p0.2,results_p6_gainjitter_resnet_se_sd0.40,0.83756,0.84771,1.01445,0.1457,1.87352,0.02885,0.36307,26,14,0.0577
+0.5,results_cd_rate_p0.5,results_p6_gainjitter_resnet_se_sd0.50,0.82051,0.84862,2.81144,1.9724,3.82297,0.0,0.94761,35,5,0.0
