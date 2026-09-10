@@ -6,9 +6,10 @@ This file maps every headline number, table, and figure in the thesis to the scr
 - Python 3.10, packages in `requirements.txt` (pin exact versions with `pip freeze`).
 - Fixed random seed **42** throughout (NumPy, scikit-learn, PyTorch - `torch.manual_seed` + `torch.cuda.manual_seed_all`). The CNN validation split is seeded per fold as `seed + held-out-subject id`.
 - Repository: https://github.com/enam-ahorlu/emg-stride-thesis (public, default branch `main`).
-- Archived release: **v1.0.0**, tagged 30 August 2026, archived at https://doi.org/10.5281/zenodo.22179743
-  (both the DOI and the release page resolve, checked 5 September 2026).
-- **Scope note.** v1.0.0 predates the September parity programme (P-1 to P-8), the ENABL3S movement-blocked
+- Archived release: **v1.1.0**, tagged 10 September 2026, archived at https://doi.org/10.5281/zenodo.22684107.
+  The concept identifier https://doi.org/10.5281/zenodo.22179742 always resolves to the most recent version.
+  The earlier v1.0.0 snapshot (30 August 2026) remains at https://doi.org/10.5281/zenodo.22179743.
+- **Scope note.** The superseded v1.0.0 snapshot predates the September parity programme (P-1 to P-8), the ENABL3S movement-blocked
   subject-dependent control, and `recompute_unified_fdr_v4.py` (itself now superseded by `recompute_unified_fdr_v5.py`). Those sit on `main` after the tag, so
   a reader working from the archived snapshot alone will find the earlier FDR family rather than the 189-test
   family of record. Release v1.1.0 corrects this: it is cut from the commit that carries the September work and the 189-test family.
