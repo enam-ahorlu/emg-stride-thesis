@@ -1,0 +1,11 @@
+==== P5/P6 START 2026-09-03T02:03:02Z ====
+--- [P5-subset] subset -> results_p5_subset_resnet_se  2026-09-03T02:03:02Z ---
+[P5-subset] exit 0 at 2026-09-03T03:01:08Z
+[P5-subset] mean F1 0.836 n 40
+--- [P6-gainjitter04] gainjitter -> results_p6_gainjitter_resnet_se_sd0.40  2026-09-03T03:01:13Z ---
+[P6-gainjitter04] exit 0 at 2026-09-03T04:00:58Z
+[P6-gainjitter04] mean F1 0.8477 n 40
+--- [P6-mpchandrop04] mpchandrop -> results_p6_mpchandrop_resnet_se_sd0.40  2026-09-03T04:00:59Z ---
+[P6-mpchandrop04] exit 0 at 2026-09-03T04:57:31Z
+[P6-mpchandrop04] mean F1 0.835 n 40
+==== P5/P6 CORE END 2026-09-03T04:57:31Z ====

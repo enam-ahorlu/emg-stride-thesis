@@ -31,7 +31,7 @@ class SEBlock1d(nn.Module):
 
 
 class ResBlock1d(nn.Module):
-    def __init__(self, cin, cout, k=7, stride=1, use_se=True, p=0.1):
+    def __init__(self, cin, cout, k=7, stride=1, use_se=True, p=0.1, use_residual=True):
         super().__init__()
         pad = k // 2
         self.conv1 = nn.Conv1d(cin, cout, k, stride=stride, padding=pad, bias=False)
@@ -40,12 +40,22 @@ class ResBlock1d(nn.Module):
         self.bn2 = nn.BatchNorm1d(cout)
         self.se = SEBlock1d(cout) if use_se else nn.Identity()
         self.drop = nn.Dropout(p)
+        self.use_residual = use_residual
         self.down = None
-        if stride != 1 or cin != cout:
+        # W-3: guarded by use_residual so the no-skip variant does not build the
+        # 1x1 projection either. use_residual=True is unchanged: the module
+        # construction order, and therefore every RNG draw, is identical.
+        if use_residual and (stride != 1 or cin != cout):
             self.down = nn.Sequential(nn.Conv1d(cin, cout, 1, stride=stride, bias=False),
                                       nn.BatchNorm1d(cout))
 
     def forward(self, x):
+        if not self.use_residual:
+            out = torch.relu(self.bn1(self.conv1(x)))
+            out = self.bn2(self.conv2(out))
+            out = self.se(out)
+            return self.drop(torch.relu(out))
+        # use_residual=True path: byte-for-byte the original forward
         idn = x if self.down is None else self.down(x)
         out = torch.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
@@ -56,7 +66,8 @@ class ResBlock1d(nn.Module):
 class EMGResNet1D(nn.Module):
     """Compact 1D ResNet with optional SE attention. ~0.3M params at defaults."""
     def __init__(self, in_ch: int, n_classes: int, widths=(32, 64, 128),
-                 blocks_per_stage: int = 2, use_se: bool = True, k: int = 7, p: float = 0.1):
+                 blocks_per_stage: int = 2, use_se: bool = True, k: int = 7, p: float = 0.1,
+                 use_residual: bool = True):
         super().__init__()
         self.stem = nn.Sequential(
             nn.Conv1d(in_ch, widths[0], 9, padding=4, bias=False),
@@ -65,7 +76,8 @@ class EMGResNet1D(nn.Module):
         for si, w in enumerate(widths):
             for bi in range(blocks_per_stage):
                 stride = 2 if (bi == 0 and si > 0) else 1
-                layers.append(ResBlock1d(cin, w, k=k, stride=stride, use_se=use_se, p=p))
+                layers.append(ResBlock1d(cin, w, k=k, stride=stride, use_se=use_se, p=p,
+                                         use_residual=use_residual))
                 cin = w
         self.body = nn.Sequential(*layers)
         self.pool = nn.AdaptiveAvgPool1d(1)
@@ -82,16 +94,27 @@ class EMGResNet1D(nn.Module):
         return (logits, f) if return_feat else logits
 
 
-def build_model(arch: str, in_ch: int, n_classes: int) -> nn.Module:
+def build_model(arch: str, in_ch: int, n_classes: int,
+                widths=None, blocks_per_stage=None) -> nn.Module:
+    """W-5: `widths` / `blocks_per_stage` override the EMGResNet1D geometry. Both
+    None (the default) reproduces the pre-W-5 model byte-for-byte -- the kwargs
+    are only forwarded when set, so no default argument is even bound."""
     arch = arch.lower()
+    geo = {}
+    if widths is not None:
+        geo["widths"] = tuple(widths)
+    if blocks_per_stage is not None:
+        geo["blocks_per_stage"] = int(blocks_per_stage)
     if arch == "simple":
         from train_cnn_loso import SimpleEMGCNN
         return SimpleEMGCNN(in_ch=in_ch, n_classes=n_classes)
     if arch in ("resnet_se", "resnetse", "se"):
-        return EMGResNet1D(in_ch, n_classes, use_se=True)
+        return EMGResNet1D(in_ch, n_classes, use_se=True, **geo)
     if arch == "resnet":
-        return EMGResNet1D(in_ch, n_classes, use_se=False)
-    raise ValueError(f"unknown arch '{arch}' (use simple | resnet | resnet_se)")
+        return EMGResNet1D(in_ch, n_classes, use_se=False, **geo)
+    if arch in ("resnet_nores", "resnet_no_res", "nores"):
+        return EMGResNet1D(in_ch, n_classes, use_se=False, use_residual=False, **geo)
+    raise ValueError(f"unknown arch '{arch}' (use simple | resnet | resnet_se | resnet_nores)")
 
 
 def count_params(m: nn.Module) -> int:

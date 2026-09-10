@@ -1,0 +1,138 @@
+{
+  "stage": "P-10",
+  "n": 40,
+  "peak_sd": 0.5,
+  "peak_mean_f1": 0.8378550183120914,
+  "full_span_pp": 4.630020152011472,
+  "largest_post_peak_fall_pp": 4.630020152011481,
+  "x_arms_sd": [
+    1.0
+  ],
+  "curve": [
+    {
+      "sd": 0.4,
+      "p_prime": 0.13793,
+      "mean_f1": 0.83496,
+      "sd_f1": 0.07051,
+      "vs_noaug_pp": 5.27582
+    },
+    {
+      "sd": 0.5,
+      "p_prime": 0.2,
+      "mean_f1": 0.83786,
+      "sd_f1": 0.0591,
+      "vs_noaug_pp": 5.5655
+    },
+    {
+      "sd": 0.6,
+      "p_prime": 0.26471,
+      "mean_f1": 0.83201,
+      "sd_f1": 0.05918,
+      "vs_noaug_pp": 4.98069
+    },
+    {
+      "sd": 0.8,
+      "p_prime": 0.39024,
+      "mean_f1": 0.79155,
+      "sd_f1": 0.08003,
+      "vs_noaug_pp": 0.93548
+    },
+    {
+      "sd": 1.0,
+      "p_prime": 0.5,
+      "mean_f1": 0.73132,
+      "sd_f1": 0.08615,
+      "vs_noaug_pp": -5.08779
+    }
+  ],
+  "post_peak_contrasts": [
+    {
+      "sd": 0.6,
+      "delta_pp": 0.5848110699005743,
+      "lo_pp": -0.17353731923969093,
+      "hi_pp": 1.4385025549149053,
+      "p_raw": 0.2825841121848498,
+      "d": 0.21899502710917765,
+      "pos": 21,
+      "neg": 19,
+      "p_holm": 0.2825841121848498
+    },
+    {
+      "sd": 0.8,
+      "delta_pp": 4.630020152011481,
+      "lo_pp": 3.4979537514381382,
+      "hi_pp": 5.926417186234377,
+      "p_raw": 1.9444996723905206e-09,
+      "d": 1.1769787679800563,
+      "pos": 37,
+      "neg": 3,
+      "p_holm": 3.888999344781041e-09
+    },
+    {
+      "sd": 1.0,
+      "delta_pp": 10.653292613610716,
+      "lo_pp": 8.981714535248782,
+      "hi_pp": 12.432612588494088,
+      "p_raw": 3.637978807091713e-12,
+      "d": 1.8824220353518104,
+      "pos": 39,
+      "neg": 1,
+      "p_holm": 1.0913936421275139e-11
+    }
+  ],
+  "adjacent_contrasts": [
+    {
+      "lo_sd": 0.4,
+      "hi_sd": 0.5,
+      "delta_pp": -0.28968404026372296,
+      "lo_pp": -1.2344781689010296,
+      "hi_pp": 0.47516429141596866,
+      "p_raw": 0.8367550107286661,
+      "d": -0.10503154075974563,
+      "pos": 19,
+      "neg": 21
+    },
+    {
+      "lo_sd": 0.5,
+      "hi_sd": 0.6,
+      "delta_pp": 0.5848110699005743,
+      "lo_pp": -0.17353731923969093,
+      "hi_pp": 1.4385025549149053,
+      "p_raw": 0.2825841121848498,
+      "d": 0.21899502710917765,
+      "pos": 21,
+      "neg": 19
+    },
+    {
+      "lo_sd": 0.6,
+      "hi_sd": 0.8,
+      "delta_pp": 4.045209082110906,
+      "lo_pp": 2.9798847740656513,
+      "hi_pp": 5.441042484511759,
+      "p_raw": 2.697561285458505e-09,
+      "d": 1.0342192153035419,
+      "pos": 36,
+      "neg": 4
+    },
+    {
+      "lo_sd": 0.8,
+      "hi_sd": 1.0,
+      "delta_pp": 6.023272461599237,
+      "lo_pp": 4.298304476811387,
+      "hi_pp": 7.862115108877086,
+      "p_raw": 1.4608849596697837e-07,
+      "d": 1.0451036630125703,
+      "pos": 35,
+      "neg": 5
+    }
+  ],
+  "outcome": "B",
+  "outcome_meaning": "Boundary found. On the arms that trained, a peak at SD 0.50 is followed by a fall exceeding 2.0 pp with a Holm-significant paired contrast at SD 0.80 (fall +4.63 pp, Holm p = 3.889e-09, d = +1.18). A genuine over-invariance boundary exists on the mean-preserving family, at a dose the unnormalized form never reached because its own artifact masked it (P-7). The curve is flat through the operating range and turns down past the peak. The Section 4.13.2 parallel is supported on this family and P-1's structural reading holds after all, relocated to a higher dose. Arm(s) at SD [1.0] fell more than 3.0 pp below the no-augmentation baseline of 0.7822 (at high p' half the channels are zeroed each sample and the rest scaled up hard); each is outcome X for that arm, a bound on the family rather than a bug, and is excluded from the ceiling reading below. Caveat (plan section 6): two-plus points is not a dose-response curve, and the boundary sits where the perturbation approaches the p' = 0.5 degeneracy, so 'over-alignment destroys class structure' versus 'the perturbation becomes too destructive to train against' is not fully separable here.",
+  "p1_verdict_replacement_draft": "P-1 replacement (outcome S retained, relocated to the mean-preserving family). The apparent boundary in the unnormalized rate sweep was the mask artifact P-7 identified. On the mean-preserving family, which has no such artifact, the dose sequence is flat through the operating range (SD 0.40 to 0.60: 83.1, 83.8, 83.7, 83.2 percent macro-F1) and then falls, Holm-significant, beyond the peak: SD 0.80 79.2%, SD 1.00 73.1% (P-10). A genuine over-invariance boundary therefore does exist, at a dose higher than channel dropout at p = 0.5 could probe, so P-1's structural reading and the Section 4.13.2 parallel hold on this family with the boundary located near SD 0.80. Two qualifications belong in the same breath: the sweep has two or three usable points past the peak, not a curve, and SD 1.00 (p' = 0.5) collapses below no augmentation entirely, so the far end is the perturbation becoming degenerate rather than a clean statement about class structure.",
+  "artifact_removed_rate_sequence_pct": [
+    83.10874755054687,
+    83.75641099558194,
+    83.72862159128984,
+    83.78550183120915
+  ]
+}

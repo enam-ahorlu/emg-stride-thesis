@@ -1,0 +1,136 @@
+{
+  "stage": "P-7",
+  "n": 40,
+  "gates": {
+    "multiplier": {
+      "derived_p_prime": 0.2,
+      "realized_mean": 1.00132,
+      "realized_sd": 0.49901,
+      "pass": true
+    },
+    "inertness": {
+      "pass": true,
+      "note": "regression check, no code changes"
+    },
+    "completeness": {
+      "rows": 40,
+      "unique": 40,
+      "dups": false,
+      "ids_match_comparators": true,
+      "pass": true
+    },
+    "additivity": {
+      "d1_pp": 1.7347019327922895,
+      "d2_pp": 1.0767426113210734,
+      "sum_pp": 2.811444544113363,
+      "observed_gap_pp": 2.8114445441133626,
+      "residual_pp": 4.440892098500626e-16,
+      "tol_pp": 0.3,
+      "pass": true
+    }
+  },
+  "trainability": {
+    "gain_new_pp": 5.565166875405025,
+    "gain_cd_pp": 3.8304649426127435,
+    "train_gap_pp": 1.734701932792282,
+    "x": false
+  },
+  "arm_means": {
+    "cd_p0.5": 0.8205079989841686,
+    "mpchandrop_sd0.50": 0.8378550183120914,
+    "gainjitter_sd0.50": 0.8486224444253022,
+    "noaug": 0.7822033495580412
+  },
+  "sd50": {
+    "D1": {
+      "label": "D1 mean-preserving chandrop minus channel dropout p0.5",
+      "mean_a": 0.8378550183120914,
+      "mean_b": 0.8205079989841686,
+      "delta_pp": 1.7347019327922895,
+      "lo_pp": 0.825022331189155,
+      "hi_pp": 2.5375197666098943,
+      "p_raw": 4.098819044884294e-05,
+      "d": 0.6245004244554412,
+      "n": 40,
+      "pos": 33,
+      "neg": 7,
+      "p_holm": 8.197638089768589e-05,
+      "share": 0.6170144584300729
+    },
+    "D2": {
+      "label": "D2 gain jitter sd0.50 minus mean-preserving chandrop",
+      "mean_a": 0.8486224444253022,
+      "mean_b": 0.8378550183120914,
+      "delta_pp": 1.0767426113210734,
+      "lo_pp": 0.402124811689601,
+      "hi_pp": 1.7370060372669411,
+      "p_raw": 0.002638970910993521,
+      "d": 0.5012001871864896,
+      "n": 40,
+      "pos": 28,
+      "neg": 12,
+      "p_holm": 0.002638970910993521,
+      "share": 0.38298554156992726
+    },
+    "observed_gap": {
+      "label": "observed gap: gain jitter sd0.50 minus channel dropout p0.5",
+      "mean_a": 0.8486224444253022,
+      "mean_b": 0.8205079989841686,
+      "delta_pp": 2.8114445441133626,
+      "lo_pp": 1.9723998932675526,
+      "hi_pp": 3.822967197575052,
+      "p_raw": 2.275137376273051e-07,
+      "d": 0.9476066990308699,
+      "n": 40,
+      "pos": 35,
+      "neg": 5
+    },
+    "gap_pp": 2.8114445441133626,
+    "share_threshold": 0.6
+  },
+  "sd40_restated": {
+    "D1": {
+      "label": "D1(0.40) mp0.40 minus channel dropout p0.2 (rate sweep)",
+      "mean_a": 0.8349581779094543,
+      "mean_b": 0.8375641099558194,
+      "delta_pp": -0.26059320463651586,
+      "lo_pp": -0.9894942414085397,
+      "hi_pp": 0.38542208443471154,
+      "p_raw": 0.7446043581785489,
+      "d": -0.11738826848626055,
+      "n": 40,
+      "pos": 20,
+      "neg": 20,
+      "share": -0.25688196512023603
+    },
+    "D2": {
+      "label": "D2(0.40) gain jitter sd0.40 minus mp0.40",
+      "mean_a": 0.8477085825159909,
+      "mean_b": 0.8349581779094543,
+      "delta_pp": 1.2750404606536627,
+      "lo_pp": 0.35543844337244607,
+      "hi_pp": 2.181847728823684,
+      "p_raw": 0.01302583178403438,
+      "d": 0.4283627313167466,
+      "n": 40,
+      "pos": 27,
+      "neg": 13,
+      "share": 1.2568819651202359
+    },
+    "observed_gap": {
+      "label": "observed gap at SD 0.40 (vs rate sweep p0.2)",
+      "mean_a": 0.8477085825159909,
+      "mean_b": 0.8375641099558194,
+      "delta_pp": 1.014447256017147,
+      "lo_pp": 0.14570379381165657,
+      "hi_pp": 1.8735191491653973,
+      "p_raw": 0.02884993747647968,
+      "d": 0.3630701959145904,
+      "n": 40,
+      "pos": 26,
+      "neg": 14
+    }
+  },
+  "outcome": "M",
+  "outcome_meaning": "The mean shift carries it. What predominantly breaks channel dropout at high dose is the collapse in expected activation rather than the zeroing. At p = 0.5 half the signal is removed on average, and that carries the majority of the cost. Channel dropout is a variance injector with an unwanted side effect that grows with rate; the transferable recommendation is the mean-preserving form. D2 is itself Holm-significant at +1.08 pp (38% of the gap): the discrete-zeroing form is a real secondary contributor, it simply does not reach the 60% mark. Report both shares. This clears the 60% bar narrowly (D1 = +1.73 pp against a +1.69 pp threshold, margin +0.05 pp); the letter is M by the pre-registered rule but the split is close to B."
+}

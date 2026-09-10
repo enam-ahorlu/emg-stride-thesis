@@ -1,0 +1,34 @@
+{
+  "stage": "P-3",
+  "n_paired": 10,
+  "primary": {
+    "label": "PRIMARY: channel dropout vs no aug, per-subject normalization",
+    "mean_base": 0.5650153162529747,
+    "mean_cd": 0.6367321275682943,
+    "delta_pp": 7.171681131531961,
+    "bca_lo_pp": 5.043192654904387,
+    "bca_hi_pp": 10.112087788205645,
+    "p_raw": 0.001953125,
+    "cohens_d": 1.7200463584394887,
+    "n": 10,
+    "pos": 10,
+    "neg": 0,
+    "p_holm": 0.00390625
+  },
+  "secondary": {
+    "label": "SECONDARY: channel dropout vs no aug, global normalization",
+    "mean_base": 0.47559814157745073,
+    "mean_cd": 0.5043630407645593,
+    "delta_pp": 2.876489918710858,
+    "bca_lo_pp": 0.5777634976129457,
+    "bca_hi_pp": 6.5736380784417365,
+    "p_raw": 0.275390625,
+    "cohens_d": 0.5847860656618978,
+    "n": 10,
+    "pos": 6,
+    "neg": 4,
+    "p_holm": 0.275390625
+  },
+  "outcome": "R",
+  "outcome_meaning": "Replicates. Primary contrast positive, Holm p < 0.05, d >= 0.5. The augmentation gain is not SIAT-specific; goes into section 4.12 beside the normalization replication."
+}

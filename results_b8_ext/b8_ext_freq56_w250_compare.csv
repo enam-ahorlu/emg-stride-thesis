@@ -1,0 +1,3 @@
+tag,model,window_ms,sd_old_pooled,sd_new_blocked,delta_pp,wilcoxon_p,cohens_d,n,guard_frac,x_flags
+ext_freq56_w250,SVM,250,0.8604,0.8214,-3.895,0.001953125,-2.432,10,0.01,0
+ext_freq56_w250,RF,250,0.8561,0.797,-5.911,0.001953125,-2.992,10,0.01,0

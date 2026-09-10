@@ -1,0 +1,8 @@
+==== P6 EXTENSION START 2026-09-03T04:58:38Z ====
+--- [gainjitter sd=0.30] -> results_p6_gainjitter_resnet_se_sd0.30  2026-09-03T04:58:38Z ---
+[sd=0.30] exit 0 at 2026-09-03T05:52:48Z
+[sd=0.30] mean F1 0.837
+--- [gainjitter sd=0.50] -> results_p6_gainjitter_resnet_se_sd0.50  2026-09-03T05:52:49Z ---
+[sd=0.50] exit 0 at 2026-09-03T06:53:50Z
+[sd=0.50] mean F1 0.8486
+==== P6 EXTENSION END 2026-09-03T06:53:51Z ====

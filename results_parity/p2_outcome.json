@@ -1,0 +1,44 @@
+{
+  "stage": "P-2",
+  "n_subjects": 40,
+  "n_pairs": 780,
+  "neg_entries": {
+    "baseline": 14,
+    "channel_dropout": 93
+  },
+  "rank_agreement": {
+    "baseline": 0.3052991452991453,
+    "channel_dropout": 0.14158119658119658,
+    "deficit_base_minus_cd": 0.16371794871794873
+  },
+  "paired_wilcoxon": {
+    "mean_delta": -0.16371794871794873,
+    "bca_lo": -0.2163830126957427,
+    "bca_hi": -0.0962254558165601,
+    "p_raw": 1.8586324586067349e-06,
+    "cohens_d": -0.8488869048327161
+  },
+  "subject_swap_p": 0.000999900009999,
+  "validity_null_separation": {
+    "cd_agreement": 0.14158119658119658,
+    "cd_null_mean": -9.498931623931626e-05,
+    "cd_null_p": 9.999000099990002e-05,
+    "cd_null_97_5": 0.02916720085470085,
+    "cd_distinguishable_from_null": true,
+    "base_null_p": 9.999000099990002e-05
+  },
+  "validity_shrink_control": {
+    "shrink_factor": 0.1784739438162085,
+    "noise_sigma": 2.131375697835173,
+    "sim_neg_frac": 0.2538194444444445,
+    "target_neg_frac": 0.25833333333333336,
+    "sim_agreement_mean": 0.07244882478632478,
+    "sim_agreement_sd": 0.027993273208170792,
+    "observed_deficit": 0.16371794871794873,
+    "shrink_alone_deficit": 0.23285032051282054,
+    "fraction_reproduced": 1.422265074393109,
+    "ranks_not_scale_free": true
+  },
+  "outcome": "X",
+  "outcome_meaning": "Ranks are not scale-free in practice. The shrink control reproduces 142% of the baseline-to-CD agreement deficit on simulated data with no real change in ordering. Report as a measurement finding; do NOT report a transfer answer."
+}

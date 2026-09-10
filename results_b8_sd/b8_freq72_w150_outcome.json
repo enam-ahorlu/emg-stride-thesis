@@ -1,0 +1,57 @@
+{
+  "tag": "freq72_w150",
+  "window_ms": 150,
+  "guard_frac": 0.056013397382222024,
+  "x_flags": [],
+  "old": {
+    "SVM": 0.9244155431051627,
+    "RF": 0.9144188116128568,
+    "LDA": 0.8626647116941124
+  },
+  "new": {
+    "SVM": 0.8654268861484947,
+    "RF": 0.8720119479179415,
+    "LDA": 0.8140443867664773
+  },
+  "rows": [
+    {
+      "tag": "freq72_w150",
+      "model": "SVM",
+      "window_ms": 150,
+      "sd_old_pooled": 0.9244,
+      "sd_new_blocked": 0.8654,
+      "delta_pp": -5.899,
+      "wilcoxon_p": 1.8189894035458565e-12,
+      "cohens_d": -3.127,
+      "n": 40,
+      "guard_frac": 0.056,
+      "x_flags": 0
+    },
+    {
+      "tag": "freq72_w150",
+      "model": "RF",
+      "window_ms": 150,
+      "sd_old_pooled": 0.9144,
+      "sd_new_blocked": 0.872,
+      "delta_pp": -4.241,
+      "wilcoxon_p": 1.8189894035458565e-12,
+      "cohens_d": -2.359,
+      "n": 40,
+      "guard_frac": 0.056,
+      "x_flags": 0
+    },
+    {
+      "tag": "freq72_w150",
+      "model": "LDA",
+      "window_ms": 150,
+      "sd_old_pooled": 0.8627,
+      "sd_new_blocked": 0.814,
+      "delta_pp": -4.862,
+      "wilcoxon_p": 1.8189894035458565e-12,
+      "cohens_d": -2.846,
+      "n": 40,
+      "guard_frac": 0.056,
+      "x_flags": 0
+    }
+  ]
+}

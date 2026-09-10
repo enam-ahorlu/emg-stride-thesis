@@ -1,0 +1,46 @@
+{
+  "stage": "P-5",
+  "n": 40,
+  "subset_mean_f1": 0.8360301381198848,
+  "chandrop_mean_f1": 0.8394900592540072,
+  "noaug_mean_f1": 0.7822033495580412,
+  "primary": {
+    "label": "PRIMARY  : subset (A) vs channel dropout (B)",
+    "mean_a": 0.8360301381198848,
+    "mean_b": 0.8394900592540072,
+    "delta_pp": -0.34599211341223873,
+    "lo_pp": -1.1324194214126224,
+    "hi_pp": 0.54660256667656,
+    "p_raw": 0.34032321635640983,
+    "d": -0.12520408775700897,
+    "n": 40,
+    "p_holm": 0.34032321635640983
+  },
+  "secondary": {
+    "label": "SECONDARY: subset (A) vs no augmentation (B)",
+    "mean_a": 0.8360301381198848,
+    "mean_b": 0.7822033495580412,
+    "delta_pp": 5.3826788561843735,
+    "lo_pp": 4.066166805834952,
+    "hi_pp": 6.980484364683408,
+    "p_raw": 1.000444171950221e-10,
+    "d": 1.1489797542488773,
+    "n": 40,
+    "p_holm": 2.000888343900442e-10
+  },
+  "chandrop_vs_noaug": {
+    "label": "REF (uncorrected): channel dropout vs no augmentation",
+    "mean_a": 0.8394900592540072,
+    "mean_b": 0.7822033495580412,
+    "delta_pp": 5.728670969596612,
+    "lo_pp": 4.342088808860247,
+    "hi_pp": 7.274809280591871,
+    "p_raw": 3.1632225727662444e-09,
+    "d": 1.2005977277421354,
+    "n": 40
+  },
+  "trainability_gap_pp": 5.382678856184365,
+  "outcome": "M",
+  "outcome_meaning": "Matches. The primary contrast is within 2.0 pp and not Holm-significant, and the secondary is clearly positive. A third channel-structured perturbation, this one from the literature, does the same work: W-4's generalization stops resting only on a control the thesis invented. Section 4.8.2's claim strengthens materially.",
+  "subset_vocabulary_size": 36
+}

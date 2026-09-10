@@ -1,0 +1,141 @@
+==== S1 CLASSICAL START 2026-09-03T19:55:35Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T19:55:35Z ---
+      0 [main] bash (41908) child_copy: cygheap read copy failed, 0x800000000..0x800012900, done 0, windows pid 41908, Win32 error 299
+   1343 [main] bash 849 child_copy: dll data read copy failed, 0x210225000..0x210232010, done 0, windows pid 41908, Win32 error 299
+   1885 [main] bash 849 C:\Program Files\Git\usr\bin\bash.exe: *** fatal error in forked process - couldn't create signal pipe, Win32 error 5
+==== S1 CLASSICAL START 2026-09-03T21:29:11Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T21:29:11Z ---
+==== S1 CLASSICAL START 2026-09-03T21:37:04Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T21:37:04Z ---
+==== S1 CLASSICAL START 2026-09-03T21:38:42Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T21:38:42Z ---
+==== S1 CLASSICAL START 2026-09-03T21:40:23Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T21:40:23Z ---
+==== S1 CLASSICAL START 2026-09-03T21:44:42Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T21:44:43Z ---
+==== S1 CLASSICAL START 2026-09-03T22:00:50Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T22:00:50Z ---
+==== S1 CLASSICAL START 2026-09-03T22:09:11Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T22:09:11Z ---
+==== S1 CLASSICAL START 2026-09-03T22:16:56Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T22:16:56Z ---
+==== S1 CLASSICAL START 2026-09-03T22:29:56Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T22:29:56Z ---
+==== S1 CLASSICAL START 2026-09-03T22:37:30Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T22:37:30Z ---
+==== S1 CLASSICAL START 2026-09-03T22:40:28Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T22:40:28Z ---
+==== S1 CLASSICAL START 2026-09-03T22:41:52Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-03T22:41:53Z ---
+==== S1 CLASSICAL START 2026-09-04T00:08:27Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T00:08:27Z ---
+==== S1 CLASSICAL START 2026-09-04T00:11:07Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T00:11:07Z ---
+==== S1 CLASSICAL START 2026-09-04T00:18:59Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T00:18:59Z ---
+==== S1 CLASSICAL START 2026-09-04T00:28:07Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T00:28:07Z ---
+==== S1 CLASSICAL START 2026-09-04T00:38:00Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T00:38:00Z ---
+==== S1 CLASSICAL START 2026-09-04T00:54:08Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T00:54:08Z ---
+==== S1 CLASSICAL START 2026-09-04T01:08:49Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T01:08:49Z ---
+==== S1 CLASSICAL START 2026-09-04T01:22:37Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T01:22:37Z ---
+==== S1 CLASSICAL START 2026-09-04T01:37:12Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T01:37:12Z ---
+==== S1 CLASSICAL START 2026-09-04T01:43:59Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T01:43:59Z ---
+[per_subject] exit 0 2026-09-04T01:47:40Z
+--- [global -> results_aonly_global] 2026-09-04T01:47:40Z ---
+==== S1 CLASSICAL START 2026-09-04T01:55:27Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T01:55:28Z ---
+[per_subject] exit 0 2026-09-04T01:55:33Z
+--- [global -> results_aonly_global] 2026-09-04T01:55:33Z ---
+==== S1 CLASSICAL START 2026-09-04T02:03:06Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T02:03:07Z ---
+[per_subject] exit 0 2026-09-04T02:03:12Z
+--- [global -> results_aonly_global] 2026-09-04T02:03:12Z ---
+==== S1 CLASSICAL START 2026-09-04T02:10:41Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T02:10:41Z ---
+[per_subject] exit 0 2026-09-04T02:10:46Z
+--- [global -> results_aonly_global] 2026-09-04T02:10:46Z ---
+==== S1 CLASSICAL START 2026-09-04T02:24:27Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T02:24:27Z ---
+[per_subject] exit 0 2026-09-04T02:24:33Z
+--- [global -> results_aonly_global] 2026-09-04T02:24:33Z ---
+==== S1 CLASSICAL START 2026-09-04T02:39:47Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T02:39:47Z ---
+[per_subject] exit 0 2026-09-04T02:39:52Z
+--- [global -> results_aonly_global] 2026-09-04T02:39:53Z ---
+==== S1 CLASSICAL START 2026-09-04T02:53:46Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T02:53:46Z ---
+[per_subject] exit 0 2026-09-04T02:53:51Z
+--- [global -> results_aonly_global] 2026-09-04T02:53:51Z ---
+==== S1 CLASSICAL START 2026-09-04T03:09:06Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T03:09:06Z ---
+[per_subject] exit 0 2026-09-04T03:09:11Z
+--- [global -> results_aonly_global] 2026-09-04T03:09:11Z ---
+==== S1 CLASSICAL START 2026-09-04T03:24:23Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T03:24:23Z ---
+[per_subject] exit 0 2026-09-04T03:24:28Z
+--- [global -> results_aonly_global] 2026-09-04T03:24:28Z ---
+==== S1 CLASSICAL START 2026-09-04T03:38:57Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T03:38:57Z ---
+[per_subject] exit 0 2026-09-04T03:39:02Z
+--- [global -> results_aonly_global] 2026-09-04T03:39:02Z ---
+==== S1 CLASSICAL START 2026-09-04T03:55:04Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T03:55:04Z ---
+[per_subject] exit 0 2026-09-04T03:55:10Z
+--- [global -> results_aonly_global] 2026-09-04T03:55:10Z ---
+==== S1 CLASSICAL START 2026-09-04T04:02:50Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T04:02:51Z ---
+[per_subject] exit 0 2026-09-04T04:02:56Z
+--- [global -> results_aonly_global] 2026-09-04T04:02:56Z ---
+==== S1 CLASSICAL START 2026-09-04T04:10:23Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T04:10:23Z ---
+[per_subject] exit 0 2026-09-04T04:10:29Z
+--- [global -> results_aonly_global] 2026-09-04T04:10:29Z ---
+==== S1 CLASSICAL START 2026-09-04T04:25:04Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T04:25:04Z ---
+[per_subject] exit 0 2026-09-04T04:25:09Z
+--- [global -> results_aonly_global] 2026-09-04T04:25:09Z ---
+==== S1 CLASSICAL START 2026-09-04T04:39:37Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T04:39:37Z ---
+[per_subject] exit 0 2026-09-04T04:39:42Z
+--- [global -> results_aonly_global] 2026-09-04T04:39:42Z ---
+==== S1 CLASSICAL START 2026-09-04T04:55:51Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T04:55:51Z ---
+[per_subject] exit 0 2026-09-04T04:55:56Z
+--- [global -> results_aonly_global] 2026-09-04T04:55:56Z ---
+==== S1 CLASSICAL START 2026-09-04T05:09:37Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T05:09:38Z ---
+[per_subject] exit 0 2026-09-04T05:09:43Z
+--- [global -> results_aonly_global] 2026-09-04T05:09:43Z ---
+==== S1 CLASSICAL START 2026-09-04T05:25:51Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T05:25:51Z ---
+[per_subject] exit 0 2026-09-04T05:25:56Z
+--- [global -> results_aonly_global] 2026-09-04T05:25:56Z ---
+==== S1 CLASSICAL START 2026-09-04T05:41:11Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T05:41:11Z ---
+[per_subject] exit 0 2026-09-04T05:41:16Z
+--- [global -> results_aonly_global] 2026-09-04T05:41:16Z ---
+==== S1 CLASSICAL START 2026-09-04T05:55:03Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T05:55:04Z ---
+[per_subject] exit 0 2026-09-04T05:55:09Z
+--- [global -> results_aonly_global] 2026-09-04T05:55:09Z ---
+==== S1 CLASSICAL START 2026-09-04T06:01:10Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T06:01:10Z ---
+[per_subject] exit 0 2026-09-04T06:01:15Z
+--- [global -> results_aonly_global] 2026-09-04T06:01:16Z ---
+==== S1 CLASSICAL START 2026-09-04T06:02:36Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T06:02:36Z ---
+[per_subject] exit 0 2026-09-04T06:02:41Z
+--- [global -> results_aonly_global] 2026-09-04T06:02:41Z ---
+==== S1 CLASSICAL START 2026-09-04T06:09:23Z ====
+--- [per_subject -> results_aonly_persubj] 2026-09-04T06:09:23Z ---
+[per_subject] exit 0 2026-09-04T06:09:28Z
+--- [global -> results_aonly_global] 2026-09-04T06:09:28Z ---
+[global] exit 0 2026-09-04T06:12:42Z
+==== S1 CLASSICAL END 2026-09-04T06:12:42Z ====

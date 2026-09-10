@@ -229,6 +229,13 @@ def main():
     ap.add_argument("--reuse-params-dir", default="results_loso_freq_persubj",
                     help="Dir containing prior *_nested_loso_subjectwise.csv to source "
                          "best_params from when --save-proba is set.")
+    ap.add_argument("--only-heldout", default=None,
+                    help="Comma list of held-out subject ids to run (e.g. '1,2,3'). "
+                         "Restricts ONLY the outer LOSO iteration; normalization is still "
+                         "computed over the full dataset before the loop, and CV / grid / "
+                         "feature selection are unchanged. Used to shard one config across "
+                         "OS processes (each writing its own --out dir), then merge. "
+                         "Inert when it names all 40 subjects.")
     args = ap.parse_args()
 
     # Reproducibility: seed NumPy (SVM is deterministic; RF/RFE use --seed below)
@@ -238,6 +245,10 @@ def main():
     meta_path = Path(args.meta)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # B1 section 1.5: provenance. Guarded, additive, RNG-inert (asserted inside).
+    from run_config_dump import dump_run_config
+    dump_run_config(out_dir, args, resolved_paths={"features": args.features, "meta": args.meta})
 
 
     X = load_features_npz(features_path).astype(np.float32, copy=False)
@@ -318,6 +329,10 @@ def main():
     y_pred_full: Dict[str, np.ndarray] = {m: np.full_like(y, fill_value=-1) for m in wanted}
 
     unique_subjects = sorted(np.unique(subjects).tolist())
+    if args.only_heldout is not None:
+        wanted_ho = {int(s) for s in args.only_heldout.split(",") if s.strip() != ""}
+        unique_subjects = [s for s in unique_subjects if s in wanted_ho]
+        print(f"[info] --only-heldout restricts outer LOSO to {unique_subjects}")
     print(f"[info] LOSO over {len(unique_subjects)} subjects")
 
     for heldout in unique_subjects:

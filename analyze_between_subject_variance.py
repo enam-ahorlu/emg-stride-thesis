@@ -18,6 +18,7 @@ subject_distance_vs_f1}.csv + report_figs/new_experiments/{icc_histogram,
 alignment_ladder,distance_vs_f1}.png
 """
 from __future__ import annotations
+import os
 import time
 from pathlib import Path
 
@@ -39,8 +40,15 @@ ROOT = Path(__file__).parent
 OUT = ROOT / "results_variance_decomposition"; OUT.mkdir(exist_ok=True)
 FIGDIR = ROOT / "report_figs" / "new_experiments"; FIGDIR.mkdir(parents=True, exist_ok=True)
 
-FEAT = ROOT / "features_out" / "freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_ext.npz"
-META = ROOT / "features_out" / "freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv"
+# Default to the published 250 ms Freq-72 set. LADDER_FEAT / LADDER_META override
+# them (W-1 Stage 4 points the ladder at the 400 ms set); with neither set, every
+# existing caller and the published 250 ms ladder gate are unchanged.
+FEAT = Path(os.environ.get(
+    "LADDER_FEAT",
+    ROOT / "features_out" / "freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_ext.npz"))
+META = Path(os.environ.get(
+    "LADDER_META",
+    ROOT / "features_out" / "freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv"))
 LABELS = ["DNS", "STDUP", "UPS", "WAK"]
 SEED = 42
 N_CHANNELS = 9

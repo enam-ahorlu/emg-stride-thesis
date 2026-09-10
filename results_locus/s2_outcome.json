@@ -1,0 +1,23 @@
+{
+  "stage": "S-2",
+  "question": "Does the SIAT --fs 2000 vs true 1920 Hz mismatch change any classical result?",
+  "column_check": {
+    "MNF_MDF_ratio_new_over_old": 0.96,
+    "expected_ratio_1_over_1.041667": 0.96,
+    "other_columns": "byte-identical (MAV/RMS/WL/ZC/WAMP identical; SpectralPower ignores --fs)"
+  },
+  "svm_loso_persubj_compare": {
+    "n_subjects": 40,
+    "baseline_mean_f1_macro": 0.7767,
+    "fs1920_mean_f1_macro": 0.7767,
+    "max_abs_per_subject_diff": 0.0,
+    "n_subjects_not_identical": 0,
+    "all_40_matched": true
+  },
+  "pre_registered_expectation": "identical to floating-point noise",
+  "expectation_met": true,
+  "escalate": false,
+  "conclusion": "The --fs argument applies a uniform positive scale to MNF and MDF only; per-subject z-score and StandardScaler remove it exactly, and RF is scale-invariant. Every classical result is unchanged. B10.2's invariance argument holds. No thesis edit required; no FDR family touched.",
+  "thesis_files_edited": false,
+  "section_4_17_touched": false
+}

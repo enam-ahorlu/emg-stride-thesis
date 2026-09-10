@@ -23,14 +23,16 @@ cudnn.benchmark = True
 LABELS = ["DNS", "STDUP", "UPS", "WAK"]  # movement types (alphabetical = encode order)
 
 
-def augment_batch(Xb: torch.Tensor, mode: str, sigma: float, chandrop_p: float, mask_frac: float) -> torch.Tensor:
+def augment_batch(Xb: torch.Tensor, mode: str, sigma: float, chandrop_p: float, mask_frac: float,
+                  gain_sd: float = 0.4) -> torch.Tensor:
     """
     Apply data augmentation to a training batch in-place (returns augmented tensor).
 
     Parameters
     ----------
     Xb          : (N, C, T) float tensor on device
-    mode        : one of 'none', 'gaussian', 'chandrop', 'timemask', 'combined'
+    mode        : one of 'none', 'gaussian', 'chandrop', 'timemask', 'combined',
+                  'gainjitter', 'subset' (P-5), 'mpchandrop' (P-6)
     sigma       : std of Gaussian noise (relative to data scale)
     chandrop_p  : per-channel drop probability for chandrop
     mask_frac   : fraction of T to zero out for timemask
@@ -55,6 +57,52 @@ def augment_batch(Xb: torch.Tensor, mode: str, sigma: float, chandrop_p: float, 
         for i in range(N):
             start = torch.randint(0, max(1, T - mask_len + 1), (1,)).item()
             Xb[i, :, start:start + mask_len] = 0.0
+
+    if mode == "gainjitter":
+        # W-4: per sample, per channel multiplicative gain that is never zero.
+        # Uniform(1-a, 1+a) has SD = a/sqrt(3), so a = gain_sd*sqrt(3) matches a
+        # target per-channel multiplicative SD exactly. gain_sd=0.4 matches the
+        # SD of Bernoulli(1-p) at p=0.2, sqrt(p(1-p))=0.4. Added last, after every
+        # existing branch, so the five prior modes are byte-for-byte unchanged.
+        a = gain_sd * (3.0 ** 0.5)
+        g = 1.0 + (torch.rand(N, C, 1, device=Xb.device) * 2.0 - 1.0) * a
+        Xb = Xb * g
+
+    if mode == "subset":
+        # P-5: fixed vocabulary of channel subsets, each retaining 7 of the 9
+        # channels (9 * 0.8 = 7.2 expected retained under chandrop p=0.2). The
+        # vocabulary is every C(9,2)=36 way to omit a pair; one subset is drawn
+        # uniformly per training sample and its two channels are zeroed. Differs
+        # from chandrop only in that the pattern comes from a fixed vocabulary
+        # rather than an independent per-channel draw. Guarded and defaulted off,
+        # added after every existing branch so the six prior modes are unchanged.
+        import itertools
+        omit = list(itertools.combinations(range(C), 2))
+        omit_t = torch.tensor(omit, device=Xb.device)                 # (36, 2)
+        pick = torch.randint(len(omit), (N,), device=Xb.device)       # (N,)
+        keep = torch.ones(N, C, 1, device=Xb.device)
+        keep.scatter_(1, omit_t[pick].unsqueeze(-1), 0.0)             # zero 2 ch / sample
+        Xb = Xb * keep
+
+    if mode == "mpchandrop":
+        # P-6: mean-preserving (inverted) channel dropout. Multiplier is
+        # Bernoulli(1 - p') / (1 - p'), mean 1 and SD sqrt(p'/(1 - p')). p' is
+        # DERIVED from the requested multiplicative SD (gain_sd), never hard
+        # coded: SD = gain_sd  ->  p' = gain_sd**2 / (1 + gain_sd**2). At
+        # gain_sd = 0.40 this gives p' = 0.13793. Guarded, defaulted off, added
+        # after every existing branch so the six prior modes are unchanged.
+        p_prime = gain_sd ** 2 / (1.0 + gain_sd ** 2)
+        keep = (torch.rand(N, C, 1, device=Xb.device) >= p_prime).float()
+        mult = keep / (1.0 - p_prime)
+        if not getattr(augment_batch, "_mp_gate_printed", False):
+            md = mult.detach()
+            print(f"[mpchandrop gate] requested SD={gain_sd:.4f} -> p'={p_prime:.6f}; "
+                  f"first-batch multiplier mean={md.mean().item():.4f} "
+                  f"SD={md.std(unbiased=False).item():.4f} "
+                  f"(target mean=1.0000 SD={gain_sd:.4f}); shape={tuple(mult.shape)}",
+                  flush=True)
+            augment_batch._mp_gate_printed = True
+        Xb = Xb * mult
 
     return Xb
 
@@ -259,17 +307,24 @@ def main():
                          "per_subject=z-score each subject by own stats before LOSO loop; "
                          "robust=RobustScaler (median/IQR) fit on train fold.")
     ap.add_argument("--augment", default="none",
-                    choices=["none", "gaussian", "chandrop", "timemask", "combined"],
+                    choices=["none", "gaussian", "chandrop", "timemask", "combined",
+                             "gainjitter", "subset", "mpchandrop"],
                     help="Data augmentation applied to training batches only. "
                          "none=no augmentation, gaussian=additive Gaussian noise, "
                          "chandrop=random channel dropout, timemask=contiguous time masking, "
-                         "combined=all three augmentations applied sequentially.")
+                         "combined=all three augmentations applied sequentially, "
+                         "gainjitter=per-channel multiplicative gain, never zero (W-4), "
+                         "subset=fixed vocabulary of 7-of-9 channel subsets (P-5), "
+                         "mpchandrop=mean-preserving inverted channel dropout, SD from "
+                         "--aug-gain-sd (P-6).")
     ap.add_argument("--aug-sigma", type=float, default=0.1,
                     help="Gaussian noise std relative to normalized data scale (default: 0.1)")
     ap.add_argument("--aug-chandrop-p", type=float, default=0.2,
                     help="Per-channel drop probability for chandrop augmentation (default: 0.2)")
     ap.add_argument("--aug-timemask-frac", type=float, default=0.15,
                     help="Fraction of T to zero out for timemask augmentation (default: 0.15)")
+    ap.add_argument("--aug-gain-sd", type=float, default=0.4,
+                    help="Per-channel multiplicative gain SD for gainjitter augmentation (default: 0.4)")
     args = ap.parse_args()
 
     # Reproducibility seeds
@@ -284,6 +339,11 @@ def main():
     outdir.mkdir(exist_ok=True)
     pred_dir.mkdir(exist_ok=True)
     cm_dir.mkdir(exist_ok=True)
+
+    # B1 section 1.5: provenance (also closes the "external CNN runs saved no
+    # config" gap for future ENABL3S runs). Guarded, additive, RNG-inert.
+    from run_config_dump import dump_run_config
+    dump_run_config(outdir, args, resolved_paths={"npz": args.npz, "meta": args.meta})
 
     stem = Path(args.npz).stem
 
@@ -433,6 +493,7 @@ def main():
                         sigma=args.aug_sigma,
                         chandrop_p=args.aug_chandrop_p,
                         mask_frac=args.aug_timemask_frac,
+                        gain_sd=args.aug_gain_sd,
                     )
 
                 optim.zero_grad(set_to_none=True)

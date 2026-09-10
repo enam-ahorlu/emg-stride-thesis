@@ -1,0 +1,8 @@
+{
+  "outcome": "B",
+  "per_comparison": {
+    "SVM: 400 ms vs 250 ms (per-subject)": "B",
+    "ResNet-SE+CD: 400 ms vs 250 ms (per-subject)": "B"
+  },
+  "primary_gap_holds": true
+}

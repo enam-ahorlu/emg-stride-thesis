@@ -382,6 +382,7 @@ def build_full_dataset(
     X_env_all = []
     meta_all: List[Dict] = []
     channel_names: Optional[List[str]] = None
+    missed: List[tuple] = []  # B5 hygiene: record tolerated (missing-file) skips
 
     for subj in subjects:
         for mov in movements:
@@ -411,8 +412,18 @@ def build_full_dataset(
 
             except FileNotFoundError as e:
                 print(f"[Missing] Sub{subj:02d} {mov}: {e}")
+                missed.append((subj, mov, str(e)))
             except Exception as e:
-                print(f"[Error]   Sub{subj:02d} {mov}: {e}")
+                # B5 hygiene: a real failure must not be swallowed into a printed
+                # line. A missing trial file is tolerated above and recorded; any
+                # other exception is a build defect and stops here.
+                raise RuntimeError(
+                    f"build_full_dataset: process_trial failed for Sub{subj:02d} {mov}: {e!r}"
+                ) from e
+
+    if missed:
+        print(f"[build_full_dataset] {len(missed)} subject-by-movement cell(s) skipped as "
+              f"missing files: {[(s, m) for s, m, _ in missed]}")
 
     if not X_raw_all:
         raise RuntimeError("No windows were produced. Check paths, labels, thresholds, and toggles.")

@@ -38,10 +38,8 @@ v=[0.840,0.786,0.847,0.858]; s=[0.067,0.053,0.061,0.065]
 col=["#2e6f9e","#9e9e9e","#8fb8de","#3a923a"]
 fig,ax=plt.subplots(figsize=(7.8,4.3)); x=np.arange(len(lab))
 ax.bar(x,v,yerr=s,capsize=3,color=col,edgecolor="black",linewidth=0.4,error_kw={"elinewidth":0.8})
-ax.set_xticks(x); ax.set_xticklabels(lab,fontsize=8.5); ax.set_ylabel("LOSO macro-F1"); ax.set_ylim(0.70,0.90)
+ax.set_xticks(x); ax.set_xticklabels(lab,fontsize=8.5); ax.set_ylabel("LOSO macro-F1"); ax.set_ylim(0.70,0.95)
 for i,(a,b) in enumerate(zip(v,s)): ax.text(i,a+b+0.003,f"{a:.3f}",ha="center",fontsize=9)
-ax.annotate("+1.8 pp",xy=(3,0.858),xytext=(1.4,0.885),fontsize=9,color="#3a923a",
-            arrowprops=dict(arrowstyle="->",color="#3a923a",lw=0.8))
-plt.title("Ensemble composition (SIAT, LOSO, n=40): soft vote over SVM + ResNet-SE+CD",fontsize=10,pad=12)
+plt.title("Ensemble composition (SIAT, LOSO, n=40): soft vote over SVM + ResNet-SE+CD",fontsize=10,pad=14)
 plt.tight_layout(); plt.savefig(f"{OUT}/ensemble_combiner_loso.png"); plt.close(); print("wrote ensemble_combiner_loso.png")
 print("DONE deeptier CD figs")

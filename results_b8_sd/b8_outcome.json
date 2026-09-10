@@ -1,0 +1,30 @@
+{
+  "stage": "B8",
+  "grid_outcomes": [
+    "RANKING FLIPS",
+    "CONTAINED (marginal)"
+  ],
+  "delta_mean_pp": -4.587999999999999,
+  "delta_range_pp": [
+    -6.09,
+    -3.65
+  ],
+  "guard_frac_pct_250": 8.2,
+  "guard_frac_pct_150": 5.6,
+  "ranking_common_protocol_250ms": {
+    "SVM": 88.83,
+    "RF": 87.99,
+    "CNN": 85.91,
+    "LDA": 84.57
+  },
+  "cnn_leads_common_protocol": false,
+  "sd_loso_gaps_new_250ms": {
+    "SVM": 11.13,
+    "RF": 10.69,
+    "CNN": 10.51
+  },
+  "x_flags_total": 0,
+  "reproduction_caveat": "my pooled-random classical SD reproduces higher than Table 4.1 (e.g. pooled SVM 93.7 vs Table 4.1 87.4); the pooled-vs-blocked delta and the common-protocol ordering are the robust claims, absolute classical SD levels carry this caveat",
+  "thesis_files_edited": false,
+  "section_4_17_touched": false
+}

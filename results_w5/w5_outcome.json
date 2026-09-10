@@ -1,0 +1,15 @@
+{
+  "outcome": "N",
+  "gain_base_pp": 4.546943287407982,
+  "gain_shallow_pp": 4.930672470414514,
+  "gain_narrow_pp": 4.3316552648790045,
+  "I_shallow_pp": -0.38372918300653314,
+  "I_shallow_holm_p": 1.0,
+  "I_narrow_pp": 0.21528802252897714,
+  "I_narrow_holm_p": 1.0,
+  "baselines": {
+    "base": 0.7717748872924564,
+    "shallow": 0.7520727855508412,
+    "narrow": 0.7714431671973221
+  }
+}

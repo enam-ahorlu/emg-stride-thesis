@@ -1,0 +1,95 @@
+{
+  "stage": "P-1",
+  "p1a": {
+    "rates": [
+      0.1,
+      0.2,
+      0.3,
+      0.5
+    ],
+    "arm_cost_pp": [
+      21.372658526998187,
+      12.094941796700859,
+      10.261848753240152,
+      7.419835283958491
+    ],
+    "arm_f1_pct": [
+      83.10874755054687,
+      83.75641099558194,
+      83.72862159128984,
+      82.05079989841686
+    ],
+    "spearman_rate_cost_rho": -1.0,
+    "spearman_rate_cost_p": 0.0,
+    "page_L": 1113.0,
+    "page_p": 3.022271537792351e-10,
+    "cost_monotone_decreasing": true,
+    "f1_steps_pp": [
+      0.6476634450350787,
+      -0.027789404292107633,
+      -1.6778216928729819
+    ],
+    "adjacent": [
+      {
+        "contrast": "cost p0.1->p0.2",
+        "mean_pp": -9.277716730297325,
+        "lo_pp": -13.166253647527332,
+        "hi_pp": -5.280548138737297,
+        "p_raw": 4.7302397433668375e-05,
+        "d": -0.7219219912590966
+      },
+      {
+        "contrast": "cost p0.2->p0.3",
+        "mean_pp": -1.8330930434607062,
+        "lo_pp": -5.262875409554369,
+        "hi_pp": 2.6262138901383927,
+        "p_raw": 0.10289067040321243,
+        "d": -0.14385752738456728
+      },
+      {
+        "contrast": "cost p0.3->p0.5",
+        "mean_pp": -2.8420134692816617,
+        "lo_pp": -5.8403004390645465,
+        "hi_pp": 0.12721892278542024,
+        "p_raw": 0.06414752090131515,
+        "d": -0.297317571796361
+      }
+    ]
+  },
+  "p1b": {
+    "spearman_rho": 0.3052532833020638,
+    "perm_p": 0.05579442055794421,
+    "predicted_sign": "negative",
+    "sign_consistent": false
+  },
+  "p1c": {
+    "spearman_rho": -0.2816135084427768,
+    "perm_p": 0.0800919908009199,
+    "predicted_sign": "positive",
+    "sign_consistent": false
+  },
+  "p1c_companion": {
+    "spearman_rho": -0.8891181988742966,
+    "perm_p": 9.999000099990002e-05
+  },
+  "holm_family_of_four": {
+    "P-1a Spearman(rate,cost)": {
+      "raw": 0.0,
+      "holm": 0.0
+    },
+    "P-1a Page trend": {
+      "raw": 3.022271537792351e-10,
+      "holm": 9.066814613377053e-10
+    },
+    "P-1b coupling": {
+      "raw": 0.05579442055794421,
+      "holm": 0.11158884111588842
+    },
+    "P-1c prediction": {
+      "raw": 0.0800919908009199,
+      "holm": 0.11158884111588842
+    }
+  },
+  "outcome": "S",
+  "outcome_meaning": "Separated at the boundary. Occlusion cost keeps falling with rate while F1 plateaus / falls: more invariance keeps buying robustness and stops buying accuracy. Write as the over-alignment analogue of section 4.13.2, structural not mechanistic."
+}
