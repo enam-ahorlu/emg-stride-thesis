@@ -210,9 +210,10 @@ programme. Start there rather than here.
 
 The repository is archived on Zenodo. The concept identifier
 https://doi.org/10.5281/zenodo.22179742 always resolves to the most recent version and is the
-stable thing to cite. Two snapshots precede the current state: v1.0.0 (30 August 2026) at
-https://doi.org/10.5281/zenodo.22179743, and v1.1.0 (10 September 2026) at
-https://doi.org/10.5281/zenodo.22684107. Both predate the September remediation programme and
+stable thing to cite. The current version of record is **v1.2.0** (16 September 2026) at
+https://doi.org/10.5281/zenodo.22801920. Two snapshots precede it: v1.1.0 (10 September 2026)
+at https://doi.org/10.5281/zenodo.22684107 and v1.0.0 (30 August 2026) at
+https://doi.org/10.5281/zenodo.22179743. Both predate the September remediation programme and
 therefore carry an earlier correction family than the one the thesis reports.
 
 ```

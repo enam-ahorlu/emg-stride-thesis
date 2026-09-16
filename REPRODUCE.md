@@ -6,8 +6,10 @@ This file maps every headline number, table, and figure in the thesis to the scr
 - Python 3.10, packages in `requirements.txt` (pin exact versions with `pip freeze`).
 - Fixed random seed **42** throughout (NumPy, scikit-learn, PyTorch - `torch.manual_seed` + `torch.cuda.manual_seed_all`). The CNN validation split is seeded per fold as `seed + held-out-subject id`.
 - Repository: https://github.com/enam-ahorlu/emg-stride-thesis (public, default branch `main`).
-- Archived releases: **v1.2.0** is the version of record and is cut from the commit carrying the September
-  remediation programme and the 229-test family. v1.1.0 (10 September 2026,
+- Archived releases: **v1.2.0** (https://doi.org/10.5281/zenodo.22801920) is the version of record and is
+  cut from the commit carrying the September remediation programme and the 229-test family. As with
+  v1.1.0, the DOI does not exist until the GitHub release is published, so the tagged commit itself
+  cannot cite it; this line is added on `main` immediately afterwards. v1.1.0 (10 September 2026,
   https://doi.org/10.5281/zenodo.22684107) and v1.0.0 (30 August 2026,
   https://doi.org/10.5281/zenodo.22179743) both precede it.
   The concept identifier https://doi.org/10.5281/zenodo.22179742 always resolves to the most recent version.
