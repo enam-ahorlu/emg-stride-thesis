@@ -1,0 +1,230 @@
+group,family,comparison,p,reported,bears,p_BH,p_holm,sig
+established,SIAT-ablation (§4.11),1_norm_contribution [SVM] full72_global→full72_persubj,0.0,True,True,0.0,0.0,True
+established,SIAT-ablation (§4.11),1_norm_contribution [RF] full72_global→full72_persubj,0.0,True,True,0.0,0.0,True
+established,SIAT-ablation (§4.11),1_norm_contribution [CNN] full72_global→full72_persubj,0.0,True,True,0.0,0.0,True
+established,SIAT-ablation (§4.11),6_end_to_end [SVM] full72_global→rfe36_persubj,0.0,True,True,0.0,0.0,True
+established,new-experiment (§4.16),"Per-subj vs CORAL, SVM",0.0,True,True,0.0,0.0,True
+established,new-experiment (§4.16),"Per-subj vs CORAL, RF",0.0,True,True,0.0,0.0,True
+established,July-2026 second pass,LDA per-subj vs CNN per-subj,0.0,True,True,0.0,0.0,True
+established,July-2026 second pass,LDA per-subj vs RF per-subj,0.0,True,True,0.0,0.0,True
+established,new-experiment (§4.16),"Causal calib-100 vs transductive, SVM",0.0,True,True,0.0,0.0,True
+established,new-experiment (§4.16),"Causal calib-100 vs transductive, RF",0.0,True,True,0.0,0.0,True
+established,July-2026 second pass,LDA per-subj vs SVM per-subj,0.0,True,True,0.0,0.0,True
+established,new-experiment (§4.16),Calibration (3 ep) K=20 vs K=0,0.0,True,True,0.0,0.0,True
+established,new-experiment (§4.16),"Causal calib-100 vs global, SVM",0.0,True,True,0.0,0.0,True
+established,SIAT-ablation (§4.11),6_end_to_end [CNN] full72_global→gaussian_persubj,0.0,True,True,0.0,0.0,True
+established,July-2026 second pass,"STDUP-class F1 balanced vs imbalanced, SVM",0.0,True,True,0.0,0.0,True
+established,July-2026 second pass,LDA per-subj vs LDA global,0.0,True,True,0.0,0.0,True
+established,G4 ResNet-SE calibration,"ResNet-SE calibration K=20 vs K=0 (3-epoch, pooled 5-draw, n=200)",3.556489145867538e-19,True,True,4.790800084727448e-18,7.575321880697856e-17,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_UPS vs mixed100 [SVM],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_DNS vs mixed100 [SVM],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_STDUP vs mixed100 [SVM],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_UPS vs mixed100 [SVM (probability)],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_WAK vs mixed100 [SVM (probability)],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_STDUP vs mixed100 [SVM (probability)],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_DNS vs mixed100 [SVM (probability)],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_STDUP vs mixed100 [ResNet-SE+CD],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_DNS vs mixed100 [ResNet-SE+CD],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_WAK vs mixed100 [ResNet-SE+CD],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_UPS vs mixed100 [ResNet-SE+CD],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_STDUP vs mixed100 [soft ensemble],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_DNS vs mixed100 [soft ensemble],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_UPS vs mixed100 [soft ensemble],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_WAK vs mixed100 [soft ensemble],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer single_WAK vs mixed100 [SVM],1e-12,True,True,6.939393939393939e-12,2.12e-10,True
+established,G3 causal AdaBN (resnet_se),Causal AdaBN running vs full-session AdaBN,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E1: Mahalanobis, per-subject norm vs global norm",1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E1: MMD-to-others, per-subject norm vs global norm",1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",CORAL (lambda = 0.01) vs per-subject z-score [SVM],1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=5",1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=5",3.637978807091713e-12,True,True,1.3223764235301623e-11,6.220943760126829e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)","Full whitening vs per-subject z-score (alignment ladder, LOSO F1)",3.637978807091713e-12,True,True,1.3223764235301623e-11,6.220943760126829e-10,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",CORAL (lambda = 0.1) vs per-subject z-score [SVM],5.4569682106375694e-12,True,True,1.9525714378687553e-11,9.058567229658365e-10,True
+established,G9 ResNet-SE+CD promotion (Phases 3-6),"New best ensemble (SVM+RESNET_SE [stacking], chandrop) vs old best-ensemble reference (0.815)",1.2732925824820995e-11,True,True,4.41793941497577e-11,2.0881998352706432e-09,True
+established,G9 ResNet-SE+CD promotion (Phases 3-6),ResNet-SE+CD vs RF (SIAT),1.8189894035458565e-11,True,True,6.12571431488237e-11,2.964952727779746e-09,True
+established,G3 causal AdaBN (resnet_se),Causal AdaBN running vs global-norm baseline,2.5465851649641987e-11,True,True,8.451710185171037e-11,4.10000211559236e-09,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E3: causal calib25 (buffer-excl) vs transductive, SVM+RESNET_SE soft",1.2732925824820995e-10,True,True,4.049777797061122e-10,2.0118022803217173e-08,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)","Per-subject z-score vs global z-score (alignment ladder, LOSO F1)",3.074092091992497e-10,True,True,9.38622785421709e-10,4.7648427425883704e-08,True
+established,G4 ResNet-SE calibration,"ResNet-SE calibration K=10 vs K=0 (3-epoch, pooled 5-draw, n=200)",4.112110824975713e-10,True,True,1.2390439196308398e-09,6.332650670462597e-08,True
+established,G3 causal AdaBN (resnet_se),Causal AdaBN calib25 vs full-session AdaBN,6.748450687155128e-10,True,True,2.007006762803278e-09,1.0325129551347345e-07,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=10",8.130882633849972e-10,True,True,2.356926738166638e-09,1.2358941603451957e-07,True
+established,G9 ResNet-SE+CD promotion (Phases 3-6),ResNet-SE+CD vs SVM (SIAT),1.9444996723905206e-09,True,True,5.497412654042336e-09,2.916749508585781e-07,True
+established,G9 ResNet-SE+CD promotion (Phases 3-6),"ResNet-SE+CD vs base ResNet-SE (SIAT, per-subject norm)",2.293745637871325e-09,True,True,6.253880952380953e-09,3.394743544049561e-07,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=10",2.293745637871325e-09,True,True,6.253880952380953e-09,3.394743544049561e-07,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E3: causal calib50 (buffer-excl) vs transductive, SVM+RESNET_SE soft",3.163222572766244e-09,True,True,8.422999641435696e-09,4.586672730511054e-07,True
+established,G8 ResNet-SE augmentation ablation,ResNet-SE augmentation: Channel Dropout vs No Augmentation,3.163222572766244e-09,True,True,8.422999641435696e-09,4.586672730511054e-07,True
+established,G7 ResNet-SE SD-vs-LOSO gap,ResNet-SE SD vs LOSO (generalization gap),5.029505700804293e-09,True,True,1.3238583971082565e-08,7.192193152150139e-07,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",CORAL (lambda = 1.0) vs per-subject z-score [SVM],5.844412953592837e-09,True,True,1.5208756436054086e-08,8.299066394101828e-07,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=20",1.5819750842638314e-08,True,True,3.895401013939972e-08,2.1831256162840873e-06,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),E5: SVM+RF_calibrated(sigmoid)+RESNET_SE [soft] vs headline SVM+RESNET_SE [soft],1.5819750842638314e-08,True,True,3.895401013939972e-08,2.1831256162840873e-06,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E3: causal calib100 (buffer-excl) vs transductive, SVM+RESNET_SE soft",2.6917405193671584e-08,True,True,6.55753807377744e-08,3.6607671063393354e-06,True
+established,G8 ResNet-SE augmentation ablation,ResNet-SE augmentation: Combined vs No Augmentation,7.284143066499382e-08,True,True,1.7196585177611944e-07,9.687910278444178e-06,True
+established,ensemble-v2 combiner,Best ensemble-v2 (SVM+RF+RESNET_SE weighted_soft) vs original SVM+RF+CNN hard vote,1.3044336810708046e-07,True,True,3.048115438420554e-07,1.721852459013462e-05,True
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",CORAL (lambda = 10.0) vs per-subject z-score [SVM],1.4608849596697837e-07,True,True,3.379218745094752e-07,1.9137592971674167e-05,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=20",2.535471139708534e-07,True,True,5.748741494982715e-07,3.270757770224009e-05,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),E5: SVM+RF_calibrated(isotonic)+RESNET_SE [soft] vs headline SVM+RESNET_SE [soft],2.822944225044921e-07,True,True,6.337786544463597e-07,3.613368608057499e-05,True
+established,G3 causal AdaBN (resnet_se),Causal AdaBN calib50 vs full-session AdaBN,1.055741449818015e-06,True,True,2.347230990372092e-06,0.00013407916412688792,True
+established,SIAT-ablation (§4.11),6_end_to_end [RF] full72_global→rfe36_persubj,1e-05,True,True,2.0630630630630633e-05,0.00119,True
+established,G3 causal AdaBN (resnet_se),Causal AdaBN calib100 vs full-session AdaBN,2.104776467604097e-05,True,True,4.3035161703690914e-05,0.0024836362317728344,True
+established,July-2026 second pass,"STDUP-class F1 balanced vs imbalanced, RF",0.0001,True,True,0.00019406779661016948,0.011300000000000001,True
+established,July-2026 second pass,resnet_se vs SimpleEMGCNN headline (0.754),0.0001,True,True,0.00019406779661016948,0.011300000000000001,True
+established,SIAT-ablation (§4.11),3_featsel_marginal_persubj [RF] full72_persubj→rfe36_persubj,0.000206,True,True,0.0003964201680672269,0.022866,True
+established,G9 ResNet-SE+CD promotion (Phases 3-6),"AdaBN post vs pre (CD backbone, SIAT)",0.0002981813922815,True,True,0.0005690294902705291,0.032799953150965,True
+established,new-experiment (§4.16),Calibration (3 ep) K=10 vs K=0,0.0004,True,True,0.0007508196721311475,0.0432,True
+established,SIAT-ablation (§4.11),2_featsel_indep_global [RF] full72_global→rfe36_global,0.00057,True,True,0.0010526612903225807,0.060419999999999995,True
+established,G6 STDUP balance (deep models),"STDUP-class F1 balanced vs imbalanced, CNN",0.000628576191571,True,True,0.001151551582958072,0.066000500114955,True
+established,G6 STDUP balance (deep models),"STDUP-class F1 balanced vs imbalanced, RESNET_SE",0.000843662472107,True,True,0.0015333230643849445,0.087740897099128,True
+established,D-1 CNN-side adaptation (4.7),"ResNet-SE+CD per-subject vs AdaBN post (CD backbone, SIAT)",0.0082637627601798,True,True,0.013517154800579816,0.743738648416182,True
+established,D-1 CNN-side adaptation (4.7),"ResNet-SE+CD per-subject vs Deep CORAL (CD backbone, SIAT)",0.0097819976544997,True,True,0.015775193400566417,0.8705977912504733,True
+established,SIAT-ablation (§4.11),2_featsel_indep_global [RF] full72_global→mi36_global,0.002908,True,True,0.005044939393939393,0.284984,True
+established,new-experiment (§4.16),CNN external per-subj vs global (n=10),0.0039,True,True,0.006675606343283582,0.37829999999999997,True
+established,G9 ResNet-SE+CD promotion (Phases 3-6),"Best ensemble (SVM+RESNET_SE [soft], chandrop, ENABL3S) vs hard vote",0.00390625,True,True,0.006675606343283582,0.37829999999999997,True
+established,G3 causal AdaBN (resnet_se),Causal AdaBN calib25 vs global-norm baseline,0.0058316492340964,True,True,0.009723165760869566,0.5423433787709652,True
+established,G9 ResNet-SE+CD promotion (Phases 3-6),"Best ensemble (SVM+RESNET_SE [soft], chandrop, ENABL3S) vs best single model SVM",0.005859375,True,True,0.009723165760869566,0.5423433787709652,True
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=100",0.0097819976544997,True,True,0.015775193400566417,0.8705977912504733,True
+established,G9 ResNet-SE+CD promotion (Phases 3-6),ResNet-SE+CD ENABL3S per-subject vs global norm,0.013671875,True,True,0.021488356164383562,1.0,True
+established,new-experiment (§4.16),SVM external per-subj vs global (n=10),0.0137,True,True,0.021488356164383562,1.0,True
+established,SIAT-ablation (§4.11),4_cnn_aug_indep_global [CNN] full72_global→timemask_global,0.016506,True,True,0.025199683968021296,1.0,True
+established,G4 ResNet-SE calibration,"ResNet-SE calibration K=20 vs K=0 (3-epoch, single-draw)",0.0165063432104943,True,True,0.025199683968021296,1.0,True
+established,G4 ResNet-SE calibration,"ResNet-SE calibration K=5 vs K=0 (3-epoch, pooled 5-draw, n=200)",0.0257972139585146,True,True,0.03886553945065687,1.0,True
+established,G1 external validation (ENABL3S),Best ensemble-v2 (SVM+RF+RESNET_SE weighted_soft) vs best single model SVM (ENABL3S),0.02734375,True,True,0.04092626633986928,1.0,True
+established,new-experiment (§4.16),RF external per-subj vs global (n=10),0.0371,True,True,0.05447465945512821,1.0,False
+established,G1 external validation (ENABL3S),"AdaBN post vs pre (resnet_se, ENABL3S)",0.037109375,True,True,0.05447465945512821,1.0,False
+established,G1 external validation (ENABL3S),Best ensemble-v2 (SVM+RF+RESNET_SE weighted_soft) vs hard vote (ENABL3S),0.048828125,True,True,0.07122064092356688,1.0,False
+established,G4 ResNet-SE calibration,"ResNet-SE calibration K=5 vs K=0 (3-epoch, single-draw)",0.0513996852787386,True,True,0.07449701220779202,1.0,False
+established,G1 external validation (ENABL3S),ResNet-SE ENABL3S per-subject vs global norm,0.064453125,True,True,0.09224853515625,1.0,False
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=50",0.068224220740376,True,True,0.09644041079966731,1.0,False
+established,SIAT-ablation (§4.11),5_cnn_aug_marginal_persubj [CNN] full72_persubj→gaussian_persubj,0.081714,True,True,0.11480065030674845,1.0,False
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer balanced25 vs mixed100 [soft ensemble],0.08415,True,True,0.11750213414634146,1.0,False
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer balanced25 vs mixed100 [SVM (probability)],0.10581,True,True,0.14509682073969338,1.0,False
+established,July-2026 second pass,AdaBN post (resnet_se) vs SimpleEMGCNN headline (0.754),0.1119,True,True,0.15162781065088757,1.0,False
+established,new-experiment (§4.16),"Causal calib-100 vs global, RF",0.1538,True,True,0.20476860465116278,1.0,False
+established,G4 ResNet-SE calibration,"ResNet-SE calibration K=10 vs K=0 (3-epoch, single-draw)",0.1617874718067469,True,True,0.21415798291182106,1.0,False
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer balanced25 vs mixed100 [ResNet-SE+CD],0.1659,True,True,0.21833965517241377,1.0,False
+established,July-2026 second pass,Deep CORAL (resnet_se) vs SimpleEMGCNN headline (0.754),0.1831,True,True,0.2395994285714286,1.0,False
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), SVM, N=50",0.2162961354260915,True,True,0.2814307671169031,1.0,False
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),E5: best RF-calibrated(isotonic)-inclusive ensemble (SVM+RF+RESNET_SE [stacking]) vs headline SVM+RESNET_SE [soft],0.247927191781855,True,True,0.3171805973075128,1.0,False
+established,G1 external validation (ENABL3S),"AdaBN post (resnet_se, ENABL3S) vs per-subject headline (0.565)",0.275390625,True,True,0.34274159307065216,1.0,False
+established,SIAT-ablation (§4.11),4_cnn_aug_indep_global [CNN] full72_global→gaussian_global,0.288658,True,True,0.35539076344086024,1.0,False
+established,G3 causal AdaBN (resnet_se),Causal AdaBN calib50 vs global-norm baseline,0.3611039877814619,True,True,0.4306917354268478,1.0,False
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),E5: best RF-calibrated(sigmoid)-inclusive ensemble (SVM+RF+RESNET_SE [stacking]) vs headline SVM+RESNET_SE [soft],0.3753805605592788,True,True,0.44539973247707176,1.0,False
+established,SIAT-ablation (§4.11),3_featsel_marginal_persubj [SVM] full72_persubj→rfe36_persubj,0.382645,True,True,0.4516788917525773,1.0,False
+established,G8 ResNet-SE augmentation ablation,ResNet-SE augmentation: Gaussian Noise vs No Augmentation,0.4049377396495401,True,True,0.4683373838383839,1.0,False
+established,SIAT-ablation (§4.11),2_featsel_indep_global [SVM] full72_global→mi36_global,0.404938,True,True,0.4683373838383839,1.0,False
+established,"PRC 2026 causality (E-C1, E-C3, E-C4)",Calibration buffer balanced25 vs mixed100 [SVM],0.50137,True,True,0.5655902240238181,1.0,False
+established,G1 external validation (ENABL3S),"Deep CORAL (resnet_se, ENABL3S) vs per-subject headline (0.565)",0.556640625,True,True,0.6218083079268293,1.0,False
+established,EXPERIMENT_PLAN_CRITIQUE (E1-E5),"E4: regime A (subject-only) vs B (cross-subject 0-label), RF, N=100",0.7694801456255036,True,True,0.8311837422086809,1.0,False
+established,SIAT-ablation (§4.11),5_cnn_aug_marginal_persubj [CNN] full72_persubj→chandrop_persubj,0.816039,True,True,0.8691764232558139,1.0,False
+established,G8 ResNet-SE augmentation ablation,ResNet-SE augmentation: Time Masking vs No Augmentation,0.8471556244439853,True,True,0.8858389223744293,1.0,False
+established,SIAT-ablation (§4.11),4_cnn_aug_indep_global [CNN] full72_global→chandrop_global,0.847156,True,True,0.8858389223744293,1.0,False
+established,SIAT-ablation (§4.11),5_cnn_aug_marginal_persubj [CNN] full72_persubj→timemask_persubj,0.847156,True,True,0.8858389223744293,1.0,False
+established,G3 causal AdaBN (resnet_se),Causal AdaBN calib100 vs global-norm baseline,0.8785070700851065,True,True,0.9062077434661685,1.0,False
+established,SIAT-ablation (§4.11),2_featsel_indep_global [SVM] full72_global→rfe36_global,0.920592,True,True,0.9328122477876105,1.0,False
+W-1,W-1 window ablation (4.16),SVM @ 150 ms: per-subject vs global,1.8189894035458565e-11,True,True,6.12571431488237e-11,2.964952727779746e-09,True
+W-1,W-1 window ablation (4.16),SVM @ 400 ms: per-subject vs global,1.2008968042209744e-08,True,True,3.0220370128198146e-08,1.6692465578671545e-06,True
+W-1,W-1 window ablation (4.16),ResNet-SE+CD @ 150 ms: per-subject vs global,1.0437361197546124e-08,True,True,2.655728571375625e-08,1.4716679288540035e-06,True
+W-1,W-1 window ablation (4.16),ResNet-SE+CD @ 250 ms: per-subject vs global,8.130882633849973e-10,True,True,2.356926738166638e-09,1.2358941603451957e-07,True
+W-1,W-1 window ablation (4.16),ResNet-SE+CD @ 400 ms: per-subject vs global,2.0374991436256096e-06,True,True,4.280617466883161e-06,0.00024653739637869876,True
+W-1,W-1 window ablation (4.16),SVM: 150 ms vs 250 ms (per-subject),1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+W-1,W-1 window ablation (4.16),SVM: 400 ms vs 250 ms (per-subject),1.543538019177504e-06,True,True,3.334624588600457e-06,0.0001913987143780105,True
+W-1,W-1 window ablation (4.16),ResNet-SE+CD: 150 ms vs 250 ms (per-subject),3.637978807091713e-12,True,True,1.3223764235301623e-11,6.220943760126829e-10,True
+W-1,W-1 window ablation (4.16),ResNet-SE+CD: 400 ms vs 250 ms (per-subject),0.0004266080886736,True,True,0.0007942540837906862,0.0456470654880752,True
+mechanism,CD mechanism (4.8.1),ResNet noSE +CD,2.294e-09,True,True,6.253880952380953e-09,3.394743544049561e-07,True
+mechanism,CD mechanism (4.8.1),"SE main effect, +CD",0.002061,True,True,0.0036305307692307692,0.20609999999999998,True
+mechanism,CD mechanism (4.8.1),"SE main effect, no aug",4.404e-05,True,True,8.769704347826087e-05,0.0050646,True
+mechanism,CD mechanism (4.8.1),family: repro vs persubj,0.1316,True,False,0.17623625730994152,1.0,False
+mechanism,CD mechanism (4.8.1),G1 interaction (SE - noSE),0.2214,True,True,0.2864440677966102,1.0,False
+mechanism,CD mechanism (4.8.1),"no-skip vs plain, no aug",0.2371,True,False,0.3050331460674158,1.0,False
+mechanism,CD mechanism (4.8.1),no-skip +CD,5.064e-08,True,True,1.207975e-07,6.78576e-06,True
+mechanism,CD mechanism (4.8.1),skip contribution,0.01063,True,True,0.017022867132867135,0.92481,True
+mechanism,CD mechanism (4.8.1),depth + capacity contribution,4.475e-08,True,True,1.0787105263157895e-07,6.04125e-06,True
+mechanism,CD mechanism (4.8.1),"skip term, headroom-adjusted",0.005097,True,False,0.008646022222222223,0.484215,True
+mechanism,CD mechanism (4.8.2),"G3 single-electrode occlusion cost, no-aug vs channel dropout",1.819e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+mechanism,CD mechanism (4.8.2),W-4 channel dropout minus gain jitter,0.2591,True,True,0.32786290554649494,1.0,False
+mechanism,CD mechanism (4.8.2),G2 dropout rate p = 0.1 vs p = 0.2,0.13156,True,True,0.17623625730994152,1.0,False
+mechanism,CD mechanism (4.8.2),G2 dropout rate p = 0.3 vs p = 0.2,0.85758,True,True,0.8886260406408788,1.0,False
+mechanism,CD mechanism (4.8.2),G2 dropout rate p = 0.5 vs p = 0.2,0.00034,True,True,0.0006434710743801654,0.03706,True
+mechanism,W-5 depth vs capacity (4.8.1),W-5 interaction: BASE - SHALLOW,0.617864971896779,True,True,0.6802455700209731,1.0,False
+mechanism,W-5 depth vs capacity (4.8.1),W-5 interaction: BASE - NARROW,0.7345573100628826,True,True,0.7972209668454981,1.0,False
+mechanism,P-9 backbone split (4.8.2),"P-9 occlusion reduction, resnet_se vs SE-free (paired)",0.3471652914940932,True,True,0.41623482592747296,1.0,False
+mechanism,P-10 dose sweep (4.8.2),P-10 adjacent SD 0.40 vs 0.50,0.8367550107286661,True,True,0.8858389223744293,1.0,False
+mechanism,P-10 dose sweep (4.8.2),P-10 adjacent SD 0.50 vs 0.60,0.2825841121848498,True,True,0.34979330643421946,1.0,False
+mechanism,P-10 dose sweep (4.8.2),P-10 peak vs SD 0.80,1.9444996723905206e-09,True,True,5.497412654042336e-09,2.916749508585781e-07,True
+mechanism,P-10 dose sweep (4.8.2),P-10 peak vs SD 1.00,3.637978807091713e-12,True,True,1.3223764235301623e-11,6.220943760126829e-10,True
+audit,B3 per-subject silhouette (4.13.2),B3 silhouette rung3 vs rung4 (paired),1.819e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B3 per-subject silhouette (4.13.2),B3 silhouette rung3 vs rung0 (paired),9.597e-06,True,True,1.997920909090909e-05,0.00115164,True
+audit,B3 per-subject silhouette (4.13.2),B3 within-subject silhouette-F1 Spearman vs 0,1.254e-06,True,True,2.734914285714286e-06,0.00015675,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [SVM] base_w150,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [RF] base_w150,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [SVM] base_w250,3.637978807091713e-12,True,True,1.3223764235301623e-11,6.220943760126829e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [RF] base_w250,9.094947017729282e-12,True,True,3.204219795476932e-11,1.5006662579253316e-09,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [CNN] cnn_w250,1.6007106751203534e-10,True,True,5.021407460309054e-10,2.513115759938955e-08,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [SVM] ext_w150,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [RF] ext_w150,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [SVM] ext_w250,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [RF] ext_w250,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [SVM] freq72_w150,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [RF] freq72_w150,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [LDA] freq72_w150,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [SVM] freq72_w250,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [RF] freq72_w250,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,B8 subject-dependent split (4.1.3),B8 pooled vs blocked SD F1 [LDA] freq72_w250,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,S-1 active-only STDUP (4.3.1),"S-1 per-subject vs global, active-only [SVM]",3.4560798667371267e-11,True,True,1.1306318421182886e-10,5.529727786779403e-09,True
+audit,S-1 active-only STDUP (4.3.1),"S-1 per-subject vs global, active-only [RF]",2.4920154828578234e-10,True,True,7.711777642897859e-10,3.8875441532582045e-08,True
+mechanism,P-1 occlusion vs dose (4.8.2),P-1 adjacent occlusion cost p0.1->p0.2,4.7302397433668375e-05,True,True,9.33814570026729e-05,0.005392473307438195,True
+mechanism,P-1 occlusion vs dose (4.8.2),P-1 adjacent occlusion cost p0.2->p0.3,0.1028906704032124,True,True,0.1427997789232463,1.0,False
+mechanism,P-1 occlusion vs dose (4.8.2),P-1 adjacent occlusion cost p0.3->p0.5,0.0641475209013151,True,True,0.09224853515625,1.0,False
+mechanism,P-2 rank agreement (5.13),"P-2 per-subject rank consistency, CD vs baseline",1.8586324586067349e-06,True,True,3.940989194638354e-06,0.00022675315995002165,True
+external,P-3 external channel dropout (4.12),"P-3 external CD vs no aug, per-subject norm",0.001953125,True,True,0.0034671753875968993,0.201171875,True
+external,P-3 external channel dropout (4.12),"P-3 external CD vs no aug, global norm",0.275390625,True,True,0.34274159307065216,1.0,False
+mechanism,P-5 subset training (4.8.2),P-5 subset vs channel dropout,0.3403232163564098,True,True,0.4101790344506202,1.0,False
+mechanism,P-5 subset training (4.8.2),P-5 subset vs no augmentation,1.0004441719502208e-10,True,True,3.2267847236140923e-10,1.590706233400851e-08,True
+mechanism,P-6 extension matched variance (5.13),P-6 gain jitter vs channel dropout at SD 0.30,0.4049377396495401,True,True,0.4683373838383839,1.0,False
+mechanism,P-6 extension matched variance (5.13),P-6 gain jitter vs channel dropout at SD 0.40,0.0288499374764796,True,True,0.04290023170203785,1.0,True
+mechanism,P-6 extension matched variance (5.13),P-6 gain jitter vs channel dropout at SD 0.50,2.275137376273051e-07,True,True,5.210064591665287e-07,2.9576785891549662e-05,True
+mechanism,P-7 high-dose decomposition (4.8.2),P-7 D1 mean-preserving chandrop minus channel dropout p0.5,4.098819044884294e-05,True,True,8.23359264279389e-05,0.004754630092065781,True
+mechanism,P-7 high-dose decomposition (4.8.2),P-7 D2 gain jitter sd0.50 minus mean-preserving chandrop,0.0026389709109935,True,True,0.004613162890210011,0.2612581201883565,True
+audit,B8 ENABL3S subject-dependent split (4.12),B8ext pooled vs blocked SD F1 [SVM] ENABL3S,0.001953125,True,True,0.0034671753875968993,0.201171875,True
+audit,B8 ENABL3S subject-dependent split (4.12),B8ext pooled vs blocked SD F1 [RF] ENABL3S,0.001953125,True,True,0.0034671753875968993,0.201171875,True
+mechanism,W-1 alignment ladder at 400 ms (4.15),W-1 ladder @ 400 ms: full whitening vs per-subject z,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+mechanism,W-1 alignment ladder at 400 ms (4.15),W-1 ladder @ 400 ms: per-subject z vs global z,1.0437361197546124e-08,True,True,2.655728571375625e-08,1.4716679288540035e-06,True
+mechanism,D-1 CNN-side adaptation (4.7),"D-1 Deep CORAL vs AdaBN (CD backbone, SIAT)",0.4517339389858534,True,True,0.5146620498893554,1.0,False
+audit,"W-2 causal smoothing (3.2.4, 5.7.1)","W-2 causal vote k3 vs k1, macro-F1 [calib-100, probability-averaged]",1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,"W-2 causal smoothing (3.2.4, 5.7.1)","W-2 causal vote k5 vs k1, macro-F1 [calib-100, probability-averaged]",1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,"W-2 causal smoothing (3.2.4, 5.7.1)","W-2 causal vote k5 vs k3, macro-F1 [calib-100, probability-averaged]",1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,"W-2 causal smoothing (3.2.4, 5.7.1)","W-2 causal vote k3 vs k1, DNS to WAK critical-error rate [calib-100, probability-averaged]",1.733306644199106e-06,True,True,3.7096002011364043e-06,0.00021319671723649006,True
+audit,"W-2 causal smoothing (3.2.4, 5.7.1)","W-2 causal vote k5 vs k1, DNS to WAK critical-error rate [calib-100, probability-averaged]",1.1735028812661596e-06,True,True,2.583963075095678e-06,0.00014786136303953612,True
+audit,"W-2 causal smoothing (3.2.4, 5.7.1)","W-2 causal vote k5 vs k3, DNS to WAK critical-error rate [calib-100, probability-averaged]",0.0108622247048156,True,True,0.01727395456529703,0.9341513246141416,True
+audit,S-1 active-only STDUP (4.3.1),S-1 aonly soft vs aonly RESNET_SE,2.2706761228619143e-05,True,True,4.601635682613968e-05,0.0026566910637484398,True
+audit,S-1 active-only STDUP (4.3.1),S-1 aonly soft vs aonly SVM,1.8189894035458565e-12,True,True,7.181913793103448e-12,3.5652192309498787e-10,True
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Freq-72 vs Base-36 [SVM], LOSO",0.8160389817658142,True,True,0.8691764232558139,1.0,False
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Freq-72 vs Extended-54 [SVM], LOSO",0.1118500299435254,True,True,0.15162781065088757,1.0,False
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Freq-72 vs Combined-81 [SVM], LOSO",0.3138070678778604,True,True,0.380221262137725,1.0,False
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Combined-81 vs Base-36 [SVM], LOSO",0.5808067661073437,True,True,0.6425350214424237,1.0,False
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Combined-81 vs Extended-54 [SVM], LOSO",0.2948169606661395,True,True,0.36103253471949703,1.0,False
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Extended-54 vs Base-36 [SVM], LOSO",0.0215460601411905,True,True,0.032675813061805455,1.0,True
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Freq-72 vs Base-36 [RF], LOSO",0.4202122508122556,True,True,0.48356083133671623,1.0,False
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Freq-72 vs Extended-54 [RF], LOSO",0.4049377396495401,True,True,0.4683373838383839,1.0,False
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Freq-72 vs Combined-81 [RF], LOSO",0.1058129653429205,True,True,0.14509682073969338,1.0,False
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Combined-81 vs Base-36 [RF], LOSO",0.0146776427955046,True,True,0.022710677028179416,1.0,True
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Combined-81 vs Extended-54 [RF], LOSO",0.0075848629185202,True,True,0.012495925239864215,0.6902225255853383,True
+audit,W-3 feature-set LOSO comparison (4.1.1),"W-3 Extended-54 vs Base-36 [RF], LOSO",0.7749952346202917,True,True,0.8332108390988113,1.0,False
+audit,W-4 causal filter chain (4.13),"W-4 single-pass vs zero-phase bandpass [SVM, unsmoothed], macro-F1",0.0141080951798358,True,True,0.02197791698083264,1.0,True
+audit,W-4 causal filter chain (4.13),"W-4 single-pass vs zero-phase bandpass [SVM, unsmoothed], DNS to WAK critical-error rate",0.7208088617487631,True,True,0.7860249016212703,1.0,False
+audit,W-4 causal filter chain (4.13),"W-4 single-pass vs zero-phase bandpass [SVM, smoothed], macro-F1",0.9311522501084256,True,True,0.9393562346908787,1.0,False
+audit,W-4 causal filter chain (4.13),"W-4 single-pass vs zero-phase bandpass [SVM, smoothed], DNS to WAK critical-error rate",0.6751674415281835,True,True,0.739776766076335,1.0,False
+audit,W-4 causal filter chain (4.13),"W-4 single-pass vs zero-phase bandpass [RF, unsmoothed], macro-F1",0.9840937587196096,True,True,0.9884099594157483,1.0,False
+audit,W-4 causal filter chain (4.13),"W-4 single-pass vs zero-phase bandpass [RF, unsmoothed], DNS to WAK critical-error rate",0.9190773505350966,True,True,0.9328122477876105,1.0,False
+audit,W-4 causal filter chain (4.13),"W-4 single-pass vs zero-phase bandpass [RF, smoothed], macro-F1",0.9888658839962352,True,True,0.9888658839962352,1.0,False
+audit,W-4 causal filter chain (4.13),"W-4 single-pass vs zero-phase bandpass [RF, smoothed], DNS to WAK critical-error rate",0.0663623690867825,True,True,0.09439119578182108,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=0.1 vs per-subject norm,0.26487403590545,True,True,0.33327557265026403,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=3.0 vs per-subject norm,0.4517339389858534,True,True,0.5146620498893554,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=10.0 vs per-subject norm,0.3138070678778604,True,True,0.380221262137725,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=30.0 vs per-subject norm,0.5448004511072213,True,True,0.611565212272322,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=100.0 vs per-subject norm,0.5013747400735156,True,True,0.5655902240238181,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=0.1 vs lambda=1,0.5808067661073437,True,True,0.6425350214424237,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=3.0 vs lambda=1,0.9100459608780512,True,True,0.9303594867905077,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=10.0 vs lambda=1,0.8575823361643415,True,True,0.8886260406408788,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=30.0 vs lambda=1,0.8995151304461615,True,True,0.9237173312653407,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 lambda=100.0 vs lambda=1,0.259140549798758,True,True,0.32786290554649494,1.0,False
+audit,D2 Deep CORAL lambda sweep (4.7),D2 best lambda=30.0 vs AdaBN,0.0055769995942682,True,True,0.00939068314034866,0.5242379618612107,True

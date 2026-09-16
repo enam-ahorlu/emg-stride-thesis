@@ -1,0 +1,18 @@
+{
+  "A": {
+    "feat_ext": "C:\\Users\\enama\\OneDrive\\Desktop\\Documents\\MSc CS\\FInal Project\\06_Code\\features_out_filter\\freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_cbFalse_ceFalse_features_ext.npz",
+    "feat_meta": "C:\\Users\\enama\\OneDrive\\Desktop\\Documents\\MSc CS\\FInal Project\\06_Code\\features_out_filter\\freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_cbFalse_ceFalse_features_meta.csv"
+  },
+  "B": {
+    "feat_ext": "C:\\Users\\enama\\OneDrive\\Desktop\\Documents\\MSc CS\\FInal Project\\06_Code\\features_out_filter\\freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_cbTrue_ceFalse_features_ext.npz",
+    "feat_meta": "C:\\Users\\enama\\OneDrive\\Desktop\\Documents\\MSc CS\\FInal Project\\06_Code\\features_out_filter\\freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_cbTrue_ceFalse_features_meta.csv"
+  },
+  "C": {
+    "feat_ext": "C:\\Users\\enama\\OneDrive\\Desktop\\Documents\\MSc CS\\FInal Project\\06_Code\\features_out_filter\\freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_cbFalse_ceTrue_features_ext.npz",
+    "feat_meta": "C:\\Users\\enama\\OneDrive\\Desktop\\Documents\\MSc CS\\FInal Project\\06_Code\\features_out_filter\\freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_cbFalse_ceTrue_features_meta.csv"
+  },
+  "D": {
+    "feat_ext": "C:\\Users\\enama\\OneDrive\\Desktop\\Documents\\MSc CS\\FInal Project\\06_Code\\features_out_filter\\freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_cbTrue_ceTrue_features_ext.npz",
+    "feat_meta": "C:\\Users\\enama\\OneDrive\\Desktop\\Documents\\MSc CS\\FInal Project\\06_Code\\features_out_filter\\freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_cbTrue_ceTrue_features_meta.csv"
+  }
+}

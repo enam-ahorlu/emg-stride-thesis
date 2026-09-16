@@ -1,0 +1,2 @@
+subject,arch,coral_lambda,f1_macro,bal_acc
+1,resnet_se,1.0,0.7338441228176734,0.7182500126920767

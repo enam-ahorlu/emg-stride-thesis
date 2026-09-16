@@ -1,0 +1,2 @@
+method,arch,coral_lambda,f1_macro_mean,f1_macro_sd,n
+DeepCORAL,resnet_se,100.0,0.8345,0.0685,40

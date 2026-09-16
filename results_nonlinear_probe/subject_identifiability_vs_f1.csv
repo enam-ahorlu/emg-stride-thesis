@@ -1,0 +1,7 @@
+rung,name,model,probe,spearman_rho,p,n
+0,global_z,SVM,forest,-0.3415,0.031052079305699375,40
+0,global_z,RF,forest,-0.2,0.21595789272090804,40
+0,global_z,ResNet_SE_CD,forest,-0.5349,0.0003766563399181428,40
+3,mean_scale,SVM,forest,0.0097,0.9527009964925695,40
+3,mean_scale,RF,forest,0.0097,0.9527009964925695,40
+3,mean_scale,ResNet_SE_CD,forest,0.0097,0.9527009964925695,40
