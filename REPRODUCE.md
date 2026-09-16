@@ -6,7 +6,10 @@ This file maps every headline number, table, and figure in the thesis to the scr
 - Python 3.10, packages in `requirements.txt` (pin exact versions with `pip freeze`).
 - Fixed random seed **42** throughout (NumPy, scikit-learn, PyTorch - `torch.manual_seed` + `torch.cuda.manual_seed_all`). The CNN validation split is seeded per fold as `seed + held-out-subject id`.
 - Repository: https://github.com/enam-ahorlu/emg-stride-thesis (public, default branch `main`).
-- Archived release: **v1.1.0**, tagged 10 September 2026, archived at https://doi.org/10.5281/zenodo.22684107.
+- Archived releases: **v1.2.0** is the version of record and is cut from the commit carrying the September
+  remediation programme and the 229-test family. v1.1.0 (10 September 2026,
+  https://doi.org/10.5281/zenodo.22684107) and v1.0.0 (30 August 2026,
+  https://doi.org/10.5281/zenodo.22179743) both precede it.
   The concept identifier https://doi.org/10.5281/zenodo.22179742 always resolves to the most recent version.
   The earlier v1.0.0 snapshot (30 August 2026) remains at https://doi.org/10.5281/zenodo.22179743.
 - **Scope note.** The superseded v1.0.0 snapshot predates the September parity programme (P-1 to P-8), the ENABL3S movement-blocked
@@ -16,7 +19,10 @@ This file maps every headline number, table, and figure in the thesis to the scr
 
 ## Dataset
 - **SIAT-LLMD** - Wei, W., Tan, F., Zhang, H., Mao, H., Fu, M., Samuel, O. W., & Li, G. (2023). *Surface electromyogram, kinematic, and kinetic dataset of lower limb walking for movement intent recognition.* Scientific Data, 10, 358. https://doi.org/10.1038/s41597-023-02263-3
-- Local: `SIAT_LLMD20230404/Sub01…Sub40/`. 40 subjects, 9 sEMG channels @ 2000 Hz; four classes used: WAK, UPS, DNS, STDUP.
+- Local: `SIAT_LLMD20230404/Sub01…Sub40/`. 40 subjects, 9 sEMG channels @ 1920 Hz (the released files
+  and reference code imply 1920, the dataset descriptor states 1926, and the published features
+  were extracted at `extract_features.py`'s 2000 Hz default, which is a null operation on the
+  result because the rate enters as one constant that normalization divides out); four classes used: WAK, UPS, DNS, STDUP.
 
 ## Pipeline order
 ```
@@ -178,7 +184,7 @@ the original SVM+RF+CNN hard vote); `results_ensemble_v2/ensemble_v2_subjectwise
 weighted-soft voting over SVM+RF+ResNet-SE, 0.8151 (95% BCa CI [0.7946, 0.8330]) vs the original hard-vote
 0.7917 (95% BCa CI [0.7725, 0.8098]); paired Wilcoxon p < 0.0001, Cohen's d = 1.08. Folded into the
 whole-thesis FDR family via `report_figs/new_experiments/ensemble_v2_stats_fdr.csv` and `stats_unified_fdr.py`
-(39 paired tests at the time; the family of record is now the 189 tests of `recompute_unified_fdr_v5.py`).
+(39 paired tests at the time; the family of record is now the 229 tests of `recompute_unified_fdr_v8.py`).
 
 ## Regenerating the new-experiment figures & tables (§§4.12-4.16, §A.4, §A.5)
 These five scripts read only the LOSO result CSVs above (no retraining) and write every figure and table CSV used in Sections 4.12–4.16 to `report_figs/new_experiments/`. They are fast (seconds) and deterministic - the BCa confidence intervals are seeded from a hash of the input vector, so reruns give identical numbers. Run from the project root:
@@ -189,7 +195,7 @@ python compare_causal_normalization.py       # Fig 4.18, Table 4.14
 python compare_cnn_calibration_schedules.py  # Fig 4.19, Table 4.15
 python stats_new_experiments.py              # Table 4.16 (synthesis), Table 4.17 (FDR family), all BCa CIs
 python stats_july2_experiments.py            # July-2026 second-pass family (LDA, CNN arch, Deep CORAL, AdaBN, STDUP)
-python recompute_unified_fdr_v5.py           # whole-thesis correction, version of record: 189 paired tests, 143 survive
+python recompute_unified_fdr_v8.py           # whole-thesis correction, version of record: 229 paired tests, 154 survive
 ```
 Each script has an "Expects / Outputs" header naming its exact input dirs and output files. `report_figs/new_experiments/README.md` lists every output and the thesis item it backs. The reported BCa CIs and the Holm/BH-FDR corrected p-values in the thesis are taken verbatim from `new_experiments_cis.csv` and `new_experiments_stats_fdr.csv`.
 

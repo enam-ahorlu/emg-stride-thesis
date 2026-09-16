@@ -4,7 +4,7 @@ Code, results and reproduction path for an MSc thesis on **cross-subject general
 surface electromyography (sEMG) based lower-limb movement classification**.
 
 **Author:** Enam Ahorlu, MSc Computer Science, University of Ghana
-**Dataset:** SIAT-LLMD (40 subjects, 9 channels, 2000 Hz), externally replicated on ENABL3S (10 subjects, 7 channels, 1000 Hz)
+**Dataset:** SIAT-LLMD (40 subjects, 9 channels, 1920 Hz), externally replicated on ENABL3S (10 subjects, 7 channels, 1000 Hz)
 **Reproduction:** every number, table and figure in the thesis is mapped to its script and output in [`REPRODUCE.md`](REPRODUCE.md)
 
 ---
@@ -29,7 +29,9 @@ wins is the reason more thorough corrections lose.
 
 Per-subject z-scoring, computed from the held-out subject's own **unlabeled** windows inside the
 LOSO loop, improves macro-F1 by 5 to 7 pp across every model family on SIAT and by 10 to 17 pp on
-ENABL3S. It outperforms CORAL, Deep CORAL and adaptive batch normalization. Because it draws on the
+ENABL3S. It outperforms CORAL and adaptive batch normalization, and is not separable from Deep
+CORAL, whose alignment weight was swept across three orders of magnitude without improving it on
+this backbone. Because it draws on the
 target subject's own data it is transductive, and is best read not as an alternative to domain
 adaptation but as its simplest label-free member.
 
@@ -45,7 +47,11 @@ identical LOSO protocol:
 | 4 | Full covariance whitening | 73.0% | 0.012 | -0.006 | 0.675 |
 
 Mean-centering alone drives the subject-identity probe from 0.777 to 0.043 against a chance floor of
-0.025, so the between-subject shift is overwhelmingly a difference in **location**. Full whitening
+0.025, so the subject structure a **linear** probe can decode is overwhelmingly a difference in
+**location**. That qualifier carries weight. Nonlinear probes fit on the same rung outputs still
+identify the subject at 0.9999, and a linear probe reaches 0.608 once restricted to a single
+movement, so what the operation removes is the component of the subject shift common across
+movements rather than subject identity itself. Full whitening
 removes more subject variance still, and is 10.1 pp **worse**, because it strips class-discriminative
 structure along with the nuisance. The ordering replicates at a 400 ms window, where the
 over-alignment cost is 12.1 pp.
@@ -107,17 +113,22 @@ Two further results worth knowing before reading the code:
 Every comparison is a subject-paired Wilcoxon signed-rank test with a paired Cohen's d and a BCa
 confidence interval, at n = 40 (SIAT) or n = 10 (ENABL3S).
 
-Every paired comparison the thesis reports is pooled into **one Benjamini-Hochberg family of 189
-tests**, recomputed from source each time it grew rather than patched. 143 survive at a 5%
-false-discovery rate. The 46 that do not are, without exception, results already reported as null or
-as honest negatives. `recompute_unified_fdr_v5.py` builds the family of record; earlier versions are
-kept so the growth of the family is inspectable.
+Every paired comparison the thesis reports is pooled into **one Benjamini-Hochberg family of 229
+tests**, recomputed from source each time it grew rather than patched. 154 survive at a 5%
+false-discovery rate. The 75 that do not are, with two exceptions the thesis names, results already
+reported as null or as honest negatives. `recompute_unified_fdr_v8.py` builds the family of record;
+every earlier version is kept so the growth of the family is inspectable, and the two contrasts that
+lost significance as it grew are reported rather than absorbed.
 
 ---
 
 ## Datasets
 
-**SIAT-LLMD** (primary). 40 healthy adults, 9 sEMG channels at 2000 Hz.
+**SIAT-LLMD** (primary). 40 healthy adults, 9 sEMG channels at 1920 Hz. The published feature
+matrices were extracted with `extract_features.py`'s 2000 Hz default left in place, which changes
+nothing: the rate enters as one multiplicative constant on the two spectral features that both
+normalization schemes divide out, and a rebuild at 1920 Hz reproduces the SVM figure to every
+digit stored.
 Wei, W., Tan, F., Zhang, H., Mao, H., Fu, M., Samuel, O. W., & Li, G. (2023). Surface electromyogram,
 kinematic, and kinetic dataset of lower limb walking for movement intent recognition. *Scientific
 Data*, 10, Article 358. https://doi.org/10.1038/s41597-023-02263-3
@@ -186,7 +197,7 @@ python extract_features.py          # windowed .npz -> feature matrices
 python train_classical_loso.py --norm-mode per_subject   # SVM / RF LOSO
 python run_cnn_arch_loso.py --arch resnet_se --augmentation chandrop --norm-mode per_subject
 python ensemble_v2_combine.py       # combiner comparison
-python recompute_unified_fdr_v5.py  # whole-thesis correction family
+python recompute_unified_fdr_v8.py  # whole-thesis correction family
 ```
 
 `REPRODUCE.md` is the authority and carries the exact invocation for every reported result,
@@ -197,11 +208,12 @@ programme. Start there rather than here.
 
 ## Archive and citation
 
-The repository is archived on Zenodo. The current release is **v1.1.0**, at
-https://doi.org/10.5281/zenodo.22684107, and it is the version of record the thesis cites. The
-concept identifier https://doi.org/10.5281/zenodo.22179742 always resolves to the most recent
-version. The earlier v1.0.0 snapshot (30 August 2026), which predates the September work, remains
-at https://doi.org/10.5281/zenodo.22179743.
+The repository is archived on Zenodo. The concept identifier
+https://doi.org/10.5281/zenodo.22179742 always resolves to the most recent version and is the
+stable thing to cite. Two snapshots precede the current state: v1.0.0 (30 August 2026) at
+https://doi.org/10.5281/zenodo.22179743, and v1.1.0 (10 September 2026) at
+https://doi.org/10.5281/zenodo.22684107. Both predate the September remediation programme and
+therefore carry an earlier correction family than the one the thesis reports.
 
 ```
 Ahorlu, E. (2026). Cross-subject generalization in surface electromyography-based
