@@ -1,6 +1,6 @@
 # Channel-dropout mechanism programme — consolidated report
 
-**Run 1–2 September 2026 by Claude Code, on Enam's machine. All local, no network.**
+**Run 1–2 September 2026 on Enam's machine. All local, no network.**
 Master run order: `RUN_ORDER_CD_MECHANISM.md`. Five stages plus the R-1 precursor.
 **No `MSc Thesis.docx` or chapter file was edited.** Every wording change implied below is Enam's.
 

@@ -50,7 +50,7 @@
 >   No thesis file edited. Section 6.1 framing decision is Enam's. Pre-registration below is unedited.
 
 **Status:** ready to run. Written 2 September 2026.
-**Executor:** Claude Code, on Enam's machine.
+**Execution:** local, on Enam's machine.
 **Cost: stages 1 to 3 need NO GPU.** They are paired tests and correlations on result files that already exist and were never analysed. Budget 2 to 3 hours of analysis and writing. Stage 4 is 4 GPU runs, about 2 to 3.5 hours, and is **conditional**: do not start it until stages 1 to 3 are reported.
 **Owner decision points:** three, at 1.6, 5.5 and 6.1. Do not resolve any of them yourself.
 

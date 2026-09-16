@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-Three more `06_Code/docs/EXPERIMENT_PLAN_*.md` plans run 13-14 September 2026 by Claude Code, in the
+Three more `06_Code/docs/EXPERIMENT_PLAN_*.md` plans run 13-14 September 2026 in the
 sequence Enam specified (PROBE, then PROBE_CLASSCOND added mid-run, then FILTER), executed
 autonomously start to finish per Enam's explicit authorization. CPU-only, project `.venv`, no
 retraining except FILTER's permitted classical cheap-refit. No thesis chapter edited. Related:

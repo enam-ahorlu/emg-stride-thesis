@@ -58,7 +58,7 @@
 >   is unedited.
 
 **Status:** ready to run. Written 3 September 2026, from `04_Reviews_and_QA/METHODOLOGY_AUDIT_3SEP.md`.
-**Executor:** Claude Code, on Enam's machine. **Queue this after the locus programme finishes.**
+**Execution:** local, on Enam's machine. **Queue this after the locus programme finishes.**
 **Cost: B1 to B4 need no GPU. B8 (section 4A) needs well under an hour of GPU for the CNN arm and no LOSO.** B1 and B4 are scripting, B2 is literature work, B3 is a CPU analysis.
 Budget 3 to 5 hours, most of it B2.
 **Owner decision points: three**, at 2.5, 3.4 and 4.5. Do not resolve any of them yourself.

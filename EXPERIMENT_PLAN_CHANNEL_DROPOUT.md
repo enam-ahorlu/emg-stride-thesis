@@ -35,7 +35,7 @@
 
 
 **Status:** ready to run. Written 31 August 2026.
-**Executor:** Claude Code, on Enam's machine. Everything runs locally; nothing needs the network.
+**Execution:** on Enam's machine. Everything runs locally; nothing needs the network.
 **Structure:** one mandatory stage with a conditional gate, then three optional stages that only run if the gate opens.
 **Owner decision points:** two, in §1.4 and §4.3. Do not resolve either. Report and stop.
 

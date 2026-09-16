@@ -1,6 +1,6 @@
 # Channel-dropout parity programme: consolidated outcome
 
-Executor: Claude Code. No thesis file was edited. Section 4.17 was not touched. The deep model of record (channel-dropout resnet_se, 0.840) is unchanged. Stage P-4 was not started.
+No thesis file was edited. Section 4.17 was not touched. The deep model of record (channel-dropout resnet_se, 0.840) is unchanged. Stage P-4 was not started.
 
 | Stage | Outcome | One line |
 |---|---|---|

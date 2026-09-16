@@ -1,6 +1,6 @@
-# The prompt to push to Claude Code for P3.3 (Deep CORAL lambda sweep, D2)
+# Run instructions for P3.3 (Deep CORAL lambda sweep, D2)
 
-Paste everything below the line.
+The instructions handed to whoever runs this are everything below the line.
 
 ---
 

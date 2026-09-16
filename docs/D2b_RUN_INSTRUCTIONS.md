@@ -1,6 +1,6 @@
-# The prompt to push to Claude Code for P3.4 (D2b, the comparator control)
+# Run instructions for P3.4 (D2b, the comparator control)
 
-Paste everything below the line.
+The instructions handed to whoever runs this are everything below the line.
 
 ---
 

@@ -8,7 +8,7 @@ metadata:
   modified: 2026-09-13T17:14:26.562Z
 ---
 
-Four `06_Code/docs/EXPERIMENT_PLAN_*.md` plans run 11 September 2026 by Claude Code, in the
+Four `06_Code/docs/EXPERIMENT_PLAN_*.md` plans run 11 September 2026 in the
 sequence Enam specified: SMOOTHING, AONLY_ENSEMBLE, FEATURESETS, then DEEPCORAL (D1 only, added
 mid-run). CPU-only, project `.venv`, no retraining except the one permitted classical refit. No
 thesis chapter edited; `results_causal_ensemble/`, `results_aonly_persubj/`,
@@ -82,7 +82,7 @@ thesis chapter edited; `results_causal_ensemble/`, `results_aonly_persubj/`,
   progress every cycle). **If running classical LOSO nested search on this machine again: skip the
   tiers, go straight to `--models SVM` then `--models RF --rf-n-jobs 1`, guard-wrapped
   (`--max-mem-percent 92 --min-free-gb 1.2`), one model at a time.** Also confirmed: the actual
-  Windows training processes (guard + child) survive a Claude Code harness/session restart
+  Windows training processes (guard + child) survive a harness or session restart
   independently, since they're real OS processes not tied to the conversation — a session restart
   does not lose progress, only the harness's own bookkeeping of the background task.
 

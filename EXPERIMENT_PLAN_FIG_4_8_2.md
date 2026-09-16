@@ -1,7 +1,7 @@
 # Experiment plan: the Section 4.8.2 occlusion figure (F-1)
 
 **Status:** ready to run. Written 2 September 2026.
-**Executor:** Claude Code, on Enam's machine.
+**Execution:** local, on Enam's machine.
 **No GPU. No training. This reads stored CSVs and draws a figure.** Estimated 30 to 60 minutes including the render check.
 **Owner decision point:** one, in section 1.4. Do not resolve it yourself.
 

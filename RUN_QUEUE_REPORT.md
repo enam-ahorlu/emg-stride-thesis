@@ -1,6 +1,6 @@
 # RUN_QUEUE consolidated report
 
-Executor: Claude Code, on Enam's machine. Written 4 September 2026, on completion of the last queue item (S-1).
+Run on Enam's machine. Written 4 September 2026, on completion of the last queue item (S-1).
 Covers every item in `RUN_QUEUE.md`, each against its own pre-registered grid. Nothing in `01_Thesis/` was
 edited; Section 4.17 and the unified Benjamini-Hochberg family were not touched; the deep model of record
 (`resnet_se` + channel dropout, 0.840) was not changed; every run wrote a new `results_*` folder and its command

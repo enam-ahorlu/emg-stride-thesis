@@ -30,7 +30,7 @@
 >   `results_parity/p7_verdict.md`. Pre-registration below is unedited.
 
 **Status:** ready to run. Written 3 September 2026.
-**Executor:** Claude Code, on Enam's machine.
+**Execution:** local, on Enam's machine.
 **Cost: one 40-fold run, about 55 minutes.** No new code. The mode this needs already exists and already passed its
 inertness and multiplier gates during P-6.
 **Owner decision point:** one, in section 7. Do not resolve it yourself.

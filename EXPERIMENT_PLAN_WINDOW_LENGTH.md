@@ -1,7 +1,7 @@
 # Experiment plan: window-length ablation (W-1)
 
 **Status:** ready to run. Written 31 August 2026.
-**Executor:** Claude Code, on Enam's machine. Everything here runs locally; nothing needs the network.
+**Execution:** on Enam's machine. Everything here runs locally; nothing needs the network.
 **Owner decision point:** one, defined in §1.3. Do not resolve it yourself. Report and stop.
 
 ---

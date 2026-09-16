@@ -94,7 +94,7 @@
 >   `p10_curve.csv`, `p10_ceiling_curve.png`. Pre-registration below is unedited.
 
 **Status:** ready to run. Written 3 September 2026.
-**Executor:** Claude Code, on Enam's machine.
+**Execution:** local, on Enam's machine.
 **Cost: P-8 needs NO GPU** and is pure re-analysis of files on disk. P-9 is 2 runs, about 80 minutes. P-10 is
 3 runs, about 2.5 hours.
 **Run P-8 first and report before starting either of the others.** P-8 may answer the locus question on its own,

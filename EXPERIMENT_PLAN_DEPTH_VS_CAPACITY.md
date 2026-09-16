@@ -11,7 +11,7 @@
 > touched. Numbers: `results_w5/w5_verdict.md`. Pre-registration below is unedited.
 
 **Status:** ready to run. Written 2 September 2026.
-**Executor:** Claude Code, on Enam's machine. Everything runs locally.
+**Execution:** on Enam's machine. Everything runs locally.
 **Cost:** four 40-fold runs plus two smoke tests, about **2 to 3.5 hours of GPU**, on the W-3 timings of 25 to 50 minutes per 40-fold run.
 **Owner decision points:** two, in sections 1.5 and 6. Do not resolve either yourself. Report and stop.
 **This is Tier 4, which is optional.** If the calendar will not take the whole plan, run none of it. Section 5.13 of the thesis already records this as open, and a half-answered version is worse than a stated limitation. See section 8.
