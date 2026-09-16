@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, filtfilt, lfilter
 
 
 @dataclass
@@ -20,9 +20,17 @@ class PreprocessConfig:
     bandpass_low: float = 20.0
     bandpass_high: float = 450.0
     bandpass_order: int = 4
+    # EXPERIMENT_PLAN_FILTER.md: filtfilt (default, zero-phase, acausal) vs
+    # lfilter (single-pass, causal). Default False reproduces every published
+    # feature set unchanged.
+    causal_bandpass: bool = False
 
     # Envelope
     envelope_ms: float = 50.0
+    # EXPERIMENT_PLAN_FILTER.md: centred rolling mean (default, reads 25 ms into
+    # the future) vs trailing (causal). Default False reproduces every published
+    # feature set unchanged.
+    causal_envelope: bool = False
 
     # Windowing
     win_ms: float = 150.0
@@ -192,7 +200,10 @@ def apply_bandpass(df: pd.DataFrame, fs: float, cfg: PreprocessConfig) -> pd.Dat
         x = out[col].to_numpy(dtype=float)
         if not np.all(np.isfinite(x)):
             raise ValueError(f"Non-finite values in {col}. Clean input before filtering.")
-        out[col] = filtfilt(b, a, x)
+        # EXPERIMENT_PLAN_FILTER.md arm B/D: lfilter is single-pass and causal
+        # (reads only past samples); filtfilt is zero-phase forward-backward
+        # and therefore acausal by construction. Default (False) is unchanged.
+        out[col] = lfilter(b, a, x) if cfg.causal_bandpass else filtfilt(b, a, x)
 
     return out
 
@@ -204,9 +215,13 @@ def rectify_and_envelope(df: pd.DataFrame, fs: float, cfg: PreprocessConfig) -> 
     win_samples = int(round(cfg.envelope_ms * fs / 1000.0))
     win_samples = max(win_samples, 1)
 
+    # EXPERIMENT_PLAN_FILTER.md arm C/D: centred (default, reads win_samples//2
+    # into the future of every sample) vs trailing (causal, only past samples).
+    # min_periods=1 kept in both cases so window edges still produce a value.
+    center = not cfg.causal_envelope
     for col in emg_cols:
         rect = np.abs(out[col].to_numpy(dtype=float))
-        out[col] = pd.Series(rect).rolling(win_samples, center=True, min_periods=1).mean().to_numpy()
+        out[col] = pd.Series(rect).rolling(win_samples, center=center, min_periods=1).mean().to_numpy()
 
     return out
 
@@ -463,7 +478,9 @@ def build_full_dataset(
         "bandpass_low": float(cfg.bandpass_low),
         "bandpass_high": float(cfg.bandpass_high),
         "bandpass_order": int(cfg.bandpass_order),
+        "causal_bandpass": bool(cfg.causal_bandpass),
         "envelope_ms": float(cfg.envelope_ms),
+        "causal_envelope": bool(cfg.causal_envelope),
         "win_ms": float(cfg.win_ms),
         "overlap": float(cfg.overlap),
         "drop_none_labels": bool(cfg.drop_none_labels),
@@ -622,6 +639,15 @@ def main():
 
     parser.add_argument("--align-tol", type=float, default=None, help="Optional alignment tolerance in seconds")
 
+    parser.add_argument("--causal-bandpass", action="store_true",
+                        help="EXPERIMENT_PLAN_FILTER.md: use lfilter (single-pass, causal) instead of "
+                             "filtfilt (zero-phase, acausal) for the bandpass. Default off reproduces "
+                             "every published feature set unchanged.")
+    parser.add_argument("--causal-envelope", action="store_true",
+                        help="EXPERIMENT_PLAN_FILTER.md: use a trailing (causal) rolling mean instead of "
+                             "a centred one for the envelope. Default off reproduces every published "
+                             "feature set unchanged.")
+
     args = parser.parse_args()
 
     def _parse_ablation_list(s: str) -> list[float]:
@@ -640,7 +666,10 @@ def main():
         ov_pct = int(round(float(args.overlap) * 100))
         conf_pct = int(round(float(args.min_conf) * 100))
         stdup = "Aonly" if args.keep_only_active_stdup else "AorR"
-        return f"w{int(win_ms)}_ov{ov_pct}_conf{conf_pct}_{stdup}"
+        base = f"w{int(win_ms)}_ov{ov_pct}_conf{conf_pct}_{stdup}"
+        # EXPERIMENT_PLAN_FILTER.md: always visible in the filename, never
+        # reusing the published (flagless) stem, even when both flags are off.
+        return f"{base}_cb{bool(args.causal_bandpass)}_ce{bool(args.causal_envelope)}"
 
     tag = args.run_tag.strip()
     if args.auto_tag and not args.ablation:
@@ -670,6 +699,8 @@ def main():
         min_label_conf=float(args.min_conf),
         keep_only_active_stdup=bool(args.keep_only_active_stdup),
         align_tol=args.align_tol,
+        causal_bandpass=bool(args.causal_bandpass),
+        causal_envelope=bool(args.causal_envelope),
     )
 
     subjects = parse_subjects(args.subjects)
