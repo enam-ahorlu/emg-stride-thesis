@@ -1,0 +1,90 @@
+{
+  "E": {
+    "level": "E",
+    "n_candidates": 24,
+    "candidates": [
+      "SVM+RF+CNN [hard]",
+      "SVM+RF+CNN [soft]",
+      "SVM+RF+CNN [weighted_soft]",
+      "SVM+RF+CNN [stacking]",
+      "SVM+RF+RESNET_SE [hard]",
+      "SVM+RF+RESNET_SE [soft]",
+      "SVM+RF+RESNET_SE [weighted_soft]",
+      "SVM+RF+RESNET_SE [stacking]",
+      "SVM+RF+CNN+RESNET_SE [hard]",
+      "SVM+RF+CNN+RESNET_SE [soft]",
+      "SVM+RF+CNN+RESNET_SE [weighted_soft]",
+      "SVM+RF+CNN+RESNET_SE [stacking]",
+      "SVM+RF [hard]",
+      "SVM+RF [soft]",
+      "SVM+RF [weighted_soft]",
+      "SVM+RF [stacking]",
+      "SVM+RESNET_SE [hard]",
+      "SVM+RESNET_SE [soft]",
+      "SVM+RESNET_SE [weighted_soft]",
+      "SVM+RESNET_SE [stacking]",
+      "RF+RESNET_SE [hard]",
+      "RF+RESNET_SE [soft]",
+      "RF+RESNET_SE [weighted_soft]",
+      "RF+RESNET_SE [stacking]"
+    ],
+    "published_config": "SVM+RESNET_SE [soft]",
+    "published_f1": 0.858,
+    "nested_f1_mean": 0.8581659905271287,
+    "nested_f1_sd": 0.06365935136659444,
+    "optimism_pct_points": -0.01659905271287343,
+    "optimism_bootstrap_95ci_pct_points": [
+      -2.0686499229542696,
+      1.8157519865359153
+    ],
+    "n_published_chosen_of_40": 0,
+    "n_subjects": 40,
+    "letter": "E",
+    "true_argmax_of_24_config": "SVM+RESNET_SE [stacking]",
+    "true_argmax_of_24_f1": 0.8603751800063973
+  },
+  "D": {
+    "level": "D",
+    "n_candidates": 10,
+    "candidates": [
+      "resnet_se+none",
+      "resnet_se+gaussian",
+      "resnet_se+timemask",
+      "resnet_se+combined",
+      "resnet_se+chandrop (model of record)",
+      "resnet+none",
+      "resnet_nose+chandrop",
+      "resnet_nores+none",
+      "resnet_nores+chandrop",
+      "simple+none"
+    ],
+    "published_config": "resnet_se+chandrop (model of record)",
+    "published_f1": 0.8394900592540072,
+    "nested_f1_mean": 0.8394900592540072,
+    "nested_f1_sd": 0.06708925447433954,
+    "optimism_pct_points": 0.0,
+    "optimism_bootstrap_95ci_pct_points": [
+      -1.9136044215810932,
+      2.4014270219730047
+    ],
+    "n_published_chosen_of_40": 40,
+    "n_subjects": 40,
+    "letter": "N",
+    "excluded_candidates": []
+  },
+  "J": {
+    "level": "J",
+    "published_config": "deep(model of record) -> ensemble(SVM+RESNET_SE soft)",
+    "published_f1": 0.858,
+    "nested_f1_mean": 0.8581659905271287,
+    "nested_f1_sd": 0.06365935136659444,
+    "optimism_pct_points": -0.01659905271287343,
+    "n_published_chosen_of_40": 0,
+    "n_subjects": 40,
+    "letter": "E",
+    "method_note": "Level J nests the deep-architecture choice first; where that nested choice is not the chandrop model of record, no ensemble proba exists for the alternative so the deep candidate's own solo F1 is substituted (conservative, not optimistic)."
+  },
+  "overall_letter": "E",
+  "bootstrap_seed": 42,
+  "bootstrap_resamples": 10000
+}
