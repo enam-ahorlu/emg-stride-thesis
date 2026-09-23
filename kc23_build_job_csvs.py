@@ -158,7 +158,21 @@ _d1_arm("r12", "results_kc23_d1_r12_s42",
        f'--aug-chandrop-p 0.2 --instrument {instr("results_kc23_d1_r12_s42")} --seed 42 --out results_kc23_d1_r12_s42 --resume')
 # gate on the last of the seed-42 arms only (R2, the slowest/most-depended-on)
 gpu_rows[-1]["gate_script"] = ""  # R12 has no gate itself
-gpu_rows[[r["job_id"] for r in gpu_rows].index("d1_r2_s42")]["gate_script"] = D1_REPRO_GATE
+# NOTE: the D1.4 reproduction gate does NOT attach to d1_r2_s42 itself -- that
+# fires as soon as R2 finishes, pointed at R2's own private out_dir, before R1
+# and R10(pre) exist and before any aggregate input csv does either. Found
+# live 2026-09-24 (kc23_d1_replicate_stats.py --out results_kc23_d1_r2_s42
+# silently no-ops: none of its four expected input csvs live there). The real
+# reproduction-gate job is added below, once R1/R2/R10 for seed 42 are all in.
+
+# ============================================================================
+# #6b (Phase 2, CPU): KC-D1.4 reproduction gate, once R1/R2/R10 (seed 42) exist
+# ============================================================================
+D1_AGGREGATE = "kc23_d1_aggregate.py"
+cpu("d1_reproduction_check", "D1-REPRO", None,
+   f'{PY} {D1_AGGREGATE} --root . --out results_kc23_d1_repro_check',
+   "results_kc23_d1_repro_check", depends_on=("d1_r1_s42", "d1_r2_s42", "d1_r10_s42"),
+   gate_script=D1_REPRO_GATE)
 
 # ============================================================================
 # #7 (Phase 2, GPU+CPU): KC-S1 scripted buffer, 3 realizations (base training)
@@ -239,7 +253,11 @@ for seed in [7, 123, 1001]:
            f'{PY} train_cnn_loso.py --npz {NPZ_250} --meta {META_250} --norm-mode per_subject{augflag} '
            f'--seed {seed} --out {out} --resume', out, depends_on=("d1_r2_s42",))
         d1_all_seed_ids.append(f"d1_{arm}_s{seed}")
-gpu_rows[[r["job_id"] for r in gpu_rows].index(f"d1_r2_s1001")]["gate_script"] = "kc23_d1_replicate_stats.py"  # D1 headline gate, after the last seed
+# NOTE: the D1.5-D1.7 contrast/headline gate does NOT attach to d1_r2_s1001 --
+# that job's own depends_on is only ("d1_r2_s42",), so it can (and did, in
+# scheduling order) finish long before the other 46 Tier-A/Tier-B runs it
+# needs are done, pointed at its own private out_dir. The real aggregate gate
+# job is added after Tier B (below), once all 63 D1+D1B runs are collected.
 
 # ============================================================================
 # #10 (Phase 3, CPU): KC-D2 reliance analysis (analysis only, on D1's instrumented runs)
@@ -361,6 +379,15 @@ for seed in D1_TIER_B_SEEDS:
         tierb_ids.append(jid)
 
 # ============================================================================
+# #13b (Phase 4, CPU): KC-D1.5-D1.7 full aggregate gate, once all 63 D1+D1B
+# realizations exist (48 Tier A + 15 Tier B)
+# ============================================================================
+cpu("d1_full_aggregate", "D1-AGG", None,
+   f'{PY} {D1_AGGREGATE} --root . --out results_kc23_d1_stats',
+   "results_kc23_d1_stats", depends_on=tuple(d1_all_seed_ids + tierb_ids),
+   gate_script=D1_REPRO_GATE)
+
+# ============================================================================
 # #14 (Phase 5, GPU+CPU): KC-S3 active-only benchmark
 # ============================================================================
 NPZ_AONLY = "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_Aonly.npz"
@@ -381,9 +408,17 @@ for arch in ["simple", "resnet_se"]:
 # #15 (Phase 5, GPU+CPU): KC-S2 ENABL3S transitions -- gated on F0 feasibility
 # ============================================================================
 S2_F0_GATE = "kc23_s2_f0_feasibility.py"
+# The queue always invokes gate_script as `python <gate_script> --out <out_dir>`
+# (no --root), so the transition count has to be computed and cached as part of
+# the job's OWN command; the post-job gate call then reads the cache. Found
+# live 2026-09-24: without this chaining, the gate crashed looking for a
+# s2_transition_counts.csv nothing had ever written (FileNotFoundError), and
+# the crash was (separately) being swallowed as a silent pass -- see
+# kc23_queue.py's fail-closed fix.
 cpu("s2_f0_feasibility", "S2-F0", None,
    f'{PY} adapt_external_dataset.py --root 5362627 --out results_kc23_s2_adapter_circuitmeta '
-   f'--tag ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_kc23s2 --with-circuit-meta --resume',
+   f'--tag ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_kc23s2 --with-circuit-meta --resume '
+   f'&& {PY} kc23_s2_f0_feasibility.py --out results_kc23_s2_adapter_circuitmeta --root 5362627',
    "results_kc23_s2_adapter_circuitmeta", depends_on=(), gate_script=S2_F0_GATE)
 cpu("s2_transitions", "S2", None,
    f'{PY} kc23_s2_transitions.py --out results_kc23_s2_transitions',

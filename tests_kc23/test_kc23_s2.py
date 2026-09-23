@@ -5,7 +5,7 @@ import pandas as pd
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from kc23_s2_f0_feasibility import count_transitions_one_trial, classify_f0
+from kc23_s2_f0_feasibility import count_transitions_one_trial, count_transitions, classify_f0
 
 MODE_SIT, MODE_LW, MODE_RA, MODE_RD, MODE_SA, MODE_SD, MODE_STAND = 0, 1, 2, 3, 4, 5, 6
 
@@ -66,6 +66,26 @@ def test_f_x_structurally_absent():
     df = _counts_df([[6, 6, 0, 0]] * 10)  # LW_to_SD/SD_to_LW always zero -- structurally absent
     letter, d = classify_f0(df)
     assert letter == "F-X", d
+
+
+def test_count_transitions_scans_a_synthetic_raw_root(tmp_path):
+    """Regression test for the 'rows' NameError: count_transitions() appended
+    to a `rows` list that was never initialized in that function, so any real
+    call (root is not None) crashed. Found live 2026-09-24 when the queue's
+    s2_f0_feasibility gate turned out to have crashed on a different bug
+    first (FileNotFoundError, wiring) -- this one would have crashed next."""
+    subj_dir = tmp_path / "AB01" / "Raw"
+    subj_dir.mkdir(parents=True)
+    seq = _block(MODE_LW, 50) + _block(MODE_SA, 50) + _block(MODE_LW, 50)
+    pd.DataFrame({"Mode": seq}).to_csv(subj_dir / "circuit1_raw.csv", index=False)
+
+    df = count_transitions(tmp_path)
+    assert list(df["subject"]) == [1]
+    row = df.iloc[0]
+    assert row["LW_to_SA"] == 1
+    assert row["SA_to_LW"] == 1
+    assert row["LW_to_SD"] == 0
+    assert row["SD_to_LW"] == 0
 
 
 if __name__ == "__main__":

@@ -73,6 +73,7 @@ def count_transitions(root: Path) -> pd.DataFrame:
     import re
     import adapt_external_dataset as aed
     subj_dirs = sorted([d for d in root.glob("AB*") if d.is_dir()])
+    rows = []
     for sd in subj_dirs:
         m = re.search(r"AB(\d+)", sd.name)
         if not m:
