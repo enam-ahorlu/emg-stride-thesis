@@ -121,16 +121,47 @@ def run_gate(job: "Job") -> int:
         return 20  # fail closed: an unrunnable gate halts dependents rather than silently passing
 
 
-def append_halt(job: "Job"):
+def append_halt(job: "Job", held_job_ids: list[str] | None = None):
     HALT_MD.parent.mkdir(parents=True, exist_ok=True)
+    held = held_job_ids or []
     with open(HALT_MD, "a", encoding="utf-8") as f:
         f.write(f"\n## ESCALATE: {job.job_id} (stage {job.stage})\n"
                 f"- Time: {datetime.now().isoformat()}\n"
                 f"- out_dir: {job.out_dir}\n"
                 f"- gate_script: {job.gate_script}\n"
+                f"- Held dependent jobs ({len(held)}): {held}\n"
                 f"- Every not-yet-started job in stage {job.stage}, and every job "
-                f"elsewhere depending on one, is now skipped.\n")
-    print(f"[HALT] wrote {HALT_MD} for stage {job.stage}")
+                f"elsewhere depending on one (directly or transitively), is now skipped.\n")
+    print(f"[HALT] wrote {HALT_MD} for stage {job.stage}, held {len(held)} dependent job(s)")
+    STATUS_NOTE_PATH = HALT_MD.parent / "KC23_STATUS.md"
+    if STATUS_NOTE_PATH.exists():
+        with open(STATUS_NOTE_PATH, "a", encoding="utf-8") as f:
+            f.write(f"\n**ESCALATE** {datetime.now().isoformat()}: {job.job_id} (stage {job.stage}) "
+                   f"-- see KC23_HALT.md. Held: {held}\n")
+
+
+def find_held_dependents(halted_stage: str, all_jobs: list, by_id: dict) -> list[str]:
+    """Every QUEUED job whose own stage is halted_stage, plus every QUEUED job
+    elsewhere that depends -- directly or transitively -- on ANY job of that
+    stage (matching deps_satisfied's own rule: it blocks on `dep.stage in
+    halted_stages` regardless of whether that specific dependency has
+    already finished -- the triggering job itself is very often already
+    "done" by the time its own gate fires, and a dependent naming exactly
+    THAT job, not some other still-queued sibling, must still show up here).
+    Used to make the KC23_HALT.md entry name exactly what a reader would
+    otherwise have to work out from the CSVs by hand."""
+    stage_job_ids = {j.job_id for j in all_jobs if j.stage == halted_stage}
+    held = {j.job_id for j in all_jobs if j.stage == halted_stage and j.status == "queued"}
+    changed = True
+    while changed:
+        changed = False
+        for j in all_jobs:
+            if j.job_id in held or j.status != "queued":
+                continue
+            if any(d in held or d in stage_job_ids for d in j.depends_on):
+                held.add(j.job_id)
+                changed = True
+    return sorted(held)
 
 
 def deps_satisfied(job: "Job", by_id: dict, halted_stages: set) -> bool:
@@ -181,7 +212,7 @@ def launch(job: "Job") -> "Job":
     return job
 
 
-def finish(job: "Job", halted_stages: set):
+def finish(job: "Job", halted_stages: set, all_jobs: list, by_id: dict):
     ret = job.proc.returncode
     job.wallclock = round(time.time() - job.t0, 1)
     if ret == 0:
@@ -190,7 +221,8 @@ def finish(job: "Job", halted_stages: set):
         job.gate_rc = rc if job.gate_rc != "NOT_IMPLEMENTED" else job.gate_rc
         if rc == 20:
             halted_stages.add(job.stage)
-            append_halt(job)
+            held = find_held_dependents(job.stage, all_jobs, by_id)
+            append_halt(job, held)
         elif rc == 10:
             print(f"[gate] {job.job_id}: report (rc=10), continuing")
     else:
@@ -247,13 +279,14 @@ def main():
 
     while True:
         changed = False
+        all_jobs = gpu_jobs + cpu_jobs
         if gpu_running is not None and gpu_running.proc.poll() is not None:
-            finish(gpu_running, halted_stages)
+            finish(gpu_running, halted_stages, all_jobs, by_id)
             gpu_running = None
             n_done += 1
             changed = True
         if cpu_running is not None and cpu_running.proc.poll() is not None:
-            finish(cpu_running, halted_stages)
+            finish(cpu_running, halted_stages, all_jobs, by_id)
             cpu_running = None
             n_done += 1
             changed = True
