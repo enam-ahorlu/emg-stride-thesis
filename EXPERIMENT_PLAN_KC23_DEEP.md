@@ -3,6 +3,7 @@
 **Phase 0/1 status header (23 September 2026, this session; plan text below unedited):**
 - **KC-D0:** done. D0.2 (chanoffset, globalgain), D0.3 (permutation.csv, embed_probes.csv) and D0.5 (`run_adv_align_loso.py`, `--coral-normalize` on `run_deep_coral_align_loso.py`) all landed. Both mandatory D0.4 inertness assertions PASS (CPU, since GPU training is cross-process nondeterministic here via `cudnn.benchmark=True`). See `KC23_PHASE1_REPORT.md`.
 - **KC-D1 to KC-D6:** not run. Queued in `kc23_jobs_gpu.csv` / `kc23_jobs_cpu.csv` (KC-D6 Stage 2, item 11c, deliberately left ungenerated until Stage 1's manipulation gate is known, per the plan's own staging).
+- **Owner decision D-6a (24 September 2026, on KC-C1's letter E, `KC23_HALT.md`):** the published soft-vote ensemble stays the headline combiner. Add stacking (SVM + ResNet-SE+CD, logistic-regression meta-learner fit on the other 39 subjects) as a DESCRIPTIVE row in the KC-D1 per-seed ensemble computation, contrast C13b, beside C13, so its 0.2 pt edge over the soft vote is read against run variance rather than treated as a registered hypothesis. See `kc23_d1_replicate_stats.py`.
 
 **Status:** ready to run. Written 23 September 2026 from `04_Reviews_and_QA/KILL_CRITIC_2026-09-23.md`.
 **Execution:** local GPU (RTX 4050 Laptop, 6 GB), one job at a time, through Claude Code. Dispatcher: `RUN_ORDER_KC23.md`.
