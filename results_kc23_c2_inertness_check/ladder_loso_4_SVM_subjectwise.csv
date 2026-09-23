@@ -1,0 +1,4 @@
+rung,name,subject,n_test,f1_macro,bal_acc,acc,best_params,fit_time_sec
+4,full_whiten_recolor,1,690,0.578345878280984,0.5759145067404399,0.6507246376811594,"{'clf__C': 1, 'clf__gamma': 'scale'}",300.28
+4,full_whiten_recolor,2,520,0.7105176708640982,0.7150465369218988,0.7903846153846154,"{'clf__C': 1, 'clf__gamma': 'scale'}",300.33
+4,full_whiten_recolor,3,594,0.6486656728730864,0.6586853625001357,0.7794612794612794,"{'clf__C': 1, 'clf__gamma': 'scale'}",303.14

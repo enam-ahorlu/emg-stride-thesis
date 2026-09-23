@@ -1,0 +1,4 @@
+rung,name,subject,n_test,f1_macro,bal_acc,acc,best_params,fit_time_sec
+3,mean_scale,1,690,0.6708429792681361,0.6802573564791345,0.7318840579710145,"{'clf__C': 1, 'clf__gamma': 'scale'}",188.03
+3,mean_scale,2,520,0.8729166904278644,0.8812819579354967,0.9173076923076923,"{'clf__C': 1, 'clf__gamma': 'scale'}",230.66
+3,mean_scale,3,594,0.8123476884987733,0.8406808124660367,0.8838383838383839,"{'clf__C': 1, 'clf__gamma': 'scale'}",145.3
