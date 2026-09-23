@@ -1,0 +1,2 @@
+subject,arch,coral_lambda,target_pass,coral_normalize,f1_macro,bal_acc
+1,resnet_se,30.0,train,l2,0.6705432244558589,0.6910800369926675

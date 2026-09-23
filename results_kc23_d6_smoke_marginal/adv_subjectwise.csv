@@ -1,0 +1,2 @@
+subject,arch,adv_lambda,adv_mode,oracle,diverged,f1_macro,bal_acc
+1,resnet_se,1.0,marginal,False,False,0.3236125158983404,0.34525501981100554

@@ -1,0 +1,2 @@
+method,arch,adv_lambda,f1_macro_mean,f1_macro_sd,n
+ADV-cdan,resnet_se,1.0,0.5713,,1

@@ -1,0 +1,2 @@
+subject,target_pass,epochs_run,best_epoch,coral_lambda,feat_dim,n_src,n_tgt,feat_norm_src,feat_norm_tgt,coral_scaled,coral_rel,mean_gap_rel,mmd2_rbf,domain_probe_bacc,class_probe_tgt_bacc,class_probe_src_bacc
+1,train,2,1,30.0,128,4000,690,11.535337664888615,10.293108677020717,0.004907970178589248,0.43625957186911557,0.34365763657725035,0.060324871587640105,0.927536231884058,0.9070624291437793,0.7942500000000001
