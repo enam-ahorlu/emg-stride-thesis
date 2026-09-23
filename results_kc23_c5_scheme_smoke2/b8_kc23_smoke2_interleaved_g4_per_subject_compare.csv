@@ -1,0 +1,2 @@
+tag,model,window_ms,scheme,cv_unit,guard_windows,n_chunks,sd_mean,sd_sd,n,guard_frac,x_flags
+kc23_smoke2,LDA,250,interleaved,per_subject,4.0,20,0.9465,0.0963,40,0.8727,200

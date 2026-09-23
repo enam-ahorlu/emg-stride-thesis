@@ -1,0 +1,2 @@
+tag,model,window_ms,scheme,cv_unit,guard_windows,n_chunks,sd_mean,sd_sd,n,guard_frac,x_flags
+kc23_smoke,LDA,250,pooled_random_nonoverlap,per_subject,1.0,20,0.8041,0.062,40,0.4985,0

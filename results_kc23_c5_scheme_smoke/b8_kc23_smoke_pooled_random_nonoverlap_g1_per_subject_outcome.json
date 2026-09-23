@@ -1,0 +1,29 @@
+{
+  "tag": "kc23_smoke",
+  "scheme": "pooled_random_nonoverlap",
+  "cv_unit": "per_subject",
+  "guard_windows": 1.0,
+  "n_chunks": 20,
+  "window_ms": 250,
+  "guard_frac": 0.49850077807720045,
+  "x_flags": [],
+  "mean": {
+    "LDA": 0.8041346868219815
+  },
+  "rows": [
+    {
+      "tag": "kc23_smoke",
+      "model": "LDA",
+      "window_ms": 250,
+      "scheme": "pooled_random_nonoverlap",
+      "cv_unit": "per_subject",
+      "guard_windows": 1.0,
+      "n_chunks": 20,
+      "sd_mean": 0.8041,
+      "sd_sd": 0.062,
+      "n": 40,
+      "guard_frac": 0.4985,
+      "x_flags": 0
+    }
+  ]
+}

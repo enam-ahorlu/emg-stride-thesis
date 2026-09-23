@@ -63,11 +63,17 @@ def build_model(name: str):
     sys.exit(f"unknown model {name}")
 
 
-def movement_blocked_folds(meta_s: pd.DataFrame, n_splits: int, win_len: float):
+def movement_blocked_folds(meta_s: pd.DataFrame, n_splits: int, win_len: float, guard_windows: float = 1.0):
     """meta_s carries a clean 0..n-1 RangeIndex. Returns (fold array of length n
-    in that row order, n_dropped, n_total); fold == -1 marks a guard-band drop."""
+    in that row order, n_dropped, n_total); fold == -1 marks a guard-band drop.
+
+    guard_windows=1.0 (the default) is BYTE-IDENTICAL to the pre-KC23 function:
+    the guard band is exactly one window length, as it always was. KC-C5's
+    --guard-windows generalizes this to G window-lengths (the B-g arms sweep
+    G in {1,2,4,8,16})."""
     fold = np.full(len(meta_s), -1, dtype=int)
     dropped = 0
+    guard = guard_windows * win_len
     for _, g in meta_s.groupby("movement", sort=False):
         gi = g.sort_values("t_start", kind="stable")
         rows = gi.index.to_numpy()               # positions into meta_s (0..n-1)
@@ -76,10 +82,60 @@ def movement_blocked_folds(meta_s: pd.DataFrame, n_splits: int, win_len: float):
         bnds = [ts[chunks[k + 1][0]] for k in range(n_splits - 1) if len(chunks[k + 1])]
         for k, ch in enumerate(chunks):
             for local in ch:
-                if any(abs(ts[local] - b) < win_len for b in bnds):
+                if any(abs(ts[local] - b) < guard for b in bnds):
                     dropped += 1                 # leave fold[rows[local]] == -1
                 else:
                     fold[rows[local]] = k
+    return fold, dropped, len(meta_s)
+
+
+def pooled_random_nonoverlap_folds(meta_s: pd.DataFrame, n_splits: int, seed: int = SEED):
+    """KC-C5 P0. Within each subject-by-movement recording, keep every SECOND
+    window in time order (so no two retained windows overlap at 50% overlap),
+    then split what remains at random (StratifiedKFold), same construction as
+    the pooled_random scheme but on the non-overlapping subset."""
+    keep_mask = np.zeros(len(meta_s), dtype=bool)
+    for _, g in meta_s.groupby("movement", sort=False):
+        gi = g.sort_values("t_start", kind="stable")
+        rows = gi.index.to_numpy()
+        keep_mask[rows[0::2]] = True
+    fold = np.full(len(meta_s), -1, dtype=int)
+    y_local = meta_s["movement"].map(LAB2I).to_numpy()
+    idx_keep = np.where(keep_mask)[0]
+    n_dropped = len(meta_s) - len(idx_keep)
+    if len(idx_keep) >= n_splits and len(np.unique(y_local[idx_keep])) >= 2:
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        for f, (_, te) in enumerate(skf.split(idx_keep, y_local[idx_keep])):
+            fold[idx_keep[te]] = f
+    return fold, n_dropped, len(meta_s)
+
+
+def interleaved_folds(meta_s: pd.DataFrame, n_chunks: int, n_splits: int, win_len: float,
+                      guard_windows: float):
+    """KC-C5 I-g. Cut each movement's recording into n_chunks contiguous
+    chunks (time order) and assign chunk i to fold i mod n_splits -- keeps the
+    blocking (each fold still gets contiguous time, not randomly scattered
+    windows) while removing most of the temporal extrapolation a single
+    5-chunk block carries. Guard band applied only at boundaries between
+    ADJACENT chunks that land in DIFFERENT folds."""
+    fold = np.full(len(meta_s), -1, dtype=int)
+    dropped = 0
+    guard = guard_windows * win_len
+    for _, g in meta_s.groupby("movement", sort=False):
+        gi = g.sort_values("t_start", kind="stable")
+        rows = gi.index.to_numpy()
+        ts = gi["t_start"].to_numpy()
+        chunks = np.array_split(np.arange(len(rows)), n_chunks)
+        chunk_fold = [k % n_splits for k in range(n_chunks)]
+        bnds = [ts[chunks[k + 1][0]] for k in range(n_chunks - 1)
+               if len(chunks[k]) and len(chunks[k + 1]) and chunk_fold[k] != chunk_fold[k + 1]]
+        for k, ch in enumerate(chunks):
+            f = chunk_fold[k]
+            for local in ch:
+                if any(abs(ts[local] - b) < guard for b in bnds):
+                    dropped += 1
+                else:
+                    fold[rows[local]] = f
     return fold, dropped, len(meta_s)
 
 
@@ -121,6 +177,111 @@ def eval_sd(X, y, meta, scheme: str, n_splits: int, win_len: float):
     return out, x_flags, (guard_dropped_total, guard_total)
 
 
+def assign_folds(scheme: str, ms: pd.DataFrame, n_splits: int, win_len: float,
+                 guard_windows: float, n_chunks: int, seed: int = SEED):
+    """Dispatch to the fold-assignment function for one KC-C5 scheme, on one
+    subject's own windows (ms carries a clean 0..n-1 RangeIndex)."""
+    if scheme == "pooled_random":
+        y_local = ms["movement"].map(LAB2I).to_numpy()
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        fold = np.full(len(ms), -1, dtype=int)
+        for f, (_, te) in enumerate(skf.split(np.zeros(len(ms)), y_local)):
+            fold[te] = f
+        return fold, 0, len(ms)
+    if scheme == "pooled_random_nonoverlap":
+        return pooled_random_nonoverlap_folds(ms, n_splits, seed=seed)
+    if scheme == "blocked":
+        return movement_blocked_folds(ms, n_splits, win_len, guard_windows=guard_windows)
+    if scheme == "interleaved":
+        return interleaved_folds(ms, n_chunks, n_splits, win_len, guard_windows)
+    raise ValueError(f"unknown scheme {scheme!r}")
+
+
+def eval_sd_v2(X, y, meta, scheme: str, n_splits: int, win_len: float, guard_windows: float,
+              n_chunks: int, cv_unit: str, seed: int = SEED):
+    """KC-C5: generalized evaluator over the four schemes and the two cv-units.
+
+    cv_unit='per_subject' (the naming-control default, W-B1): fit ONE model
+    PER SUBJECT PER FOLD, exactly as eval_sd() always did -- a genuinely
+    per-subject model.
+    cv_unit='pooled': fit ONE model PER FOLD, across ALL subjects' windows
+    assigned to that fold (each subject's own fold assignment still comes
+    from its own recording via assign_folds, so the blocking/guard/interleave
+    structure is unchanged; only the classifier training pools across
+    subjects) -- matching the "subject-inclusive" pooled-multi-subject
+    construction the M8 kill-critic item describes for the ORIGINAL
+    train_classical_patched.py SD figures, so the P50/P0/B-g/I-g arms are
+    comparable to Table 4.2 rather than to eval_sd()'s already-per-subject
+    default.
+    """
+    subs = sorted(meta["subject"].unique())
+    x_flags = []
+    guard_dropped_total = guard_total = 0
+
+    # ---- per-subject fold assignment (identical regardless of cv_unit) ----
+    fold_by_subject = {}
+    for s in subs:
+        ms = meta[meta["subject"] == s].reset_index(drop=True)
+        fold, dr, tot = assign_folds(scheme, ms, n_splits, win_len, guard_windows, n_chunks, seed=seed)
+        fold_by_subject[s] = fold
+        guard_dropped_total += dr; guard_total += tot
+
+    out = {m: {} for m in MODELS}
+
+    if cv_unit == "per_subject":
+        for s in subs:
+            ms = meta[meta["subject"] == s]
+            idx = ms.index.to_numpy()
+            Xs, ys = X[idx], y[idx]
+            fold = fold_by_subject[s]
+            keep = fold >= 0
+            for m in MODELS:
+                f1s = []
+                for f in range(n_splits):
+                    te = keep & (fold == f); tr = keep & (fold != f)
+                    if te.sum() == 0 or tr.sum() == 0:
+                        x_flags.append((int(s), m, f, "empty fold")); continue
+                    if len(np.unique(ys[tr])) < len(LABELS):
+                        x_flags.append((int(s), m, f, f"train missing class(es): "
+                                        f"{set(range(4)) - set(np.unique(ys[tr]).tolist())}"))
+                    clf = build_model(m)
+                    clf.fit(Xs[tr], ys[tr])
+                    yp = clf.predict(Xs[te])
+                    f1s.append(f1_score(ys[te], yp, average="macro"))
+                out[m][int(s)] = f1s
+    else:  # pooled: one model per fold, across all subjects
+        # global row index -> (subject, local fold) for every row across all subjects
+        subj_col = meta["subject"].to_numpy()
+        fold_global = np.full(len(meta), -1, dtype=int)
+        for s in subs:
+            idx = meta.index[meta["subject"] == s].to_numpy()
+            fold_global[idx] = fold_by_subject[s]
+        keep_global = fold_global >= 0
+        for m in MODELS:
+            per_subject_f1s = {int(s): [] for s in subs}
+            for f in range(n_splits):
+                te = keep_global & (fold_global == f)
+                tr = keep_global & (fold_global != f)
+                if te.sum() == 0 or tr.sum() == 0:
+                    continue
+                if len(np.unique(y[tr])) < len(LABELS):
+                    x_flags.append(("ALL", m, f, f"pooled train missing class(es): "
+                                    f"{set(range(4)) - set(np.unique(y[tr]).tolist())}"))
+                clf = build_model(m)
+                clf.fit(X[tr], y[tr])
+                yp_all = clf.predict(X[te])
+                te_subjects = subj_col[te]
+                for s in np.unique(te_subjects):
+                    m_s = te_subjects == s
+                    if m_s.sum() == 0:
+                        continue
+                    per_subject_f1s[int(s)].append(
+                        f1_score(y[te][m_s], yp_all[m_s], average="macro", zero_division=0))
+            out[m] = per_subject_f1s
+
+    return out, x_flags, (guard_dropped_total, guard_total)
+
+
 def summarise(per_subject: dict) -> dict:
     res = {}
     for m, d in per_subject.items():
@@ -129,6 +290,52 @@ def summarise(per_subject: dict) -> dict:
                   "mean": float(subj_means.mean()), "sd": float(subj_means.std(ddof=1)),
                   "n": int(len(subj_means))}
     return res
+
+
+def run_single_scheme(X, y, meta, args, out_dir: Path, win_len: float) -> int:
+    """KC-C5 new-scheme path (--scheme given). Computes ONE scheme's per-
+    subject F1 (guard-windows / n-chunks / cv-unit respected) and writes it
+    to files named by scheme + guard + cv-unit, distinct from the legacy
+    b8_{tag}_* files so this path can never collide with or overwrite them."""
+    out, flags, (gd, gt) = eval_sd_v2(X, y, meta, args.scheme, args.splits, win_len,
+                                      args.guard_windows, args.n_chunks, args.cv_unit)
+    summ = summarise(out)
+
+    guard_frac = gd / gt if gt else 0.0
+    print(f"\n[{args.tag}] scheme={args.scheme} cv_unit={args.cv_unit} "
+          f"guard_windows={args.guard_windows} n_chunks={args.n_chunks}")
+    print(f"[{args.tag}] guard band dropped {gd}/{gt} windows ({guard_frac:.2%})")
+    if args.scheme in ("blocked", "interleaved") and guard_frac < args.min_guard_frac:
+        print(f"[{args.tag}] ABORT: guard fraction {guard_frac:.2%} below the "
+              f"{args.min_guard_frac:.2%} floor. Nothing written.")
+        return 2
+    if flags:
+        print(f"[{args.tag}] OUTCOME-X flags ({len(flags)}): {flags[:8]}" + (" ..." if len(flags) > 8 else ""))
+    else:
+        print(f"[{args.tag}] no outcome-X flags")
+
+    rows = []
+    for m in MODELS:
+        print(f"  {m:4}  mean {summ[m]['mean']*100:6.2f}  sd {summ[m]['sd']*100:6.2f}  n={summ[m]['n']}")
+        rows.append({"tag": args.tag, "model": m, "window_ms": args.window_ms,
+                     "scheme": args.scheme, "cv_unit": args.cv_unit,
+                     "guard_windows": args.guard_windows, "n_chunks": args.n_chunks,
+                     "sd_mean": round(summ[m]["mean"], 4), "sd_sd": round(summ[m]["sd"], 4),
+                     "n": summ[m]["n"], "guard_frac": round(guard_frac, 4), "x_flags": len(flags)})
+
+    stem = f"b8_{args.tag}_{args.scheme}_g{args.guard_windows:g}_{args.cv_unit}"
+    pd.DataFrame(rows).to_csv(out_dir / f"{stem}_compare.csv", index=False)
+    sw = pd.DataFrame({"subject": sorted(summ[MODELS[0]]["subject_f1"])})
+    for m in MODELS:
+        sw[m] = [summ[m]["subject_f1"].get(s, float("nan")) for s in sw["subject"]]
+    sw.round(5).to_csv(out_dir / f"{stem}_subjectwise.csv", index=False)
+    json.dump({"tag": args.tag, "scheme": args.scheme, "cv_unit": args.cv_unit,
+               "guard_windows": args.guard_windows, "n_chunks": args.n_chunks,
+               "window_ms": args.window_ms, "guard_frac": guard_frac, "x_flags": flags,
+               "mean": {m: summ[m]["mean"] for m in MODELS}, "rows": rows},
+              open(out_dir / f"{stem}_outcome.json", "w"), indent=2)
+    print(f"\nwrote {out_dir}/{stem}_*.csv / .json")
+    return 0
 
 
 def main() -> int:
@@ -147,6 +354,25 @@ def main() -> int:
     ap.add_argument("--min-guard-frac", type=float, default=0.0,
                     help="abort if the guard band drops less than this fraction. Set it on any "
                          "new dataset: a near-zero guard fraction means the units are wrong.")
+    ap.add_argument("--scheme", default=None,
+                    choices=["pooled_random", "pooled_random_nonoverlap", "blocked", "interleaved"],
+                    help="KC-C5. Absent (default) reproduces the pre-KC23 output exactly: the "
+                         "original pooled-vs-movement_blocked comparison, guard=1 window, "
+                         "cv-unit=per_subject (this is the inertness gate). When set, runs ONE "
+                         "scheme only (guard-windows/n-chunks/cv-unit apply), writing to new, "
+                         "distinctly-named output files -- never the legacy b8_{tag}_* files.")
+    ap.add_argument("--guard-windows", type=float, default=1.0,
+                    help="KC-C5. Guard band in window-lengths, for --scheme blocked/interleaved "
+                         "(default 1.0, matching the pre-KC23 fixed one-window guard).")
+    ap.add_argument("--n-chunks", type=int, default=20,
+                    help="KC-C5. Contiguous chunks per movement's recording, for "
+                         "--scheme interleaved (default 20, per the plan).")
+    ap.add_argument("--cv-unit", default="per_subject", choices=["pooled", "per_subject"],
+                    help="KC-C5. per_subject (default) fits one model per subject per fold, "
+                         "exactly as eval_sd() always did (the W-B1 naming-control arm). "
+                         "pooled fits one model per fold across ALL subjects' windows assigned "
+                         "to it, matching the ORIGINAL train_classical_patched.py SD figures' "
+                         "subject-inclusive construction (M8).")
     args = ap.parse_args()
 
     global MODELS
@@ -169,6 +395,9 @@ def main() -> int:
 
     out_dir = ROOT / args.out
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.scheme is not None:
+        return run_single_scheme(X, y, meta, args, out_dir, win_len)
 
     pooled, pflags, _ = eval_sd(X, y, meta, "pooled", args.splits, win_len)
     blocked, bflags, (gd, gt) = eval_sd(X, y, meta, "movement_blocked", args.splits, win_len)

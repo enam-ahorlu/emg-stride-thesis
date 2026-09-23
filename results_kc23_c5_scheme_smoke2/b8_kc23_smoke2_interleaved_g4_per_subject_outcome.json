@@ -1,0 +1,1230 @@
+{
+  "tag": "kc23_smoke2",
+  "scheme": "interleaved",
+  "cv_unit": "per_subject",
+  "guard_windows": 4.0,
+  "n_chunks": 20,
+  "window_ms": 250,
+  "guard_frac": 0.8726610240255057,
+  "x_flags": [
+    [
+      1,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      1,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      1,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      1,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      1,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      2,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      2,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      2,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      2,
+      "LDA",
+      3,
+      "empty fold"
+    ],
+    [
+      2,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      3,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      3,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      3,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      3,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      3,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      4,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      4,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      4,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      4,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      4,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      5,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      5,
+      "LDA",
+      1,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      5,
+      "LDA",
+      2,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      5,
+      "LDA",
+      3,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      5,
+      "LDA",
+      4,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      6,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      6,
+      "LDA",
+      1,
+      "empty fold"
+    ],
+    [
+      6,
+      "LDA",
+      2,
+      "empty fold"
+    ],
+    [
+      6,
+      "LDA",
+      3,
+      "empty fold"
+    ],
+    [
+      6,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      7,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      7,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      7,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      7,
+      "LDA",
+      3,
+      "empty fold"
+    ],
+    [
+      7,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      8,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      8,
+      "LDA",
+      1,
+      "empty fold"
+    ],
+    [
+      8,
+      "LDA",
+      2,
+      "empty fold"
+    ],
+    [
+      8,
+      "LDA",
+      3,
+      "empty fold"
+    ],
+    [
+      8,
+      "LDA",
+      4,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      9,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      9,
+      "LDA",
+      1,
+      "empty fold"
+    ],
+    [
+      9,
+      "LDA",
+      2,
+      "empty fold"
+    ],
+    [
+      9,
+      "LDA",
+      3,
+      "empty fold"
+    ],
+    [
+      9,
+      "LDA",
+      4,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      10,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      10,
+      "LDA",
+      1,
+      "empty fold"
+    ],
+    [
+      10,
+      "LDA",
+      2,
+      "empty fold"
+    ],
+    [
+      10,
+      "LDA",
+      3,
+      "empty fold"
+    ],
+    [
+      10,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      11,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      11,
+      "LDA",
+      1,
+      "empty fold"
+    ],
+    [
+      11,
+      "LDA",
+      2,
+      "empty fold"
+    ],
+    [
+      11,
+      "LDA",
+      3,
+      "empty fold"
+    ],
+    [
+      11,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      12,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      12,
+      "LDA",
+      1,
+      "empty fold"
+    ],
+    [
+      12,
+      "LDA",
+      2,
+      "empty fold"
+    ],
+    [
+      12,
+      "LDA",
+      3,
+      "empty fold"
+    ],
+    [
+      12,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      13,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      13,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2}"
+    ],
+    [
+      13,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2}"
+    ],
+    [
+      13,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2}"
+    ],
+    [
+      13,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2}"
+    ],
+    [
+      14,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      14,
+      "LDA",
+      1,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      14,
+      "LDA",
+      2,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      14,
+      "LDA",
+      3,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      14,
+      "LDA",
+      4,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      15,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      15,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      15,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      15,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      15,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      16,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      16,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      16,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      16,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      16,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      17,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      17,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      17,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      17,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      17,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      18,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      18,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      18,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      18,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      18,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      19,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      19,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      19,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      19,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      19,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      20,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      20,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      20,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      20,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      20,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      21,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      21,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      21,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      21,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      21,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      22,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      22,
+      "LDA",
+      1,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      22,
+      "LDA",
+      2,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      22,
+      "LDA",
+      3,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      22,
+      "LDA",
+      4,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      23,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      23,
+      "LDA",
+      1,
+      "train missing class(es): {3}"
+    ],
+    [
+      23,
+      "LDA",
+      2,
+      "train missing class(es): {3}"
+    ],
+    [
+      23,
+      "LDA",
+      3,
+      "train missing class(es): {3}"
+    ],
+    [
+      23,
+      "LDA",
+      4,
+      "train missing class(es): {3}"
+    ],
+    [
+      24,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      24,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      24,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      24,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      24,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      25,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      25,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      25,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      25,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      25,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      26,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      26,
+      "LDA",
+      1,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      26,
+      "LDA",
+      2,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      26,
+      "LDA",
+      3,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      26,
+      "LDA",
+      4,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      27,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      27,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      27,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      27,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      27,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      28,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      28,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      28,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      28,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      28,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      29,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      29,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2}"
+    ],
+    [
+      29,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2}"
+    ],
+    [
+      29,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2}"
+    ],
+    [
+      29,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2}"
+    ],
+    [
+      30,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      30,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      30,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      30,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      30,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      31,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      31,
+      "LDA",
+      1,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      31,
+      "LDA",
+      2,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      31,
+      "LDA",
+      3,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      31,
+      "LDA",
+      4,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      32,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      32,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      32,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      32,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      32,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      33,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      33,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      33,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      33,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      33,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      34,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      34,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      34,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      34,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      34,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      35,
+      "LDA",
+      0,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      35,
+      "LDA",
+      1,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      35,
+      "LDA",
+      2,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      35,
+      "LDA",
+      3,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      35,
+      "LDA",
+      4,
+      "train missing class(es): {2, 3}"
+    ],
+    [
+      36,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      36,
+      "LDA",
+      1,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      36,
+      "LDA",
+      2,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      36,
+      "LDA",
+      3,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      36,
+      "LDA",
+      4,
+      "train missing class(es): {0, 3}"
+    ],
+    [
+      37,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      37,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      37,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      37,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      37,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      38,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      38,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      38,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      38,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      38,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      39,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      39,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      39,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      39,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      39,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      40,
+      "LDA",
+      0,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      40,
+      "LDA",
+      1,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      40,
+      "LDA",
+      2,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      40,
+      "LDA",
+      3,
+      "train missing class(es): {0, 2, 3}"
+    ],
+    [
+      40,
+      "LDA",
+      4,
+      "train missing class(es): {0, 2, 3}"
+    ]
+  ],
+  "mean": {
+    "LDA": 0.9464820032330259
+  },
+  "rows": [
+    {
+      "tag": "kc23_smoke2",
+      "model": "LDA",
+      "window_ms": 250,
+      "scheme": "interleaved",
+      "cv_unit": "per_subject",
+      "guard_windows": 4.0,
+      "n_chunks": 20,
+      "sd_mean": 0.9465,
+      "sd_sd": 0.0963,
+      "n": 40,
+      "guard_frac": 0.8727,
+      "x_flags": 200
+    }
+  ]
+}

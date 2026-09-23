@@ -1,0 +1,2 @@
+tag,model,window_ms,scheme,cv_unit,guard_windows,n_chunks,sd_mean,sd_sd,n,guard_frac,x_flags
+kc23_smoke3,LDA,250,blocked,pooled,2.0,20,0.5349,0.0727,40,0.1752,0

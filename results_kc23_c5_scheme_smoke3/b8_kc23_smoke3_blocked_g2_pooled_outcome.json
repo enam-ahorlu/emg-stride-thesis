@@ -1,0 +1,29 @@
+{
+  "tag": "kc23_smoke3",
+  "scheme": "blocked",
+  "cv_unit": "pooled",
+  "guard_windows": 2.0,
+  "n_chunks": 20,
+  "window_ms": 250,
+  "guard_frac": 0.17516225756253084,
+  "x_flags": [],
+  "mean": {
+    "LDA": 0.5349288768947851
+  },
+  "rows": [
+    {
+      "tag": "kc23_smoke3",
+      "model": "LDA",
+      "window_ms": 250,
+      "scheme": "blocked",
+      "cv_unit": "pooled",
+      "guard_windows": 2.0,
+      "n_chunks": 20,
+      "sd_mean": 0.5349,
+      "sd_sd": 0.0727,
+      "n": 40,
+      "guard_frac": 0.1752,
+      "x_flags": 0
+    }
+  ]
+}
