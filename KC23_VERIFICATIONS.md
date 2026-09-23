@@ -5,14 +5,14 @@ training." No training was run for any item below; every check reads existing
 code, logs, results or saved probabilities. No file in `01_Thesis/` was
 touched and the v9 statistical family was not touched.
 
-**Note on numbering.** The plan's table (`EXPERIMENT_PLAN_KC23_CLASSICAL.md`,
-KC-C7 section) defines V1, V2, V3, V4, V6 and V7. There is no V5 anywhere in
-that file, and the dispatcher (`RUN_ORDER_KC23.md`) and the tracklist
-(`KC23_TRACKLIST.md` Part E) both cite the item as "Verifications V1 to V7"
-without listing a V5 either. This is treated as a gap in the plan's own
-numbering, not a missed item: this file covers V1, V2, V3, V4, V6 and V7, six
-checks in total, and V5 is reported to Enam as a numbering gap to resolve
-rather than silently invented.
+**Note on numbering (resolved 24 September 2026).** The plan's table
+(`EXPERIMENT_PLAN_KC23_CLASSICAL.md`, KC-C7 section) defines V1, V2, V3, V4,
+V6 and V7. There is no V5 anywhere in that file, and the dispatcher
+(`RUN_ORDER_KC23.md`) and the tracklist (`KC23_TRACKLIST.md` Part E) both
+cite the item as "Verifications V1 to V7" without listing a V5 either.
+Confirmed by Enam as a numbering slip in the plan text, not an omitted check:
+no V5 was intended. This file covers the six checks the plan actually
+specifies.
 
 ---
 
@@ -46,28 +46,50 @@ itself computed through the probability route (`run_causal_ensemble.py`'s
 original −4.5 pt "decision-route" subtraction the kill critic flagged as
 mixed-route, to two decimal places).
 
-**Ambiguity found, reported not resolved.** The kill critic's own text (M
-item 6, `KILL_CRITIC_2026-09-23.md` section 3) states: "Like for like (74.8
-against 77.7), it is −2.9, per App. B.7." That 74.8 figure does not match
-anything this check could locate: it is not the transductive probability-route
-F1 computed here (0.7768, i.e. ≈77.7, not 74.8), and no CSV in
-`results_causal_ensemble/` or `results_ensemble_v2/` contains 0.748 as a
-summary cell. Appendix B.7 of the thesis was not opened (out of scope for a
-code-only verification), so the source of 74.8 is unresolved. **Recommended
-reading for Enam:** the plan's own instructions for V1 are self-contained and
-were followed exactly (compute the transductive probability-route F1 against
-the causal 73.2); the resulting like-for-like delta is essentially unchanged
-from the original mixed-route one (−4.49 pt vs −4.5 pt), so the "all three
-lose about four points" sentence the kill critic flagged is, on this
-evidence, not actually mixed-route-distorted in a way that matters — the
-mixing (decision vs. probability route) makes negligible difference for this
-SVM. The 74.8/−2.9 pair in App. B.7 appears to answer a different, unresolved
-question (possibly a different causal K, or the decision-function causal
-score computed a different way) and should be checked directly against the
-docx by whoever owns text block TA7.
+**Addendum (24 September 2026, Enam): the 74.8 figure identified.** The
+74.8% of thesis Appendix B.7 and B.8 is the causal **decision-route** SVM
+with the buffer excluded, at K=100 (`mixed100`/`calib100`). Confirmed
+directly from the files:
+
+- `run_buffer_composition.py` line 33-36 and its `GATES` dict (line 86):
+  `"SVM": 0.7476, # results_loso_freq_streaming/streaming_buffer_rescore_summary.csv`,
+  documented as "plain decision-function SVC ... mirrors
+  `rescore_streaming_buffer_v2.py` (gate 0.7476)" — i.e. this is the
+  DECISION-function route (`SVC.predict`/`decision_function`), not the
+  probability route (`SVM_PROBA`, gated separately at 0.7319, which is the
+  73.2% causal-probability-route figure the plan's V1 instructions point at).
+- `results_loso_freq_streaming/streaming_buffer_rescore_summary.csv`,
+  row `config=calib100, model=SVM`: `f1_excl = 0.7476` — the exact source
+  value, confirmed present in the file.
+- `rescore_streaming_buffer_v2.py` is the script `run_buffer_composition.py`
+  gates this figure against (its own docstring, line 36), consistent with
+  the two scripts computing the same quantity.
+
+So the two like-for-like causal costs, both now identified:
+
+| Route | Causal (buffer-excluded, K=100) | Transductive (headline) | Delta |
+|---|---|---|---|
+| Decision-function | 0.7476 (74.76%) | 0.7767 (77.67%) | **−2.91 pt ≈ −2.9** |
+| Probability | 0.7319 (73.19%) | 0.7768 (77.68%) | **−4.49 pt ≈ −4.5** |
+
+This matches the kill critic's own "74.8 against 77.7, it is −2.9, per App.
+B.7" exactly, and confirms this session's earlier −4.49 pt probability-route
+computation is the OTHER, valid like-for-like pair, not a discrepancy. The
+kill critic's mixed-route complaint (subtracting 73.2, probability route,
+from 77.7, decision route, giving the "−4.5" in the original text) is
+resolved: stated within one route, the causal cost is −2.9 pt
+(decision-decision) or −4.5 pt (probability-probability); the thesis's own
+App. B.7 number (74.8) already used the correct like-for-like decision-route
+pairing, so no thesis correction is needed there, only text block TA7's
+framing of which pair supports which sentence.
+
+**V5 addendum.** Confirmed as a numbering slip in the plan, not an omitted
+check: no V5 was intended. `EXPERIMENT_PLAN_KC23_CLASSICAL.md`'s KC-C7 table
+runs V1, V2, V3, V4, V6, V7 with no gap in its own content, only in the
+label sequence.
 
 **Output:** the computation above; no new file was written since it draws
-only on two existing result directories.
+only on existing result directories and scripts.
 
 ---
 
@@ -262,7 +284,7 @@ directly, rather than treating 0.5 pt as settled.
 
 | ID | Verdict | One-line finding |
 |---|---|---|
-| V1 | Computed | Transductive probability-route SVM F1 = 0.7768, ≈ decision-route 0.7767. Like-for-like delta against causal 73.2 is −4.49 pt, essentially unchanged from the original −4.5. The thesis's separate "74.8" App. B.7 figure could not be reconciled from code/results alone. |
+| V1 | Computed and confirmed | Two like-for-like causal costs identified: decision-route 74.76% causal vs 77.67% transductive = −2.9 pt (matches App. B.7's "74.8 against 77.7, −2.9" exactly); probability-route 73.19% vs 77.68% = −4.49 pt. Both routes now reconciled to source files. |
 | V2 | Confirmed | "First" = first N windows in time order within each movement's own recording (gait initiation), not "movements the session starts with." Lines 69-80, 102, 130-137. |
 | V3 | Confirmed | ENABL3S validation subjects = round(0.15 x 9) = 1, every deep ENABL3S run, `--val-frac` never overridden. |
 | V4 | Confirmed, no exceptions | Every stats script's "d" is the paired dz; 18 independent definitions checked, all identical in form. |
@@ -270,5 +292,5 @@ directly, rather than treating 0.5 pt as settled.
 | V7 | Confirmed | AdaBN pre-pass and the three-run global mean used identical epochs/patience/batch/arch/chandrop-rate; the 1.5 pt gap is run-to-run variance. |
 
 **V5 does not exist in the plan** (`EXPERIMENT_PLAN_KC23_CLASSICAL.md` KC-C7
-table has no V5 row); flagged to Enam as a numbering gap rather than resolved
-silently.
+table has no V5 row). Confirmed by Enam (24 September 2026) as a numbering
+slip in the plan text: no V5 was intended.
