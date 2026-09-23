@@ -65,7 +65,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 from sklearn.metrics import f1_score, balanced_accuracy_score, accuracy_score
 
-from analyze_between_subject_variance import load_data, RUNGS
+from analyze_between_subject_variance import load_data, RUNGS, rung0_global_z, rung3_mean_scale, sym_sqrt, sym_invsqrt
+from check_rung4_robustness import whiten_recolor
 
 ROOT = Path(__file__).parent
 PUBLISHED_LADDER = ROOT / "results_variance_decomposition" / "alignment_ladder.csv"
@@ -75,6 +76,76 @@ GATE_RUNG3_TOL = 0.002
 GATE_RUNG0_F1 = 0.708
 
 
+# ---------------------------------------------------------------------------
+# KC-C2: new whitening rungs, added to a SUPERSET of RUNGS (RUNGS_EXT, built in
+# main() once y is available) so rungs 0-4 stay byte-identical to today; only
+# new STRING-keyed rungs are added. Reuses check_rung4_robustness.whiten_recolor
+# and analyze_between_subject_variance's rung0_global_z / rung3_mean_scale /
+# sym_sqrt / sym_invsqrt -- nothing here is reimplemented.
+# ---------------------------------------------------------------------------
+def rung4lw_prez_ledoitwolf(X, subjects):
+    """4lw: pre-standardized (global z), then per-subject Ledoit-Wolf
+    shrinkage-covariance whitening, recolored to the pooled covariance of the
+    per-subject z-scored input (the same recolor target whiten_recolor uses).
+    The pre-registered headline variant for any rewritten Table 4.7: the
+    standard principled estimator, no tunable constant."""
+    from sklearn.covariance import LedoitWolf
+    Xg = rung0_global_z(X)
+    X3 = rung3_mean_scale(X, subjects)
+    Ctarget_sqrt = sym_sqrt(np.cov(X3, rowvar=False))
+    Xo = Xg.copy()
+    for s in np.unique(subjects):
+        m = subjects == s
+        Xs = Xg[m]
+        mu = Xs.mean(0, keepdims=True)
+        Cs_shrunk = LedoitWolf().fit(Xs).covariance_
+        A = sym_invsqrt(Cs_shrunk) @ Ctarget_sqrt
+        Xo[m] = (Xs - mu) @ A
+    return Xo
+
+
+def rung4o_oracle_within_class(X, subjects, y, alpha=1.0):
+    """4o: oracle, DIAGNOSTIC ONLY, never deployable. Per-subject whitening by
+    that subject's pooled WITHIN-CLASS covariance (needs the subject's
+    labels, the held-out subject's included). Recolor as in 4c (pre-
+    standardized, scale-free ridge alpha * trace(Cs)/p)."""
+    p = X.shape[1]
+    Xg = rung0_global_z(X)
+    X3 = rung3_mean_scale(X, subjects)
+    Ct_raw = np.cov(X3, rowvar=False)
+    lam_t = alpha * np.trace(Ct_raw) / p
+    Ctarget_sqrt = sym_sqrt(Ct_raw + lam_t * np.eye(p))
+    Xo = Xg.copy()
+    for s in np.unique(subjects):
+        m = subjects == s
+        Xs, ys = Xg[m], y[m]
+        mu = Xs.mean(0, keepdims=True)
+        resid = np.zeros_like(Xs)
+        for c in np.unique(ys):
+            cm = ys == c
+            resid[cm] = Xs[cm] - Xs[cm].mean(0, keepdims=True)
+        dof = max(len(Xs) - len(np.unique(ys)), 1)
+        Cs_within = (resid.T @ resid) / dof
+        lam_s = alpha * np.trace(Cs_within) / p
+        A = sym_invsqrt(Cs_within + lam_s * np.eye(p)) @ Ctarget_sqrt
+        Xo[m] = (Xs - mu) @ A
+    return Xo
+
+
+def build_rungs_ext(y):
+    """RUNGS plus the KC-C2 whitening rungs (string-keyed: 4b, 4c, 4d, 4lw,
+    4o). A copy of RUNGS, not a mutation -- rungs 0-4 stay the exact same
+    (name, fn, needs_subjects) tuples other scripts see when they import
+    RUNGS directly."""
+    ext = dict(RUNGS)
+    ext["4b"] = ("prez_whiten_lam1", lambda X, subj: whiten_recolor(rung0_global_z(X), subj, lam=1.0), True)
+    ext["4c"] = ("prez_whiten_scalefree_a1", lambda X, subj: whiten_recolor(rung0_global_z(X), subj, alpha=1.0), True)
+    ext["4d"] = ("prez_whiten_scalefree_a01", lambda X, subj: whiten_recolor(rung0_global_z(X), subj, alpha=0.1), True)
+    ext["4lw"] = ("prez_whiten_ledoitwolf", rung4lw_prez_ledoitwolf, True)
+    ext["4o"] = ("oracle_within_class_whiten", lambda X, subj: rung4o_oracle_within_class(X, subj, y), True)
+    return ext
+
+
 def cohens_d_paired(a, b):
     """Paired Cohen's d = mean(diff) / sd(diff, ddof=1)."""
     d = np.asarray(a, float) - np.asarray(b, float)
@@ -82,8 +153,13 @@ def cohens_d_paired(a, b):
     return float(d.mean() / sd) if sd > 0 else float("nan")
 
 
-def run_rung(rung_id, X, y, subjects, out_dir, seed, inner_splits, verbose, subj_filter=None):
-    name, fn, needs_subjects = RUNGS[rung_id]
+def run_rung(rung_id, X, y, subjects, out_dir, seed, inner_splits, verbose, subj_filter=None,
+            rungs_dict=None):
+    """rungs_dict=None (the default) uses the module-level RUNGS (rungs 0-4
+    only, unchanged behaviour). KC-C2 passes RUNGS_EXT (built by
+    build_rungs_ext) to reach the new string-keyed whitening rungs."""
+    rungs_dict = RUNGS if rungs_dict is None else rungs_dict
+    name, fn, needs_subjects = rungs_dict[rung_id]
     csv_path = out_dir / f"ladder_loso_{rung_id}_SVM_subjectwise.csv"
 
     done = set()
@@ -151,7 +227,8 @@ def run_rung(rung_id, X, y, subjects, out_dir, seed, inner_splits, verbose, subj
     return csv_path
 
 
-def summarise(rung_ids, out_dir):
+def summarise(rung_ids, out_dir, rungs_dict=None):
+    rungs_dict = RUNGS if rungs_dict is None else rungs_dict
     rows, per_subject = [], {}
     for rid in rung_ids:
         p = out_dir / f"ladder_loso_{rid}_SVM_subjectwise.csv"
@@ -159,13 +236,19 @@ def summarise(rung_ids, out_dir):
             continue
         d = pd.read_csv(p).drop_duplicates("subject").sort_values("subject")
         rows.append({
-            "rung": rid, "name": RUNGS[rid][0],
+            "rung": rid, "name": rungs_dict[rid][0],
             "f1_mean": round(float(d["f1_macro"].mean()), 6),
             "f1_sd": round(float(d["f1_macro"].std(ddof=1)), 6),
             "n": int(len(d)),
         })
         per_subject[rid] = d.set_index("subject")["f1_macro"]
-    summ = pd.DataFrame(rows).sort_values("rung")
+    # "rung" mixes int (0-4) and str (4b/4c/4d/4lw/4o) when KC-C2 rungs are
+    # included -- sort by a string key so mixed-type comparison never raises,
+    # while pure-int rung lists (the original, unchanged call site) sort
+    # exactly as before (numeric string order == numeric order for 0-4).
+    summ = pd.DataFrame(rows)
+    if len(summ):
+        summ = summ.sort_values("rung", key=lambda s: s.astype(str))
     summ.to_csv(out_dir / "alignment_ladder_loso_summary.csv", index=False)
     print("\n================  E-C1 LADDER LOSO SUMMARY  ================")
     print(summ.to_string(index=False))
@@ -211,7 +294,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", default="results_alignment_ladder_loso")
     ap.add_argument("--rungs", default="3,0,1,2,4",
-                    help="comma list; gate rungs (3 then 0) first so a failure stops early")
+                    help="comma list; gate rungs (3 then 0) first so a failure stops early. "
+                         "KC-C2 adds string rung ids 4b,4c,4d,4lw,4o (whitening variants).")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--inner-splits", type=int, default=5)
     ap.add_argument("--resume", action="store_true")
@@ -230,7 +314,15 @@ def main():
     np.random.seed(args.seed)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    rung_ids = [int(r) for r in args.rungs.split(",") if r.strip() != ""]
+    rung_ids = []
+    for r in args.rungs.split(","):
+        r = r.strip()
+        if not r:
+            continue
+        try:
+            rung_ids.append(int(r))
+        except ValueError:
+            rung_ids.append(r)  # KC-C2 string rung id (4b/4c/4d/4lw/4o)
     subj_filter = None
     if args.subjects:
         subj_filter = set()
@@ -247,9 +339,14 @@ def main():
     print(f"[data] X={X.shape} subjects={len(np.unique(subjects))} "
           f"classes={len(np.unique(y))} labels(encode order)=DNS,STDUP,UPS,WAK")
 
+    # RUNGS_EXT is a superset of RUNGS (rungs 0-4 identical tuples, plus the
+    # KC-C2 string-keyed whitening rungs) -- passing it through is a no-op for
+    # any --rungs list that only names integers 0-4 (the original behaviour).
+    rungs_dict = build_rungs_ext(y)
+
     for rid in rung_ids:
         run_rung(rid, X, y, subjects, out_dir, args.seed, args.inner_splits, args.verbose,
-                 subj_filter=subj_filter)
+                 subj_filter=subj_filter, rungs_dict=rungs_dict)
 
     if subj_filter is not None:
         print(f"\n[partial run: --subjects {args.subjects}] skipping summary/gates; "
@@ -257,7 +354,7 @@ def main():
         print(f"[DONE] total elapsed {time.time()-t0:.0f}s")
         return
 
-    summ = summarise(sorted(rung_ids), out_dir)
+    summ = summarise(sorted(rung_ids, key=str), out_dir, rungs_dict=rungs_dict)
 
     # ---- validation gates ----
     print("\n================  VALIDATION GATES  ================")
