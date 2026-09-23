@@ -75,7 +75,11 @@ def _build_labels(mode: np.ndarray, fs: float) -> np.ndarray:
 
 
 def load_subject_trials(root: Path, skip_sids: set | None = None):
-    """Yield (subject_id:int, emg[T,C], labels[T] (str codes), fs:float) per circuit CSV.
+    """Yield (subject_id:int, emg[T,C], labels[T] (str codes), fs:float,
+    circuit:int|None) per circuit CSV. circuit is parsed from the filename
+    (Circuit_###) when present, else None -- an ADDITIVE fifth yield value
+    (KC-S2); no other script imports this generator (verified), so widening
+    the tuple is safe.
 
     skip_sids: subject ids to skip entirely (not even globbed/read) -- used by
     --resume so already-checkpointed subjects cost no I/O on a re-run.
@@ -107,7 +111,9 @@ def load_subject_trials(root: Path, skip_sids: set | None = None):
             if CHANNEL_SUBSET is not None:
                 emg = emg[:, CHANNEL_SUBSET]
             labels = _build_labels(df[MODE_COL].to_numpy(), FS)
-            yield sid, emg, labels, FS
+            cm = re.search(r"Circuit_(\d+)", csv.name)
+            circuit = int(cm.group(1)) if cm else None
+            yield sid, emg, labels, FS, circuit
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +136,14 @@ def majority_label(win):
     return vals[i], counts[i] / counts.sum()
 
 
-def window_trial(emg_raw, labels, fs, subject, t_offset):
+def window_trial(emg_raw, labels, fs, subject, t_offset, circuit=None, with_circuit_meta=False):
+    """with_circuit_meta=False (the default) is BYTE-IDENTICAL to the pre-KC23
+    function: meta rows carry exactly the original six keys. KC-S2 (F0
+    feasibility): with_circuit_meta=True additionally carries 'circuit' (the
+    circuit id parsed from the source filename) and 't_start_circuit' (the
+    within-CIRCUIT sample offset, reset to 0 at the start of every circuit --
+    unlike 't_start', which is a running offset across the subject's whole
+    concatenated session)."""
     xf = bandpass(emg_raw, fs)
     env = envelope(xf, fs)
     win = int(round(WIN_MS * fs / 1000.0))
@@ -144,8 +157,12 @@ def window_trial(emg_raw, labels, fs, subject, t_offset):
             continue
         Xr.append(xf[s:e].T)
         Xe.append(env[s:e].T)
-        meta.append({"subject": int(subject), "movement": cls, "t_start": int(t_offset + s),
-                     "fs": float(fs), "win_samples": int(win), "n_channels": xf.shape[1]})
+        row = {"subject": int(subject), "movement": cls, "t_start": int(t_offset + s),
+               "fs": float(fs), "win_samples": int(win), "n_channels": xf.shape[1]}
+        if with_circuit_meta:
+            row["circuit"] = int(circuit) if circuit is not None else -1
+            row["t_start_circuit"] = int(s)
+        meta.append(row)
     return Xr, Xe, meta
 
 
@@ -173,6 +190,12 @@ def main():
     ap.add_argument("--resume", action="store_true",
                     help="Resume: skip subjects already checkpointed in --out/checkpoints; "
                          "merge everything found on disk into the final NPZ at the end.")
+    ap.add_argument("--with-circuit-meta", action="store_true",
+                    help="KC-S2 F0 feasibility gate. Additionally write 'circuit' and "
+                         "'t_start_circuit' columns to the meta CSV. Default off reproduces "
+                         "the pre-KC23 windows npz and meta CSV byte-identically; always run "
+                         "this WITH a new --tag, so the published output is never touched "
+                         "even if the flag is passed by mistake.")
     args = ap.parse_args()
 
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
@@ -190,14 +213,15 @@ def main():
     subj_offset = {}
     cur_sid = None
     cur_Xr, cur_Xe, cur_meta = [], [], []
-    for sid, emg, labels, fs in load_subject_trials(Path(args.root), skip_sids=done_sids):
+    for sid, emg, labels, fs, circuit in load_subject_trials(Path(args.root), skip_sids=done_sids):
         if cur_sid is not None and sid != cur_sid:
             _flush_subject(ckpt_dir, cur_sid, cur_Xr, cur_Xe, cur_meta)
             cur_Xr, cur_Xe, cur_meta = [], [], []
         cur_sid = sid
 
         off = subj_offset.get(sid, 0)
-        Xr, Xe, meta = window_trial(np.asarray(emg, float), np.asarray(labels), float(fs), sid, off)
+        Xr, Xe, meta = window_trial(np.asarray(emg, float), np.asarray(labels), float(fs), sid, off,
+                                    circuit=circuit, with_circuit_meta=args.with_circuit_meta)
         subj_offset[sid] = off + len(emg)
         cur_Xr += Xr; cur_Xe += Xe; cur_meta += meta
         if Xr:
