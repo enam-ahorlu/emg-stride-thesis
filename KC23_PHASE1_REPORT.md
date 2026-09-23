@@ -158,16 +158,13 @@ paths. **This override already exists** (`LADDER_FEAT`/`LADDER_META`,
 work, evidently after the KC23 plans were drafted. No code change was needed
 here; flagged as a plan/reality drift, not a missed instruction.
 
-**Inertness gate (rungs 3, 4, 250 ms, subjects 1, 2, 3):** rung 3 (unchanged,
-pre-existing rung, run through the new `RUNGS_EXT`-threaded code path)
-matches published `results_alignment_ladder_loso/ladder_loso_3_SVM_
-subjectwise.csv` exactly on subjects 1 and 2 checked so far
-(f1_macro=0.6708429792681361 and 0.8729166904278644, both to 16 significant
-figures, `best_params` identical). Subject 3 and rung 4 were still completing
-in the background at the time this report was written (`results_kc23_c2_
-inertness_check/`); given the exact match on every subject checked and the
-fact that rungs 0-4 are the identical `(name, fn, needs_subjects)` tuples
-copied unchanged into `RUNGS_EXT`, this is not expected to diverge.
+**Inertness gate (rungs 3, 4, 250 ms, subjects 1, 2, 3): PASS, confirmed
+complete.** Both rungs match published `results_alignment_ladder_loso/
+ladder_loso_{3,4}_SVM_subjectwise.csv` exactly, on all three subjects, on
+every printed field (`f1_macro`, `bal_acc`, `acc`, `best_params`) — e.g. rung
+4 subject 1: f1_macro=0.578345878280984 both. Only `fit_time_sec` differs
+(wall-clock, not a determinism signal). Evidence: `results_kc23_c2_
+inertness_check/`.
 
 ### 3.3 KC-C3 (classical tuning extension)
 
@@ -383,3 +380,49 @@ proba currently live in different directories.
    correctness (every inertness check that completed matched published
    numbers exactly), only wall-clock — flagged so it is not repeated when the
    real queue runs.
+
+---
+
+## 6. Continuation (24 September 2026): items 1-7 of Prompt 1b
+
+All eight items of the continuation prompt were carried out; see the
+individual commits (`51cd100`, `b66f67b`, `444abf0`, `7e1be9a`, `0ba3575`,
+`5010883`, `f860775`) for full detail. Summary:
+
+1. **KC-C1 decision recorded.** `KC23_HALT.md` created with the C1 entry and
+   decision D-6a (keep the soft vote as the headline combiner; add stacking
+   as a descriptive row C13b beside KC-D1's C13). Implemented in
+   `kc23_d1_replicate_stats.py`.
+2. **V1's 74.8 figure identified.** Confirmed as the causal decision-route
+   SVM, buffer-excluded, K=100 (0.7476), from `run_buffer_composition.py`'s
+   `GATES` dict and `results_loso_freq_streaming/
+   streaming_buffer_rescore_summary.csv`. Both like-for-like causal costs
+   are now pinned down: -2.9 pt (decision route, matches App. B.7 exactly)
+   and -4.49 pt (probability route). V5 confirmed as a numbering slip, not
+   an omitted check.
+3. **KC-C3 inertness completed.** Both normalizations, all 3 subjects, both
+   models, exact match to `results_loso_freq_persubj` and `results_loso_freq`
+   on every digit.
+4. **`b8_cnn_sd.py` extended** with the same `--scheme`/`--guard-windows`/
+   `--n-chunks` options as `b8_movement_blocked_sd.py` (closing the gap
+   flagged in item 5 of the Phase-1 report above). Legacy path proven
+   byte-identical on CPU, 2 subjects.
+5. **Pre-registration.** Every stage gate/stats script (C2 through S3) and
+   two new runners written, with 101 synthetic tests across 17 files, all
+   green (commit `0ba3575`). Two real bugs caught before any data could
+   have hit them: a G-FAIL/G-WEAK priority-order bug in the D6 manipulation
+   gate, and a zero-variance edge case in the Hjorth mobility calculation.
+6. **Halt-protocol fix.** `find_held_dependents()` under-reported jobs that
+   depend directly on an already-finished-but-escalating job; fixed and
+   verified end to end with a synthetic always-escalate gate and a 3-job
+   fixture (`kc23_jobs_{gpu,cpu}_halttest.csv`).
+7. **Validation.** `kc23_validate_jobs.py`: every script, gate_script and
+   depends_on reference in the regenerated `kc23_jobs_{gpu,cpu}.csv` now
+   resolves (179/179 runnable rows checked; 8 placeholder rows excluded by
+   design).
+
+**New ambiguity found this continuation, flagged not resolved:** D1.5 item
+3 (the secondary MixedLM cross-check) is not computed by
+`kc23_d1_replicate_stats.py` -- noted in that script's own docstring as a
+scope cut that does not affect any pre-registered letter, but still owed
+before the real KC-D1 write-up.
