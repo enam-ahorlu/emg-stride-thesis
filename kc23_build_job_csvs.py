@@ -108,7 +108,7 @@ def instr(out_dir):
 # ============================================================================
 # #6 (Phase 2, GPU): KC-D1 Tier A, seed 42 re-run (R1-R12) -- the reproduction gate
 # ============================================================================
-D1_REPRO_GATE = "kc23_d1_reproduction_gate.py"  # not yet written; checks R2/R1/R10 vs published (D1.4)
+D1_REPRO_GATE = "kc23_d1_replicate_stats.py"  # both the reproduction gate (D1.4) and the 17-contrast/headline gates live in one script
 d1_s42_ids = []
 
 def _d1_arm(arm, out, cmd):
@@ -245,7 +245,7 @@ gpu_rows[[r["job_id"] for r in gpu_rows].index(f"d1_r2_s1001")]["gate_script"] =
 # #10 (Phase 3, CPU): KC-D2 reliance analysis (analysis only, on D1's instrumented runs)
 # ============================================================================
 cpu("d2_reliance", "D2", None,
-   f'{PY} kc23_d2_reliance_analysis.py --out results_kc23_d2_reliance',
+   f'{PY} kc23_d2_reliance_stats.py --out results_kc23_d2_reliance',
    "results_kc23_d2_reliance", depends_on=tuple(d1_all_seed_ids), gate_script="kc23_d2_reliance_stats.py")
 
 # ============================================================================
@@ -274,8 +274,8 @@ gpu_rows[[r["job_id"] for r in gpu_rows].index(d4_ids[-1])]["gate_script"] = "kc
 # ============================================================================
 # #11b (Phase 4, GPU): KC-D6 Stage 1 -- every family at seed 42
 # ============================================================================
-D6_SANITY_GATE = "kc23_d6_sanity_gate.py"
-D6_MANIP_GATE = "kc23_d6_manipulation_gate.py"
+D6_SANITY_GATE = "kc23_d6_stats.py"       # sanity, manipulation, outcome and mechanism gates all live in one script
+D6_MANIP_GATE = "kc23_d6_stats.py"
 d6_stage1_ids = []
 adv_lambdas = [0, 0.03, 0.1, 0.3, 1, 3, 10]
 for lam in adv_lambdas:
@@ -375,7 +375,7 @@ for arch in ["simple", "resnet_se"]:
            f'{PY} run_cnn_arch_loso.py --npz {NPZ_AONLY} --meta {META_AONLY} --arch {arch} '
            f'--norm-mode {norm} --seed 42 --out {out} --resume', out,
            depends_on=("s3_inventory",),
-           gate_script=("" if (arch, norm) != ("resnet_se", "per_subject") else "kc23_s3_benchmark_stats.py"))
+           gate_script="")  # KC-S3 has no halting letters per the plan; kc23_s3_inventory.py is not a gate
 
 # ============================================================================
 # #15 (Phase 5, GPU+CPU): KC-S2 ENABL3S transitions -- gated on F0 feasibility
