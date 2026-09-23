@@ -1,0 +1,2 @@
+model,heldout_subject,n_test,acc,bal_acc,f1_macro,best_params,fit_time_sec,infer_ms_per_window,feat_sel,n_features_used
+SVM,1,690,0.7318840579710145,0.6802573564791345,0.6708429792681361,"{'clf__C': 1, 'clf__gamma': 'scale'}",180.91196240007412,1.3674839999293908,none,72

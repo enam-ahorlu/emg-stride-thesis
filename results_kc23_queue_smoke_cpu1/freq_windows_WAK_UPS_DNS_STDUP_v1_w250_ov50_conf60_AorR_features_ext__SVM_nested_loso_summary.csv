@@ -1,0 +1,2 @@
+model,f1_macro_mean,bal_acc_mean,acc_mean,f1_macro_sd,bal_acc_sd
+SVM,0.6708429792681361,0.6802573564791345,0.7318840579710145,,

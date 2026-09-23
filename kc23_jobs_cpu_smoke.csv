@@ -1,0 +1,2 @@
+job_id,stage,seed,command,out_dir,depends_on,gate_script
+smoke_cpu1,SMOKE,42,"""C:\Users\enama\OneDrive\Desktop\Documents\MSc CS\FInal Project\06_Code\.venv\Scripts\python.exe"" train_classical_loso.py --features features_out/freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_ext.npz --meta features_out/freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_meta.csv --models SVM --norm-mode per_subject --only-heldout 1 --out results_kc23_queue_smoke_cpu1",results_kc23_queue_smoke_cpu1,,
