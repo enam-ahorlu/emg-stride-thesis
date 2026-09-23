@@ -31,21 +31,37 @@ from torch.utils.data import DataLoader
 from train_cnn_subjectdep import (EMGWindowDataset, SimpleEMGCNN, load_npz, pick_X,
                                   encode_labels, zscore_fit, zscore_apply,
                                   train_one_epoch, eval_model)
-from b8_movement_blocked_sd import movement_blocked_folds
+from b8_movement_blocked_sd import movement_blocked_folds, assign_folds
 
 ROOT = Path(__file__).resolve().parent
 SEED = 42
 
 
-def one_subject(X, y, meta_sub, scheme, n_folds, win_len, epochs, norm, device, patience=5):
+def one_subject(X, y, meta_sub, scheme, n_folds, win_len, epochs, norm, device, patience=5,
+                guard_windows=1.0, n_chunks=20):
+    """scheme='pooled'/'movement_blocked' (the two legacy values) is
+    BYTE-IDENTICAL to the pre-KC23 function: same two branches, same
+    movement_blocked_folds(..., win_len) call with no guard_windows kwarg
+    passed (so movement_blocked_folds's own guard_windows=1.0 default applies,
+    matching today's behaviour exactly). KC-C5's new scheme names
+    (pooled_random, pooled_random_nonoverlap, blocked, interleaved) route
+    through assign_folds (b8_movement_blocked_sd.py, shared with the
+    classical KC-C5 extension) instead, with guard_windows/n_chunks
+    forwarded."""
+    NEW_SCHEMES = {"pooled_random", "pooled_random_nonoverlap", "blocked", "interleaved"}
     if scheme == "pooled":
         skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=SEED)
         fold = np.full(len(y), -1, dtype=int)
         for f, (_, te) in enumerate(skf.split(X, y)):
             fold[te] = f
         dropped = 0
-    else:
+    elif scheme == "movement_blocked":
         fold, dropped, _ = movement_blocked_folds(meta_sub.reset_index(drop=True), n_folds, win_len)
+    elif scheme in NEW_SCHEMES:
+        fold, dropped, _ = assign_folds(scheme, meta_sub.reset_index(drop=True), n_folds, win_len,
+                                        guard_windows, n_chunks, seed=SEED)
+    else:
+        raise ValueError(f"unknown scheme {scheme!r}")
     keep = fold >= 0
     f1s = []
     for f in range(n_folds):
@@ -99,6 +115,13 @@ def main() -> int:
     ap.add_argument("--window-ms", type=int, default=250)
     ap.add_argument("--splits", type=int, default=5)
     ap.add_argument("--out", default="results_b8_sd")
+    ap.add_argument("--scheme", default=None,
+                    choices=["pooled_random", "pooled_random_nonoverlap", "blocked", "interleaved"],
+                    help="KC-C5. Absent (default) reproduces the pre-KC23 output exactly: the "
+                         "original pooled-vs-movement_blocked comparison. When set, runs ONE "
+                         "new scheme only, writing to distinctly-named output files.")
+    ap.add_argument("--guard-windows", type=float, default=1.0)
+    ap.add_argument("--n-chunks", type=int, default=20)
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -110,6 +133,36 @@ def main() -> int:
           f"norm={args.norm} epochs={args.epochs} device={device} guard {win_len:.3f}s")
 
     subs = sorted(meta["subject"].unique())
+
+    if args.scheme is not None:
+        out_dir = ROOT / args.out
+        out_dir.mkdir(parents=True, exist_ok=True)
+        per_subj = {}
+        gd = gt = 0
+        t0 = time.time()
+        for si, s in enumerate(subs, 1):
+            m = meta["subject"] == s
+            idx = meta.index[m].to_numpy()
+            ms = meta.loc[m].reset_index(drop=True)
+            X = Xall[idx]
+            y, _ = encode_labels(ms["movement"].astype(str).values)
+            f1s, dr, tot = one_subject(X, y, ms, args.scheme, args.splits, win_len, args.epochs,
+                                       args.norm, device, guard_windows=args.guard_windows,
+                                       n_chunks=args.n_chunks)
+            per_subj[int(s)] = float(np.mean(f1s)) if f1s else np.nan
+            gd += dr; gt += tot
+            if si % 10 == 0:
+                print(f"  {si}/{len(subs)} subjects  ({time.time()-t0:.0f}s)")
+        stem = f"b8_cnn_{args.scheme}_g{args.guard_windows:g}"
+        pd.DataFrame({"subject": subs, "CNN": [per_subj[s] for s in subs]}).round(5).to_csv(
+            out_dir / f"{stem}_subjectwise.csv", index=False)
+        json.dump({"scheme": args.scheme, "guard_windows": args.guard_windows, "n_chunks": args.n_chunks,
+                  "guard_frac": (gd / gt) if gt else 0.0,
+                  "mean": float(np.nanmean(list(per_subj.values())))},
+                 open(out_dir / f"{stem}_outcome.json", "w"), indent=2)
+        print(f"wrote {out_dir}/{stem}_*")
+        return 0
+
     res = {"pooled": {}, "movement_blocked": {}}
     gd = gt = 0
     t0 = time.time()
