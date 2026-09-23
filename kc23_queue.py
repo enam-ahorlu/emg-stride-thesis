@@ -24,6 +24,14 @@ gate_script is set finishes, the runner invokes
         every job elsewhere whose depends_on names a job in this stage.
         Appends a line to KC23_HALT.md. Does not touch KC23_HALT.md's own
         prior content (append-only).
+Any other exit code (a gate script crashing -- an uncaught exception, a
+missing input file, a CLI contract mismatch -- exits with Python's default
+code 1, not 10 or 20) is treated exactly like 20: fail closed. A gate whose
+contract broke has told us nothing, and silently continuing past that is
+indistinguishable, downstream, from the gate having actually passed -- which
+is worse than halting on a result that turns out to be fine. Found live on
+2026-09-24: kc23_s2_f0_feasibility.py crashed (rc=1) and was being treated as
+a clean pass before this fix.
 A gate_script that does not exist yet (most of the per-stage stats scripts
 are written closer to when each stage actually runs, per the plan) is treated
 as "not yet implemented": the runner prints a warning and continues (rc=0
@@ -121,7 +129,7 @@ def run_gate(job: "Job") -> int:
         return 20  # fail closed: an unrunnable gate halts dependents rather than silently passing
 
 
-def append_halt(job: "Job", held_job_ids: list[str] | None = None):
+def append_halt(job: "Job", held_job_ids: list[str] | None = None, note: str | None = None):
     HALT_MD.parent.mkdir(parents=True, exist_ok=True)
     held = held_job_ids or []
     with open(HALT_MD, "a", encoding="utf-8") as f:
@@ -129,7 +137,8 @@ def append_halt(job: "Job", held_job_ids: list[str] | None = None):
                 f"- Time: {datetime.now().isoformat()}\n"
                 f"- out_dir: {job.out_dir}\n"
                 f"- gate_script: {job.gate_script}\n"
-                f"- Held dependent jobs ({len(held)}): {held}\n"
+                + (f"- Note: {note}\n" if note else "")
+                + f"- Held dependent jobs ({len(held)}): {held}\n"
                 f"- Every not-yet-started job in stage {job.stage}, and every job "
                 f"elsewhere depending on one (directly or transitively), is now skipped.\n")
     print(f"[HALT] wrote {HALT_MD} for stage {job.stage}, held {len(held)} dependent job(s)")
@@ -219,10 +228,17 @@ def finish(job: "Job", halted_stages: set, all_jobs: list, by_id: dict):
         job.status = "done"
         rc = run_gate(job)
         job.gate_rc = rc if job.gate_rc != "NOT_IMPLEMENTED" else job.gate_rc
+        note = None
+        if job.gate_rc != "NOT_IMPLEMENTED" and rc not in (0, 10, 20):
+            note = (f"gate exited rc={rc}, not one of the 0/10/20 contract -- the gate script "
+                    f"almost certainly crashed or was miswired, not a data-driven escalation. "
+                    f"Fail closed rather than treat this as a silent pass.")
+            print(f"[gate] {job.job_id}: {note}")
+            rc = 20
         if rc == 20:
             halted_stages.add(job.stage)
             held = find_held_dependents(job.stage, all_jobs, by_id)
-            append_halt(job, held)
+            append_halt(job, held, note=note)
         elif rc == 10:
             print(f"[gate] {job.job_id}: report (rc=10), continuing")
     else:
