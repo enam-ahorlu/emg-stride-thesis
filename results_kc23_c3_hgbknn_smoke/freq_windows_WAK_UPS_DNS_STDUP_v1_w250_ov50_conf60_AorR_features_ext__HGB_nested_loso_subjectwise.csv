@@ -1,0 +1,2 @@
+model,heldout_subject,n_test,acc,bal_acc,f1_macro,best_params,fit_time_sec,infer_ms_per_window,feat_sel,n_features_used
+HGB,1,690,0.7304347826086957,0.6414997469162043,0.6550064161845462,"{'clf__min_samples_leaf': 20, 'clf__max_leaf_nodes': 31, 'clf__learning_rate': 0.03, 'clf__l2_regularization': 1}",260.6965657999972,0.25849000026937574,none,72

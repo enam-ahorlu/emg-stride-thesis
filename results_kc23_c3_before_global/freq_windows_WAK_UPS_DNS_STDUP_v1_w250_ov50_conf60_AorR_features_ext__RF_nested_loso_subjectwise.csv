@@ -1,0 +1,4 @@
+model,heldout_subject,n_test,acc,bal_acc,f1_macro,best_params,fit_time_sec,infer_ms_per_window,feat_sel,n_features_used
+RF,1,690,0.6072463768115942,0.43924226692611545,0.44474574524545896,"{'clf__max_depth': None, 'clf__n_estimators': 500}",549.0015706999693,0.5145584995625541,none,72
+RF,2,520,0.875,0.8064447072034236,0.8044318689631931,"{'clf__max_depth': None, 'clf__n_estimators': 400}",641.2368486000923,0.4336154996417463,none,72
+RF,3,594,0.8468013468013468,0.7243665978756398,0.7523511880513192,"{'clf__max_depth': None, 'clf__n_estimators': 500}",773.0263410999905,0.6216365000000224,none,72

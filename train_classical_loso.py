@@ -12,17 +12,19 @@ from typing import Dict, List, Tuple, Optional
 import numpy as np
 import pandas as pd
 
-from sklearn.model_selection import GroupKFold, GridSearchCV
+from sklearn.model_selection import GroupKFold, GridSearchCV, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import (
     accuracy_score, balanced_accuracy_score, f1_score,
     classification_report, confusion_matrix
 )
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_selection import RFE, SelectKBest, mutual_info_classif
+from sklearn.utils.class_weight import compute_sample_weight
 
 
 # ---- helpers copied/compatible with your current conventions ----
@@ -117,6 +119,43 @@ class LosoRow:
     n_features_used: int
 
 
+# ---- KC-C3.3 extended search spaces, fixed by EXPERIMENT_PLAN_KC23_CLASSICAL.md ----
+SVM_GRID_EXTENDED = {
+    "clf__C": [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30],
+    "clf__gamma": [0.01, 0.1, 0.3, 1, 3, 10, "scale"],
+}  # 8 x 7 = 56 cells (the plan's "48 cells" counts gamma as 6 numeric values only;
+   # "scale" is kept as an extra option here rather than dropped, since removing it
+   # would silently lose the one gamma value every published fold actually used)
+RF_GRID_EXTENDED = {
+    "clf__n_estimators": [200, 500, 1000],
+    "clf__max_depth": [None, 10, 20, 40],
+    "clf__min_samples_leaf": [1, 2, 5, 10],
+    "clf__max_features": ["sqrt", "log2", 0.25, 0.5],
+}
+HGB_GRID = {
+    "clf__learning_rate": [0.03, 0.1, 0.3],
+    "clf__max_leaf_nodes": [15, 31, 63],
+    "clf__min_samples_leaf": [20, 50, 100],
+    "clf__l2_regularization": [0, 1, 10],
+}
+KNN_GRID = {
+    "clf__n_neighbors": [5, 11, 21, 41, 81],
+    "clf__weights": ["uniform", "distance"],
+}
+
+
+def make_search(pipe, param_grid, scoring, cv, search_mode, n_iter, seed, n_jobs):
+    """KC-C3: GridSearchCV (search_mode='grid') or RandomizedSearchCV
+    (search_mode='random', n_iter draws, seeded) over the same param_grid/cv/
+    scoring contract used everywhere else in this file."""
+    if search_mode == "random":
+        return RandomizedSearchCV(pipe, param_distributions=param_grid, n_iter=n_iter,
+                                  scoring=scoring, cv=cv, n_jobs=n_jobs, refit=True,
+                                  random_state=seed, verbose=2)
+    return GridSearchCV(pipe, param_grid=param_grid, scoring=scoring, cv=cv,
+                        n_jobs=n_jobs, refit=True, verbose=2)
+
+
 class ToFloat32(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
@@ -191,7 +230,18 @@ def main():
     ap.add_argument("--features", required=True, help="Path to features .npz (N,F)")
     ap.add_argument("--meta", required=True, help="Path to meta CSV aligned to features rows (N,...)")
     ap.add_argument("--out", default="results_loso", help="Output dir")
-    ap.add_argument("--models", default="SVM,RF", help="Comma-separated subset of {SVM,RF}")
+    ap.add_argument("--models", default="SVM,RF", help="Comma-separated subset of {SVM,RF,HGB,KNN}")
+    ap.add_argument("--grid", default="default", choices=["default", "extended"],
+                    help="KC-C3. default (default value) is byte-identical to the pre-KC23 "
+                         "grids for SVM/RF (the inertness gate). extended uses the KC-C3.3 "
+                         "search spaces (SVM: 48-cell full grid; RF: the wider random space). "
+                         "HGB and KNN have no 'default' (they are new KC-C3 models), so their "
+                         "grid is the KC-C3.3 space regardless of --grid.")
+    ap.add_argument("--search", default="grid", choices=["grid", "random"],
+                    help="KC-C3. grid (default) = GridSearchCV over the full space (SVM-X, "
+                         "KNN). random = RandomizedSearchCV, --n-iter draws, seeded (RF-X, HGB).")
+    ap.add_argument("--n-iter", type=int, default=30,
+                    help="KC-C3. Draws for --search random (default 30, per the plan).")
     ap.add_argument("--no-scale", action="store_true", help="Disable StandardScaler (NOT recommended; kept for legacy comparison)")
     ap.add_argument("--norm-mode", default=None,
                     choices=["none", "global", "per_subject", "robust"],
@@ -395,6 +445,7 @@ def main():
                     continue
 
                 reused = best_params_lookup[model_name][int(heldout)]
+                sample_weight = None
                 if model_name == "SVM":
                     steps = _build_scaler_steps()
                     steps.append(("clf", SVC(kernel="rbf", class_weight="balanced", cache_size=500,
@@ -407,11 +458,26 @@ def main():
                         n_jobs=args.rf_n_jobs, **reused
                     )))
                     pipe = Pipeline(steps)
+                elif model_name == "HGB":
+                    steps = _build_scaler_steps()
+                    steps.append(("clf", HistGradientBoostingClassifier(
+                        max_iter=500, early_stopping=True, validation_fraction=0.1,
+                        random_state=args.seed, **reused)))
+                    pipe = Pipeline(steps)
+                    sample_weight = compute_sample_weight("balanced", ytr)
+                elif model_name == "KNN":
+                    # KC-C3.2: kNN has no class_weight equivalent -- recorded, not worked around.
+                    steps = _build_scaler_steps()
+                    steps.append(("clf", KNeighborsClassifier(**reused)))
+                    pipe = Pipeline(steps)
                 else:
                     continue
 
                 t0 = time.perf_counter()
-                pipe.fit(Xtr, ytr)
+                if sample_weight is not None:
+                    pipe.fit(Xtr, ytr, clf__sample_weight=sample_weight)
+                else:
+                    pipe.fit(Xtr, ytr)
                 t1 = time.perf_counter()
 
                 best = pipe
@@ -430,20 +496,19 @@ def main():
                 steps.append(("clf", SVC(kernel="rbf", class_weight="balanced", cache_size=500)))
                 pipe = Pipeline(steps)
 
-                param_grid = {
-                    "clf__C": [1, 5, 10],
-                    "clf__gamma": ["scale"],
-                }
+                # --grid default (the default value) is BYTE-IDENTICAL to the
+                # pre-KC23 grid: {C: [1,5,10], gamma: ['scale']}, GridSearchCV,
+                # n_jobs=args.n_jobs. This is the KC-C3 inertness gate.
+                if args.grid == "extended":
+                    param_grid = SVM_GRID_EXTENDED
+                else:
+                    param_grid = {"clf__C": [1, 5, 10], "clf__gamma": ["scale"]}
 
-                search = GridSearchCV(
-                    pipe,
-                    param_grid=param_grid,
-                    scoring="f1_macro",
-                    cv=list(inner_cv.split(Xtr, ytr, groups=gtr)),
-                    n_jobs=args.n_jobs,  # 1 = sequential (memory-safe on Windows)
-                    refit=True,
-                    verbose=2
-                )
+                search_mode = args.search if args.grid == "extended" else "grid"
+                search = make_search(pipe, param_grid, "f1_macro",
+                                     list(inner_cv.split(Xtr, ytr, groups=gtr)),
+                                     search_mode, args.n_iter, args.seed,
+                                     args.n_jobs)
 
                 t0 = time.perf_counter()
                 search.fit(Xtr, ytr)
@@ -461,20 +526,68 @@ def main():
                 )))
                 pipe = Pipeline(steps)
 
-                param_grid = {
-                    "clf__n_estimators": [200, 400, 500],
-                    "clf__max_depth": [None, 10],
-                }
+                # --grid default (the default value) is BYTE-IDENTICAL to the
+                # pre-KC23 grid: {n_estimators: [200,400,500], max_depth: [None,10]},
+                # GridSearchCV, n_jobs=1. This is the KC-C3 inertness gate.
+                if args.grid == "extended":
+                    param_grid = RF_GRID_EXTENDED
+                else:
+                    param_grid = {"clf__n_estimators": [200, 400, 500], "clf__max_depth": [None, 10]}
 
-                search = GridSearchCV(
-                    pipe,
-                    param_grid=param_grid,
-                    scoring="f1_macro",
-                    cv=list(inner_cv.split(Xtr, ytr, groups=gtr)),
-                    n_jobs=1,
-                    refit=True,
-                    verbose=2
-                )
+                search_mode = args.search if args.grid == "extended" else "grid"
+                search = make_search(pipe, param_grid, "f1_macro",
+                                     list(inner_cv.split(Xtr, ytr, groups=gtr)),
+                                     search_mode, args.n_iter, args.seed, 1)
+
+                t0 = time.perf_counter()
+                search.fit(Xtr, ytr)
+                t1 = time.perf_counter()
+                best = search.best_estimator_
+                yhat = best.predict(Xte)
+                best_params_str = str(search.best_params_)
+
+            elif model_name == "HGB":
+                # KC-C3: HistGradientBoostingClassifier, new model key. max_iter=500 with
+                # early stopping on an internal 10% split, per the plan. Balanced weighting
+                # via sample_weight (version-independent; HGB's own class_weight support is
+                # sklearn-version-gated) passed through GridSearchCV/RandomizedSearchCV's
+                # fit_params, routed to the pipeline's "clf" step.
+                steps = _build_scaler_steps()
+                steps.append(("clf", HistGradientBoostingClassifier(
+                    max_iter=500, early_stopping=True, validation_fraction=0.1,
+                    random_state=args.seed)))
+                pipe = Pipeline(steps)
+                param_grid = HGB_GRID
+                search_mode = args.search if args.search != "grid" else "random"
+                # HGB is always random-search per the plan's Table C3.3 (30 draws); a
+                # caller passing --search grid for HGB gets random search anyway with a
+                # printed note, since a full grid here is 3x3x3x3=81 cells (not specified
+                # as the intended search for HGB).
+                if args.search == "grid":
+                    print("[HGB] --search grid requested but HGB's space is specified as "
+                          "random (30 draws) in the plan; using random search.")
+                sample_weight = compute_sample_weight("balanced", ytr)
+                search = make_search(pipe, param_grid, "f1_macro",
+                                     list(inner_cv.split(Xtr, ytr, groups=gtr)),
+                                     "random", args.n_iter, args.seed, 1)
+
+                t0 = time.perf_counter()
+                search.fit(Xtr, ytr, clf__sample_weight=sample_weight)
+                t1 = time.perf_counter()
+                best = search.best_estimator_
+                yhat = best.predict(Xte)
+                best_params_str = str(search.best_params_)
+
+            elif model_name == "KNN":
+                # KC-C3.2: kNN has no class_weight / sample_weight equivalent for
+                # KNeighborsClassifier -- recorded here, not worked around.
+                steps = _build_scaler_steps()
+                steps.append(("clf", KNeighborsClassifier()))
+                pipe = Pipeline(steps)
+                param_grid = KNN_GRID
+                search = make_search(pipe, param_grid, "f1_macro",
+                                     list(inner_cv.split(Xtr, ytr, groups=gtr)),
+                                     "grid", args.n_iter, args.seed, args.n_jobs)
 
                 t0 = time.perf_counter()
                 search.fit(Xtr, ytr)

@@ -1,0 +1,2 @@
+model,heldout_subject,n_test,acc,bal_acc,f1_macro,best_params,fit_time_sec,infer_ms_per_window,feat_sel,n_features_used
+KNN,1,690,0.6884057971014492,0.5671065276297035,0.5779055054166768,"{'clf__n_neighbors': 21, 'clf__weights': 'distance'}",13.032711099949665,0.06641849991865456,none,72
