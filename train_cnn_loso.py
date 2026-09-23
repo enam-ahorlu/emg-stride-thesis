@@ -104,6 +104,28 @@ def augment_batch(Xb: torch.Tensor, mode: str, sigma: float, chandrop_p: float, 
             augment_batch._mp_gate_printed = True
         Xb = Xb * mult
 
+    if mode == "chanoffset":
+        # KC-D0.2: per sample and per channel, a constant ADDITIVE offset drawn
+        # from N(0, sigma^2), sigma = gain_sd (--aug-gain-sd). Tests per-channel
+        # additive perturbation, as opposed to chandrop's per-channel
+        # multiplicative (zero/keep) perturbation. Guarded, defaulted off,
+        # added after every existing branch so the eight prior modes are
+        # byte-for-byte unchanged.
+        offset = torch.randn(N, C, 1, device=Xb.device) * gain_sd
+        Xb = Xb + offset
+
+    if mode == "globalgain":
+        # KC-D0.2: per sample, ONE multiplicative gain shared by every channel
+        # (as opposed to gainjitter's per-channel-independent gain), drawn with
+        # the identical Uniform(1-a, 1+a) construction as gainjitter so the two
+        # modes are magnitude-matched and differ only in whether the gain is
+        # per-channel or shared. Tests whether per-channel independence matters.
+        # Guarded, defaulted off, added after every existing branch so the
+        # eight prior modes are byte-for-byte unchanged.
+        a = gain_sd * (3.0 ** 0.5)
+        g = 1.0 + (torch.rand(N, 1, 1, device=Xb.device) * 2.0 - 1.0) * a
+        Xb = Xb * g
+
     return Xb
 
 
@@ -308,7 +330,7 @@ def main():
                          "robust=RobustScaler (median/IQR) fit on train fold.")
     ap.add_argument("--augment", default="none",
                     choices=["none", "gaussian", "chandrop", "timemask", "combined",
-                             "gainjitter", "subset", "mpchandrop"],
+                             "gainjitter", "subset", "mpchandrop", "chanoffset", "globalgain"],
                     help="Data augmentation applied to training batches only. "
                          "none=no augmentation, gaussian=additive Gaussian noise, "
                          "chandrop=random channel dropout, timemask=contiguous time masking, "
@@ -316,7 +338,10 @@ def main():
                          "gainjitter=per-channel multiplicative gain, never zero (W-4), "
                          "subset=fixed vocabulary of 7-of-9 channel subsets (P-5), "
                          "mpchandrop=mean-preserving inverted channel dropout, SD from "
-                         "--aug-gain-sd (P-6).")
+                         "--aug-gain-sd (P-6), "
+                         "chanoffset=per-channel additive offset N(0, aug-gain-sd^2) (KC-D0), "
+                         "globalgain=one multiplicative gain shared by all channels, same "
+                         "construction as gainjitter (KC-D0).")
     ap.add_argument("--aug-sigma", type=float, default=0.1,
                     help="Gaussian noise std relative to normalized data scale (default: 0.1)")
     ap.add_argument("--aug-chandrop-p", type=float, default=0.2,

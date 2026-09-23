@@ -1,0 +1,2 @@
+subject,n_val_subjects,n_probe_subjects,chance_subject_probe,subject_probe_bacc,held_out_class_silhouette,held_out_class_probe_bacc,probe_cap
+1,6,7,0.14285714285714285,0.6386787200835652,0.06658083200454712,0.8894736842105264,100

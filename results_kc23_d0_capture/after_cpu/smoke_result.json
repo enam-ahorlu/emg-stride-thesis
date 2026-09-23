@@ -1,0 +1,9 @@
+{
+  "f1_macro": 0.5581871597762931,
+  "bal_acc": 0.5615389303875592,
+  "rng_after": {
+    "torch_cpu": "c0be9d827c610cf75c3ff68be4271dcea85dba51257a33ffe06e3d5c2a711ac5",
+    "torch_cuda": "aefdce03def94ffed42159e55677ec20e91200e1981f25b1f271b6fd99c3c263",
+    "numpy": "ea344d8421804619a8f29928db6cc652ab16112356aaef6e898da7f213818285"
+  }
+}

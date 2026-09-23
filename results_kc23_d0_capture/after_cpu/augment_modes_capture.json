@@ -1,0 +1,210 @@
+{
+  "train_cnn_loso.augment_batch::none": {
+    "output_sha256": "dfbd965fda7511490ad47e09e2be8bc937df13559bab4a0d9cd43df811b68ad6",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "ea52a8719b56def89b54a500e039502e9a80408e1bca489f451893d3449a03a3",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "train_cnn_loso.augment_batch::gaussian": {
+    "output_sha256": "312dd6e2dfc5d7a733484bf49a5a28f75aedad87bc12ee0832d3d5c93a96ea7c",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "f55ad2a2858f73bf7af32ef66c71129c7fe087bd9c80fd959a2da44f8d228b7d",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "train_cnn_loso.augment_batch::chandrop": {
+    "output_sha256": "167e7e76c7790c826ad77dcd8b6819afca06c08fcb24d5fe0dc08cc258ecde94",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "8b75d18535673618be61ee384ef122207d3a45b52a140640f513f20ccfcf9271",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "train_cnn_loso.augment_batch::timemask": {
+    "output_sha256": "e6999c1522d8434362dd003f0fde1bed0da5ea79bd661962b10ae01b5f0bd1c5",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "c64f335eeae44752bb80656a45c0f519d2ea5611766ef64a1ce78cd7bd01de7e",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "train_cnn_loso.augment_batch::combined": {
+    "output_sha256": "ba1d6757977ec3582910a651949cbeb690bd1c63ac2a1f33ac7808d9c6c5af72",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "8cbf886db888e3331799956c7f7b7a894182fd2d23c0fe9fe80a86134baecfc0",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "train_cnn_loso.augment_batch::gainjitter": {
+    "output_sha256": "c4a1534690c9f46783467b06f9df1533c7c0e01be28b2b03100b22d0269566df",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "8b75d18535673618be61ee384ef122207d3a45b52a140640f513f20ccfcf9271",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "train_cnn_loso.augment_batch::subset": {
+    "output_sha256": "f5e849b8d47a3369c27c1bd95ad7b75f93672a03cd70d90fe614b0b16d7555a6",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "c64f335eeae44752bb80656a45c0f519d2ea5611766ef64a1ce78cd7bd01de7e",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "train_cnn_loso.augment_batch::mpchandrop": {
+    "output_sha256": "16a619ee1b25ef560670b4bfe0a2c0ea9e1d199795ee8a7b42279f3df8f53c32",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "8b75d18535673618be61ee384ef122207d3a45b52a140640f513f20ccfcf9271",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "run_cnn_arch_loso.augment_batch::none": {
+    "output_sha256": "dfbd965fda7511490ad47e09e2be8bc937df13559bab4a0d9cd43df811b68ad6",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "ea52a8719b56def89b54a500e039502e9a80408e1bca489f451893d3449a03a3",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "run_cnn_arch_loso.augment_batch::gaussian": {
+    "output_sha256": "312dd6e2dfc5d7a733484bf49a5a28f75aedad87bc12ee0832d3d5c93a96ea7c",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "f55ad2a2858f73bf7af32ef66c71129c7fe087bd9c80fd959a2da44f8d228b7d",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "run_cnn_arch_loso.augment_batch::chandrop": {
+    "output_sha256": "167e7e76c7790c826ad77dcd8b6819afca06c08fcb24d5fe0dc08cc258ecde94",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "8b75d18535673618be61ee384ef122207d3a45b52a140640f513f20ccfcf9271",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "run_cnn_arch_loso.augment_batch::timemask": {
+    "output_sha256": "e6999c1522d8434362dd003f0fde1bed0da5ea79bd661962b10ae01b5f0bd1c5",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "c64f335eeae44752bb80656a45c0f519d2ea5611766ef64a1ce78cd7bd01de7e",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "run_cnn_arch_loso.augment_batch::combined": {
+    "output_sha256": "ba1d6757977ec3582910a651949cbeb690bd1c63ac2a1f33ac7808d9c6c5af72",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "8cbf886db888e3331799956c7f7b7a894182fd2d23c0fe9fe80a86134baecfc0",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "run_cnn_arch_loso.augment_batch::gainjitter": {
+    "output_sha256": "c4a1534690c9f46783467b06f9df1533c7c0e01be28b2b03100b22d0269566df",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "8b75d18535673618be61ee384ef122207d3a45b52a140640f513f20ccfcf9271",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "run_cnn_arch_loso.augment_batch::subset": {
+    "output_sha256": "f5e849b8d47a3369c27c1bd95ad7b75f93672a03cd70d90fe614b0b16d7555a6",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "c64f335eeae44752bb80656a45c0f519d2ea5611766ef64a1ce78cd7bd01de7e",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  },
+  "run_cnn_arch_loso.augment_batch::mpchandrop": {
+    "output_sha256": "16a619ee1b25ef560670b4bfe0a2c0ea9e1d199795ee8a7b42279f3df8f53c32",
+    "output_shape": [
+      16,
+      9,
+      500
+    ],
+    "rng_after": {
+      "torch_cpu": "8b75d18535673618be61ee384ef122207d3a45b52a140640f513f20ccfcf9271",
+      "torch_cuda": "68c28f13c22771d9f8bf6eef9fa15161c5506db1c70aed3aba4c41d8551ed6c7",
+      "numpy": "06ee7cf082ec4e5137799069eb718d887d0077104278fd2b72dfe40c50336cbd"
+    }
+  }
+}

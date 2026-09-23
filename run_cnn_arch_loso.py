@@ -50,14 +50,23 @@ def _cnn_infer(model, X, device, batch=512):
     return np.concatenate(preds) if preds else np.array([], dtype=int)
 
 
-def instrument_fold(model, Xte, yte, subject, arch, instr_dir, device, row_f1):
-    """W-2 Stage G0. After a fold trains and before the model is discarded,
-    on the held-out subject's windows only:
+def instrument_fold(model, Xte, yte, subject, arch, instr_dir, device, row_f1,
+                    seed=42, Xva=None, yva=None, subj_va=None, probe_cap=100):
+    """W-2 Stage G0 (+ KC-D0.3). After a fold trains and before the model is
+    discarded, on the held-out subject's windows only:
       - channel-occlusion sensitivity  -> {instr_dir}/occlusion.csv
       - SE gate activations (SE archs) -> {instr_dir}/se_gates.csv
+      - attenuation sweep              -> {instr_dir}/attenuation.csv
+      - permutation reliance (KC-D0.3) -> {instr_dir}/permutation.csv
+      - embedding probes (KC-D0.3)     -> {instr_dir}/embed_probes.csv, using
+        the fold's validation-subject windows (Xva/yva/subj_va), never seen
+        by training either -- absent (None) reproduces the pre-KC-D0 output
+        exactly (embed_probes.csv is simply not written).
     RNG state is snapshotted and restored so nothing downstream shifts; the
     driver is bit-identical with the flag absent, and the reported f1_macro is
-    already written before this runs.
+    already written before this runs. Permutation reliance uses a SEPARATE
+    generator (np.random.default_rng(10_000*seed+subject)), never the global
+    RNG, so it cannot perturb the snapshot/restore contract either.
     """
     from sklearn.metrics import f1_score
     instr_dir = Path(instr_dir); instr_dir.mkdir(parents=True, exist_ok=True)
@@ -132,7 +141,108 @@ def instrument_fold(model, Xte, yte, subject, arch, instr_dir, device, row_f1):
                                    "f1": f1_a, "drop_pp": (f1_full - f1_a) * 100.0})
         _append_rows(instr_dir / "attenuation.csv", atten_rows)
 
+        # ---- KC-D0.3: permutation reliance -------------------------------
+        # For each channel, permute that channel's time series across the
+        # held-out subject's OWN windows, R=5 times, record the mean F1 drop
+        # and its SD. Keeps the channel's marginal distribution and removes
+        # its class information -- unlike zeroing, it does not feed the
+        # network the flat-line input channel dropout trains on. A SEPARATE
+        # generator, never the global RNG (D0.3).
+        rng_perm = np.random.default_rng(10_000 * seed + subject)
+        perm_rows = []
+        n_te = Xte.shape[0]
+        for ch in range(Xte.shape[1]):
+            drops = []
+            for _r in range(5):
+                perm_idx = rng_perm.permutation(n_te)
+                Xp = Xte.copy()
+                Xp[:, ch, :] = Xte[perm_idx, ch, :]
+                yp_p = _cnn_infer(model, Xp, device)
+                f1_p = float(f1_score(yte, yp_p, average="macro", zero_division=0))
+                drops.append(f1_full - f1_p)
+            drops = np.asarray(drops)
+            perm_rows.append({"subject": subject, "channel": ch, "r": 5,
+                              "f1_drop_mean": float(drops.mean()),
+                              "f1_drop_sd": float(drops.std(ddof=1))})
+        _append_rows(instr_dir / "permutation.csv", perm_rows)
+
+        # ---- KC-D0.3: unseen-subject embedding probes ---------------------
+        # Absent Xva (None) reproduces the pre-KC-D0 behaviour exactly: no
+        # embed_probes.csv is written.
+        if Xva is not None and len(Xva) > 0 and len(yte) > 0:
+            from sklearn.linear_model import LogisticRegression
+            from sklearn.model_selection import StratifiedKFold, cross_val_score
+            from sklearn.pipeline import make_pipeline
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.metrics import silhouette_score
+
+            def _embed(Xarr):
+                out = []
+                with torch.no_grad():
+                    for i in range(0, len(Xarr), 512):
+                        xb = torch.from_numpy(Xarr[i:i + 512]).to(device)
+                        f = model.features(xb) if hasattr(model, "features") else torch.flatten(model.net(xb), 1)
+                        out.append(f.detach().cpu().numpy())
+                return np.concatenate(out, 0) if out else np.zeros((0, 1))
+
+            rng_cap = np.random.default_rng(20_000 * seed + subject)
+
+            def _capped_idx(subj_arr, y_arr, cap):
+                idx_out = []
+                for s in np.unique(subj_arr):
+                    for c in np.unique(y_arr):
+                        m = np.where((subj_arr == s) & (y_arr == c))[0]
+                        if len(m) > cap:
+                            m = rng_cap.choice(m, cap, replace=False)
+                        idx_out.append(m)
+                return np.concatenate(idx_out) if idx_out else np.array([], dtype=int)
+
+            ho_idx = _capped_idx(np.full(len(yte), subject), yte, probe_cap)
+            Xte_cap, yte_cap = Xte[ho_idx], yte[ho_idx]
+            va_idx = _capped_idx(subj_va, yva, probe_cap)
+            Xva_cap, yva_cap, subj_va_cap = Xva[va_idx], yva[va_idx], subj_va[va_idx]
+
+            F_ho = _embed(Xte_cap)
+            F_va = _embed(Xva_cap)
+            F_all = np.concatenate([F_ho, F_va], axis=0)
+            subj_all = np.concatenate([np.full(len(F_ho), subject), subj_va_cap])
+            n_subjects_probe = len(np.unique(subj_all))
+            chance = 1.0 / n_subjects_probe if n_subjects_probe else float("nan")
+
+            subj_probe_bacc = float("nan")
+            _, subj_codes = np.unique(subj_all, return_inverse=True)
+            counts = np.bincount(subj_codes)
+            n_splits_subj = int(min(5, counts[counts > 0].min())) if len(subj_all) else 0
+            if n_splits_subj >= 2 and n_subjects_probe >= 2:
+                clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, C=1.0))
+                skf = StratifiedKFold(n_splits=n_splits_subj, shuffle=True, random_state=seed)
+                subj_probe_bacc = float(cross_val_score(clf, F_all, subj_all, cv=skf,
+                                                        scoring="balanced_accuracy", n_jobs=1).mean())
+
+            sil = float("nan")
+            if len(np.unique(yte_cap)) >= 2 and len(F_ho) > len(np.unique(yte_cap)):
+                sil = float(silhouette_score(F_ho, yte_cap))
+
+            class_probe_bacc = float("nan")
+            ccounts = np.bincount(yte_cap, minlength=int(yte_cap.max()) + 1 if len(yte_cap) else 0)
+            n_splits_cls = int(min(5, ccounts[ccounts > 0].min())) if len(yte_cap) else 0
+            if n_splits_cls >= 2 and len(np.unique(yte_cap)) >= 2:
+                clf2 = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, C=1.0))
+                skf2 = StratifiedKFold(n_splits=n_splits_cls, shuffle=True, random_state=seed)
+                class_probe_bacc = float(cross_val_score(clf2, F_ho, yte_cap, cv=skf2,
+                                                          scoring="balanced_accuracy", n_jobs=1).mean())
+
+            _append_rows(instr_dir / "embed_probes.csv", [{
+                "subject": subject, "n_val_subjects": int(len(np.unique(subj_va_cap))),
+                "n_probe_subjects": n_subjects_probe, "chance_subject_probe": chance,
+                "subject_probe_bacc": subj_probe_bacc,
+                "held_out_class_silhouette": sil,
+                "held_out_class_probe_bacc": class_probe_bacc,
+                "probe_cap": probe_cap,
+            }])
+
         print(f"[instrument] Sub{subject:02d}: occlusion 9 ch, attenuation 9x5, "
+              f"permutation 9 ch x5, embed_probes {'yes' if Xva is not None else 'n/a'}, "
               f"SE gates {'yes' if se_blocks else 'n/a'}", flush=True)
     finally:
         for h in hooks:
@@ -223,11 +333,12 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-3); ap.add_argument("--patience", type=int, default=7)
     ap.add_argument("--augmentation", "--augment", dest="augmentation", default="none",
                     choices=["none", "gaussian", "chandrop", "timemask", "combined",
-                             "gainjitter", "subset", "mpchandrop"],
+                             "gainjitter", "subset", "mpchandrop", "chanoffset", "globalgain"],
                     help="Data augmentation applied to training batches only (identical "
                          "transforms/params to train_cnn_loso.py's --augment). subset=P-5 "
                          "fixed 7-of-9 channel-subset vocabulary; mpchandrop=P-6 mean-preserving "
-                         "inverted channel dropout with SD from --aug-gain-sd.")
+                         "inverted channel dropout with SD from --aug-gain-sd; chanoffset/"
+                         "globalgain=KC-D0 per-channel-additive / shared-multiplicative axis probes.")
     ap.add_argument("--aug-sigma", type=float, default=0.1,
                     help="Gaussian noise std relative to normalized data scale (default: 0.1)")
     ap.add_argument("--aug-chandrop-p", type=float, default=0.2,
@@ -246,10 +357,15 @@ def main():
     ap.add_argument("--model-tag", default=None,
                     help="Tag used in the saved proba filename (e.g. CNN, RESNET_SE).")
     ap.add_argument("--instrument", default=None,
-                    help="W-2 Stage G0. If set, dir for per-fold channel-occlusion "
-                         "sensitivity (occlusion.csv) and SE gate activations "
-                         "(se_gates.csv), computed on the held-out subject's windows "
+                    help="W-2 Stage G0 (+ KC-D0.3). If set, dir for per-fold channel-occlusion "
+                         "sensitivity (occlusion.csv), SE gate activations (se_gates.csv), "
+                         "attenuation (attenuation.csv), permutation reliance (permutation.csv) "
+                         "and unseen-subject embedding probes (embed_probes.csv), computed on "
+                         "the held-out subject's (and the fold's validation subjects') windows "
                          "after training. RNG-neutral; absent = no behaviour change.")
+    ap.add_argument("--probe-cap", type=int, default=100,
+                    help="KC-D0.3: fixed window cap per subject and class for the embedding "
+                         "probes, seeded subsample (default 100).")
     args = ap.parse_args()
     if args.save_proba and not args.model_tag:
         ap.error("--save-proba requires --model-tag")
@@ -337,7 +453,9 @@ def main():
             _rc = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
             _rn = np.random.get_state()
             instrument_fold(model, Xte_fold, y[te], int(heldout), args.arch,
-                            args.instrument, device, row["f1_macro"])
+                            args.instrument, device, row["f1_macro"],
+                            seed=args.seed, Xva=Xtr_full[m_va], yva=ytr_full[m_va],
+                            subj_va=subtr[m_va], probe_cap=args.probe_cap)
             assert torch.equal(torch.get_rng_state(), _rt), "instrument perturbed torch CPU RNG"
             if _rc is not None:
                 assert all(torch.equal(a, b) for a, b in
