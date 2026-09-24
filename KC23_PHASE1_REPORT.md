@@ -461,3 +461,32 @@ needs a design decision (re-scan raw per-sample Mode, or a documented
 time-gap heuristic) this audit did not want to guess at under time pressure.
 
 Tests: 146 total (up from 123 at `0ba3575`), all green.
+
+## Section 8. Post-pre-registration implementation fixes (2) (24 September 2026)
+
+**Pre-registration record: commit `61815ef`** ("Post-pre-registration
+implementation fixes (2); decision rules unchanged since 0ba3575"), closing
+the four items flagged in Section 7 before their stages come up, plus two
+accepted follow-ups. KC-D6's sanity/manipulation gates fixed and tested
+against the real results_kc23_d6_smoke_marginal/_classcond/_cdan and
+results_kc23_d05_smoke_l2 fixtures (18 tests). kc23_c3_tuning_stats.py fixed
+and tested against the real results_kc23_c3_before_persubj/_before_global/
+_after_persubj fixtures. LDA rows now call run_lda_loso.py (reproduced
+results_lda_persubj/results_lda_global exactly on subjects 1-3), never
+train_classical_loso.py (which now raises on any unimplemented model name,
+proven inert on the default SVM path). KC-S2's transition table built from
+the raw per-sample Mode signal and validated with zero disagreements against
+the real ENABL3S published windows. A new expected_outputs job-CSV column
+and kc23_queue.py check that fails a job whatever its exit code if its
+declared output is missing or has the wrong subject count (populated for the
+LDA and C4-SVM rows so far; broader population is follow-up work). Two
+accepted follow-ups: kc23_c5_cnn_job_gen.py (tested on synthetic classical
+outputs) and run_scripted_supervised.py now writing run_config.json with
+explicit, non-default-drift hyperparameters.
+
+**Not implemented, flagged rather than rushed:** KC-S2's S2.3/S2.4 producing
+jobs (per-window LOSO predictions with circuit and time, 3 models x 3
+normalization conditions) and the S2b 400ms arm. Only ~10 of ~190 job rows
+have an expected_outputs value populated so far.
+
+Tests: 189 total (up from 146 at `9368d05`), all green.
