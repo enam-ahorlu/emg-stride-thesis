@@ -69,15 +69,21 @@ def test_f_x_structurally_absent():
 
 
 def test_count_transitions_scans_a_synthetic_raw_root(tmp_path):
-    """Regression test for the 'rows' NameError: count_transitions() appended
-    to a `rows` list that was never initialized in that function, so any real
-    call (root is not None) crashed. Found live 2026-09-24 when the queue's
-    s2_f0_feasibility gate turned out to have crashed on a different bug
-    first (FileNotFoundError, wiring) -- this one would have crashed next."""
+    """count_transitions() now delegates to kc23_s2_transition_table.
+    build_transition_table (fixed 2026-09-24 -- it used to duplicate this
+    logic itself, with a real 'rows' NameError bug: appended to a `rows` list
+    never initialized in that function, so any real call (root is not None)
+    crashed). This end-to-end check confirms the delegation still produces
+    this gate's expected wide per-type columns."""
     subj_dir = tmp_path / "AB01" / "Raw"
     subj_dir.mkdir(parents=True)
     seq = _block(MODE_LW, 50) + _block(MODE_SA, 50) + _block(MODE_LW, 50)
-    pd.DataFrame({"Mode": seq}).to_csv(subj_dir / "circuit1_raw.csv", index=False)
+    n = len(seq)
+    emg_cols = ["Right_TA", "Right_MG", "Right_SOL", "Right_BF", "Right_ST", "Right_VL", "Right_RF",
+               "Left_TA", "Left_MG", "Left_SOL", "Left_BF", "Left_ST", "Left_VL", "Left_RF"]
+    data = {c: np.zeros(n) for c in emg_cols}
+    data["Mode"] = seq
+    pd.DataFrame(data).to_csv(subj_dir / "circuit1_raw.csv", index=False)
 
     df = count_transitions(tmp_path)
     assert list(df["subject"]) == [1]

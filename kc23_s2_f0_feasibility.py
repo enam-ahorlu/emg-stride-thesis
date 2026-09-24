@@ -20,6 +20,13 @@ per subject: WAK->UPS, UPS->WAK, WAK->DNS, DNS->WAK.
 count_transitions() re-derives the raw per-sample Mode sequence via
 adapt_external_dataset.load_subject_trials (reused, not reimplemented) rather
 than the windowed meta, since a transition is defined at sample granularity.
+
+Fixed 2026-09-24: this used to duplicate its own run-collapsing transition
+logic (and had a real bug in it, an uninitialized `rows` list). It now
+delegates to kc23_s2_transition_table.build_transition_table -- the single,
+precisely-specified (S2.2) implementation, validated 2026-09-24 against the
+published ENABL3S windows with zero disagreements -- and reshapes its long
+(subject, from, to) counts into this gate's wide per-type columns.
 """
 from __future__ import annotations
 import argparse
@@ -65,28 +72,19 @@ def count_transitions_one_trial(mode: np.ndarray) -> dict[tuple[str, str], int]:
 
 
 def count_transitions(root: Path) -> pd.DataFrame:
-    # adapt_external_dataset.load_subject_trials only yields the mapped
-    # WAK/UPS/DNS/STDUP label string, not the raw per-sample Mode integer a
-    # transition needs, so the raw Mode column is read directly here, per
-    # circuit CSV -- reusing the module's column name and mode-code constants
-    # (aed.MODE_COL, MODE_LW/SA/SD), not reimplementing the label mapping.
-    import re
-    import adapt_external_dataset as aed
-    subj_dirs = sorted([d for d in root.glob("AB*") if d.is_dir()])
+    """Delegates to kc23_s2_transition_table.build_transition_table (the
+    single, S2.2-precise implementation, validated against the published
+    ENABL3S windows with zero disagreements) and reshapes its long
+    (subject, from, to) rows into this gate's wide per-type columns."""
+    from kc23_s2_transition_table import build_transition_table
+    long_df = build_transition_table(root)
     rows = []
-    for sd in subj_dirs:
-        m = re.search(r"AB(\d+)", sd.name)
-        if not m:
-            continue
-        sid = int(m.group(1))
-        raw_dir = sd / "Raw"
-        csvs = sorted(raw_dir.glob("*_raw.csv")) if raw_dir.exists() else sorted(sd.glob("**/*_raw.csv"))
+    for sid, g in (long_df.groupby("subject") if len(long_df) else []):
         subj_counts = {t: 0 for t in TRANSITION_TYPES}
-        for csv in csvs:
-            df = pd.read_csv(csv, usecols=[aed.MODE_COL])
-            c = count_transitions_one_trial(df[aed.MODE_COL].to_numpy())
-            for t in TRANSITION_TYPES:
-                subj_counts[t] += c[t]
+        for _, r in g.iterrows():
+            t = (r["from"], r["to"])
+            if t in subj_counts:
+                subj_counts[t] += 1
         rows.append({"subject": sid, **{f"{a}_to_{b}": v for (a, b), v in subj_counts.items()}})
     return pd.DataFrame(rows)
 

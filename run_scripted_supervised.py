@@ -125,7 +125,14 @@ def fit_svm_subject(X, y, subjects, heldout, bp):
     return clf_plain, clf_proba, Xn_tr, tr
 
 
-def train_cnn_base(X3d, y, subjects, heldout, device, seed):
+def train_cnn_base(X3d, y, subjects, heldout, device, seed, hp):
+    """hp: the base-training hyperparameters (an argparse Namespace or
+    anything with .base_epochs/.base_patience/.base_batch/.base_lr/
+    .base_chandrop_p attributes) -- explicit CLI args, not bare literals, so
+    run_config.json actually records what a run used. Defaults match the
+    published base training (epochs 40, patience 7, batch 512, chandrop 0.2),
+    NOT run_cnn_calibration_loso.py's defaults (25/5), which V6 showed
+    produces a materially different (81.8%) run if used by mistake."""
     from train_cnn_loso import per_subject_zscore_3d, choose_val_subjects
     from cnn_architectures import build_model
     from run_cnn_arch_loso import train_fold
@@ -137,8 +144,9 @@ def train_cnn_base(X3d, y, subjects, heldout, device, seed):
     m_tr, m_va = np.isin(subtr, tr_subs), np.isin(subtr, va_subs)
     model = build_model("resnet_se", in_ch, len(LABELS)).to(device)
     model = train_fold(model, Xtr_all[m_tr], ytr_all[m_tr], Xtr_all[m_va], ytr_all[m_va],
-                       device, epochs=40, batch=512, lr=1e-3, patience=7, seed=seed,
-                       aug_mode="chandrop", aug_sigma=0.1, aug_chandrop_p=0.2, aug_timemask_frac=0.15)
+                       device, epochs=hp.base_epochs, batch=hp.base_batch, lr=hp.base_lr,
+                       patience=hp.base_patience, seed=seed, aug_mode="chandrop", aug_sigma=0.1,
+                       aug_chandrop_p=hp.base_chandrop_p, aug_timemask_frac=0.15)
     return model, in_ch
 
 
@@ -161,7 +169,7 @@ def f1_excl(y_true_excl, y_pred_excl):
 
 
 def run_subject(heldout, X_svm, y_svm, subjects_svm, tvals_svm, X_cnn, y_cnn, subjects_cnn,
-                bp, device, seed, done_keys):
+                bp, device, seed, done_keys, hp):
     """Returns a list of row dicts (subject, seed, K, arm, f1_macro, n_excl) for
     every (K, arm) not already in done_keys."""
     needed = any((int(heldout), int(K)) not in done_keys for K in K_LIST)
@@ -175,7 +183,7 @@ def run_subject(heldout, X_svm, y_svm, subjects_svm, tvals_svm, X_cnn, y_cnn, su
         out = np.zeros((raw.shape[0], len(LABELS))); out[:, classes] = raw
         return out
 
-    cnn_model, in_ch = train_cnn_base(X_cnn, y_cnn, subjects_cnn, heldout, device, seed)
+    cnn_model, in_ch = train_cnn_base(X_cnn, y_cnn, subjects_cnn, heldout, device, seed, hp)
 
     te_svm = (subjects_svm == heldout)
     X_te_svm, y_te_svm, t_te_svm = X_svm[te_svm], y_svm[te_svm], tvals_svm[te_svm]
@@ -241,7 +249,7 @@ def run_subject(heldout, X_svm, y_svm, subjects_svm, tvals_svm, X_cnn, y_cnn, su
         Xcal_cnn, ycal_cnn = Xte_n_cnn[bk], y_te_cnn[bk]
         if len(np.unique(ycal_cnn)) >= 1 and len(ycal_cnn) >= 1:
             ft_model = cnn_finetune(cnn_model, Xcal_cnn, ycal_cnn, in_ch, device,
-                                    epochs=3, lr=5e-4, batch=min(512, max(1, len(ycal_cnn))))
+                                    epochs=hp.ft_epochs, lr=hp.ft_lr, batch=min(512, max(1, len(ycal_cnn))))
             proba_ft = proba_from_cnn(ft_model, Xte_n_cnn[excl], y_excl, in_ch, device)
             f1_s_ft = f1_excl(y_excl, proba_ft.argmax(1))
             del ft_model
@@ -276,6 +284,9 @@ def run(out_dir: Path, args) -> int:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[S1] seed={args.seed} device={device}", flush=True)
 
+    from run_config_dump import dump_run_config
+    dump_run_config(out_dir, args)
+
     csv_path = out_dir / "s1_subjectwise.csv"
     done_keys = set()
     if args.resume and csv_path.exists():
@@ -296,7 +307,7 @@ def run(out_dir: Path, args) -> int:
     for heldout in subs_u:
         t0 = time.time()
         rows = run_subject(heldout, X_svm, y_svm, subjects_svm, tvals_svm, X_cnn, y_cnn, subjects_cnn,
-                           bp, device, args.seed, done_keys)
+                           bp, device, args.seed, done_keys, args)
         if rows:
             pd.DataFrame(rows).to_csv(csv_path, mode="a", header=not csv_path.exists(), index=False)
             print(f"[fold] Sub{heldout:02d} done ({time.time()-t0:.0f}s)", flush=True)
@@ -313,6 +324,17 @@ def main():
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--subjects", default=None,
                     help="comma-separated subject ids to restrict to (integration testing only)")
+    # Base-training hyperparameters, explicit (not bare literals) so run_config.json
+    # actually records what a run used. Defaults are the published base training,
+    # NOT run_cnn_calibration_loso.py's defaults (epochs=25, patience=5), which V6
+    # showed produces a materially different (81.8%) run if used by mistake.
+    ap.add_argument("--base-epochs", type=int, default=40)
+    ap.add_argument("--base-patience", type=int, default=7)
+    ap.add_argument("--base-batch", type=int, default=512)
+    ap.add_argument("--base-lr", type=float, default=1e-3)
+    ap.add_argument("--base-chandrop-p", type=float, default=0.2)
+    ap.add_argument("--ft-epochs", type=int, default=3)
+    ap.add_argument("--ft-lr", type=float, default=5e-4)
     args = ap.parse_args()
     sys.exit(run(Path(args.out), args))
 

@@ -1,10 +1,13 @@
 """Synthetic tests for kc23_d6_stats.py: sanity PASS/FAIL, G-PASS/G-WEAK/G-FAIL,
-X1-X4, C-M1-3."""
+X1-X4, C-M1-3, plus run()'s directory-name-driven dispatch and fail-closed
+behavior (fixed 2026-09-24: a missing expected file used to mean "nothing to
+check" (exit 0); now it's exit 20)."""
 import numpy as np
+import pandas as pd
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from kc23_d6_stats import classify_sanity, classify_manipulation, classify_outcome, classify_mechanism
+from kc23_d6_stats import classify_sanity, classify_manipulation, classify_outcome, classify_mechanism, run
 
 
 def test_sanity_pass():
@@ -90,6 +93,79 @@ def test_cm3_partial():
     letter, d = classify_mechanism(advc_at_collapse=0.71, adv_at_collapse=0.70, adv_peak=0.75,
                                    advc_invariance=0.4, adv_invariance=0.5)
     assert letter == "C-M3", d
+
+
+def test_run_sanity_dir_fails_closed_when_file_missing(tmp_path):
+    out = tmp_path / "results_kc23_d6_sanity_check"
+    rc = run(out)
+    assert rc == 20
+    assert "FAIL" in (out / "D6_VERDICT.md").read_text()
+
+
+def test_run_manipulation_dir_fails_closed_on_missing_family(tmp_path):
+    out = tmp_path / "results_kc23_d6_manipulation_check"
+    out.mkdir(parents=True)
+    # only 2 of the 3 expected families present
+    for fam in ("adv_marginal", "sfc"):
+        pd.DataFrame([{"realization": 1, "knob": 0, "domain_probe": 0.9, "subject_probe": 0.9}]
+                    ).to_csv(out / f"d6_manipulation_{fam}.csv", index=False)
+    rc = run(out)
+    assert rc == 20
+
+
+def test_run_sanity_dir_passes_on_real_pass_value(tmp_path):
+    out = tmp_path / "results_kc23_d6_sanity_check"
+    out.mkdir(parents=True)
+    pd.DataFrame([{"subject": s, "f1": 0.83} for s in range(1, 41)]).to_csv(out / "d6_sanity.csv", index=False)
+    rc = run(out)
+    assert rc == 0
+    assert "PASS" in (out / "D6_VERDICT.md").read_text()
+
+
+def test_run_sanity_dir_escalates_on_drift(tmp_path):
+    out = tmp_path / "results_kc23_d6_sanity_check"
+    out.mkdir(parents=True)
+    pd.DataFrame([{"subject": s, "f1": 0.60} for s in range(1, 41)]).to_csv(out / "d6_sanity.csv", index=False)
+    rc = run(out)
+    assert rc == 20
+    assert "FAIL" in (out / "D6_VERDICT.md").read_text()
+
+
+def test_run_manipulation_dir_gpass_end_to_end(tmp_path):
+    out = tmp_path / "results_kc23_d6_manipulation_check"
+    out.mkdir(parents=True)
+    knobs = [0, 1, 2, 3]
+    for fam in ("adv_marginal", "sfc", "advps"):
+        rows = []
+        for real in range(1, 41):
+            for i, k in enumerate(knobs):
+                # domain probe falls by 20pt across the grid; subject probe falls monotonically too
+                rows.append({"realization": real, "knob": k,
+                            "domain_probe": 0.95 - 0.20 * (i / (len(knobs) - 1)),
+                            "subject_probe": 0.90 - 0.30 * (i / (len(knobs) - 1))})
+        pd.DataFrame(rows).to_csv(out / f"d6_manipulation_{fam}.csv", index=False)
+    rc = run(out)
+    assert rc == 0
+    gates = pd.read_csv(out / "D6_gates.csv").set_index("item")["letter"]
+    assert gates["manipulation_adv_marginal"] == "G-PASS"
+
+
+def test_run_manipulation_dir_gfail_end_to_end(tmp_path):
+    out = tmp_path / "results_kc23_d6_manipulation_check"
+    out.mkdir(parents=True)
+    knobs = [0, 1, 2, 3]
+    for fam in ("adv_marginal", "sfc", "advps"):
+        rows = []
+        for real in range(1, 41):
+            for k in knobs:
+                # domain probe barely moves (<2pt) -- G-FAIL regardless of the subject probe
+                rows.append({"realization": real, "knob": k, "domain_probe": 0.90 - 0.005 * k,
+                            "subject_probe": 0.90 - 0.30 * (k / max(knobs))})
+        pd.DataFrame(rows).to_csv(out / f"d6_manipulation_{fam}.csv", index=False)
+    rc = run(out)
+    assert rc in (0, 10)
+    gates = pd.read_csv(out / "D6_gates.csv").set_index("item")["letter"]
+    assert gates["manipulation_adv_marginal"] == "G-FAIL"
 
 
 if __name__ == "__main__":

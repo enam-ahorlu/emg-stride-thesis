@@ -118,6 +118,76 @@ def test_run_gate_end_to_end_escalate_script_returns_20():
     assert rc == 20
 
 
+# ---- expected_outputs (2026-09-24): closes the "exit 0 having written
+# nothing, or the wrong subject count" bug class at the infrastructure level.
+
+def test_check_expected_outputs_empty_is_always_ok(tmp_path):
+    job = make_job()
+    job.expected_outputs = ""
+    ok, reason = q.check_expected_outputs(job)
+    assert ok
+
+
+def test_check_expected_outputs_missing_file_fails(tmp_path):
+    job = make_job()
+    job.out_dir = str(tmp_path / "nope")
+    job.expected_outputs = "*subjectwise.csv|40"
+    ok, reason = q.check_expected_outputs(job)
+    assert not ok
+    assert "missing" in reason or "no file matching" in reason
+
+
+def test_check_expected_outputs_wrong_count_fails(tmp_path):
+    import pandas as pd
+    d = tmp_path / "out"; d.mkdir()
+    pd.DataFrame({"subject": range(1, 11)}).to_csv(d / "x_subjectwise.csv", index=False)  # 10, not 40
+    job = make_job()
+    job.out_dir = str(d)
+    job.expected_outputs = "*subjectwise.csv|40"
+    ok, reason = q.check_expected_outputs(job)
+    assert not ok
+    assert "10" in reason and "40" in reason
+
+
+def test_check_expected_outputs_correct_count_passes(tmp_path):
+    import pandas as pd
+    d = tmp_path / "out"; d.mkdir()
+    pd.DataFrame({"subject": range(1, 41)}).to_csv(d / "x_subjectwise.csv", index=False)
+    job = make_job()
+    job.out_dir = str(d)
+    job.expected_outputs = "*subjectwise.csv|40"
+    ok, reason = q.check_expected_outputs(job)
+    assert ok, reason
+
+
+def test_check_expected_outputs_malformed_fails(tmp_path):
+    job = make_job()
+    job.expected_outputs = "*subjectwise.csv"  # no |count
+    ok, reason = q.check_expected_outputs(job)
+    assert not ok
+
+
+def test_finish_fails_closed_when_outputs_wrong_even_though_process_exited_0(monkeypatch, tmp_path):
+    """The user's exact wording: 'FAILED ... whatever its exit code' -- a
+    process that exits 0 but wrote the wrong subject count must still be
+    marked failed, and the gate must never run on it."""
+    import pandas as pd
+    d = tmp_path / "out"; d.mkdir()
+    pd.DataFrame({"subject": range(1, 11)}).to_csv(d / "x_subjectwise.csv", index=False)  # 10, not 40
+    job = make_job(gate_script="some_gate.py")
+    job.out_dir = str(d)
+    job.expected_outputs = "*subjectwise.csv|40"
+    job.proc = FakeProc(0)
+    job.t0 = 0
+    gate_was_called = []
+    monkeypatch.setattr(q, "run_gate", lambda j: gate_was_called.append(1) or 0)
+    halted = set()
+    q.finish(job, halted, [job], {job.job_id: job})
+    assert job.status == "failed"
+    assert job.output_check_reason is not None
+    assert gate_was_called == [], "the gate must not run when the output check itself fails"
+
+
 def test_deps_satisfied_accepts_skipped_complete():
     """Regression test for the queue-wide halt found live 2026-09-24, the
     first time the queue was ever restarted mid-run: a dependency recognized

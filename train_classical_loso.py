@@ -471,7 +471,15 @@ def main():
                     steps.append(("clf", KNeighborsClassifier(**reused)))
                     pipe = Pipeline(steps)
                 else:
-                    continue
+                    # Found live 2026-09-24: this used to be `continue`, silently fitting
+                    # nothing and letting the job exit 0 for any model this script doesn't
+                    # implement (e.g. LDA, which has its own script, run_lda_loso.py, and
+                    # must never be routed through here). A model name this script does not
+                    # implement is a caller error, not a result -- raise, don't skip.
+                    raise ValueError(f"train_classical_loso.py does not implement model "
+                                     f"{model_name!r} (only SVM/RF/HGB/KNN); the caller passed "
+                                     f"--models including it, which was silently no-op'd before "
+                                     f"this fix. If this is LDA, use run_lda_loso.py instead.")
 
                 t0 = time.perf_counter()
                 if sample_weight is not None:
@@ -596,7 +604,12 @@ def main():
                 yhat = best.predict(Xte)
                 best_params_str = str(search.best_params_)
             else:
-                continue
+                # Same fix as the --save-proba branch above: an unimplemented model name is a
+                # caller error, not a silently-skipped result.
+                raise ValueError(f"train_classical_loso.py does not implement model "
+                                 f"{model_name!r} (only SVM/RF/HGB/KNN); the caller passed "
+                                 f"--models including it, which was silently no-op'd before "
+                                 f"this fix. If this is LDA, use run_lda_loso.py instead.")
 
             if args.flush_preds:
                 # Save only this subject's predictions (safe, small, resume-friendly)

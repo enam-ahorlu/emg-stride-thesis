@@ -31,6 +31,36 @@ from kc23_stats_common import paired_test, holm, print_gate_header, read_subject
 PUBLISHED_SVM = 0.777
 PUBLISHED_ENSEMBLE = 0.858
 
+# Real, confirmed paths (fixed 2026-09-24 -- this gate originally expected
+# resnet_se_cd_persubj_subjectwise.csv / {fam}_persubj_subjectwise.csv /
+# ensemble_svmx_subjectwise.csv inside its OWN --out, none of which anything
+# writes there). train_classical_loso.py's real subjectwise file is
+# {features_stem}__{MODEL}_nested_loso_subjectwise.csv, one per
+# results_kc23_c3_<model>_<norm>/ directory (columns: model, heldout_subject,
+# ..., f1_macro, ...; read_subjectwise already tolerates heldout_subject).
+# The published ResNet-SE+CD reference lives in the pre-existing
+# results_cnn_aug_resnet_se_chandrop/ (not a KC23 job -- C3 is classical-only).
+# The tuned-SVM ensemble figure is the "SVM+RESNET_SE [soft]" column of
+# results_kc23_c3_ensemble/ensemble_v2_subjectwise.csv (wide: one column per
+# combiner x subset, produced by kc23_c3_merge_proba.py + ensemble_v2_combine.py)
+# -- the published headline combiner (KC23_HALT.md decision D-6a), now fed the
+# KC-C3-tuned SVM proba in place of the original.
+FAMILY_DIRS = {
+    "svmx": "results_kc23_c3_svm_{norm}",
+    "rfx": "results_kc23_c3_rf_{norm}",
+    "hgb": "results_kc23_c3_hgb_{norm}",
+    "knn": "results_kc23_c3_knn_{norm}",
+}
+RESNET_CD_DIR = "results_cnn_aug_resnet_se_chandrop"
+ENSEMBLE_COLUMN = "SVM+RESNET_SE [soft]"
+
+
+def load_ensemble_column(path: Path, column: str) -> pd.DataFrame:
+    df = pd.read_csv(path)
+    if column not in df.columns:
+        raise ValueError(f"{path}: column {column!r} not found (have {list(df.columns)})")
+    return df[["subject", column]].rename(columns={column: "f1_macro"})
+
 
 def classify_p(f1_resnet_cd: np.ndarray, f1_best_classical: np.ndarray) -> tuple[str, dict]:
     best_mean = float(f1_best_classical.mean())
@@ -69,56 +99,70 @@ def classify_e(f1_ensemble_svmx: np.ndarray) -> tuple[str, dict]:
     return letter, {"mean_f1": mean_f1, "delta_pp": delta_pp, "published": PUBLISHED_ENSEMBLE}
 
 
-def run(out_dir: Path) -> int:
+def _fail_closed(out_dir: Path, reason: str) -> int:
+    print(f"[C3] MISSING (fail closed): {reason}", file=sys.stderr)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "C3_VERDICT.md").write_text(
+        f"# KC-C3 verdict\n\n**Outcome: FAIL (missing input)**\n\n{reason}\n", encoding="utf-8")
+    return 20
+
+
+def run(out_dir: Path, root: Path | None = None) -> int:
+    """root: repo root the family/ensemble/resnet_cd directories live under
+    (defaults to out_dir's own parent, since results_kc23_c3_ensemble is a
+    sibling of results_kc23_c3_svm_per_subject etc., not a child of it)."""
+    root = root or out_dir.parent
     fired = []
     rows_all = []
 
-    resnet_cd = require_complete(read_subjectwise(out_dir / "resnet_se_cd_persubj_subjectwise.csv"), 40, "resnet_cd") \
-        if (out_dir / "resnet_se_cd_persubj_subjectwise.csv").exists() else None
-    best_classical = None
-    candidates = {}
-    for fam in ["svmx", "rfx", "hgb", "knn"]:
-        p = out_dir / f"{fam}_persubj_subjectwise.csv"
-        if p.exists():
-            candidates[fam] = require_complete(read_subjectwise(p), 40, fam)
-    if candidates:
-        best_fam = max(candidates, key=lambda k: candidates[k].mean())
-        best_classical = candidates[best_fam]
-        print(f"[C3] best tuned classical family: {best_fam} (mean F1 {best_classical.mean():.4f})")
+    resnet_dir = root / RESNET_CD_DIR
+    if not resnet_dir.exists():
+        return _fail_closed(out_dir, f"{resnet_dir} not found (published ResNet-SE+CD reference)")
+    resnet_cd = require_complete(read_subjectwise(resnet_dir), 40, "resnet_cd")
 
-    if resnet_cd is not None and best_classical is not None:
-        p_letter, p_stats = classify_p(resnet_cd, best_classical)
-        fired.append(p_letter)
-        rows_all.append(p_stats)
-        print_gate_header("KC-C3 Endpoint 1", p_letter, {
-            "P1": "The 6.3pt lead stands.", "P2": "ESCALATE: the lead narrows, framing choice.",
-            "P3": "ESCALATE: Finding C's strongest single model changes.",
-        }[p_letter])
+    candidates = {}
+    for fam, pattern in FAMILY_DIRS.items():
+        d = root / pattern.format(norm="per_subject")
+        if not d.exists():
+            return _fail_closed(out_dir, f"{d} not found (family {fam!r}, per_subject)")
+        candidates[fam] = require_complete(read_subjectwise(d), 40, fam)
+    best_fam = max(candidates, key=lambda k: candidates[k].mean())
+    best_classical = candidates[best_fam]
+    print(f"[C3] best tuned classical family: {best_fam} (mean F1 {best_classical.mean():.4f})")
+
+    p_letter, p_stats = classify_p(resnet_cd, best_classical)
+    fired.append(p_letter)
+    rows_all.append(p_stats)
+    print_gate_header("KC-C3 Endpoint 1", p_letter, {
+        "P1": "The 6.3pt lead stands.", "P2": "ESCALATE: the lead narrows, framing choice.",
+        "P3": "ESCALATE: Finding C's strongest single model changes.",
+    }[p_letter])
 
     family_gains = {}
-    for fam in ["svmx", "rfx", "hgb", "knn"]:
-        gp, gg = out_dir / f"{fam}_persubj_subjectwise.csv", out_dir / f"{fam}_global_subjectwise.csv"
-        if gp.exists() and gg.exists():
-            family_gains[fam] = (require_complete(read_subjectwise(gp), 40, fam + "_persubj"),
-                                 require_complete(read_subjectwise(gg), 40, fam + "_global"))
-    if family_gains:
-        n_letter, n_rows = classify_n(family_gains)
-        fired.append(n_letter)
-        rows_all.extend(n_rows)
-        print_gate_header("KC-C3 Endpoint 2", n_letter, {
-            "N1": "Every model tried extends to six classical families.",
-            "N2": "ESCALATE: Finding A's scope wording changes.",
-        }[n_letter])
+    for fam, pattern in FAMILY_DIRS.items():
+        gd = root / pattern.format(norm="global")
+        if not gd.exists():
+            return _fail_closed(out_dir, f"{gd} not found (family {fam!r}, global)")
+        family_gains[fam] = (candidates[fam], require_complete(read_subjectwise(gd), 40, fam + "_global"))
+    n_letter, n_rows = classify_n(family_gains)
+    fired.append(n_letter)
+    rows_all.extend(n_rows)
+    print_gate_header("KC-C3 Endpoint 2", n_letter, {
+        "N1": "Every model tried extends to six classical families.",
+        "N2": "ESCALATE: Finding A's scope wording changes.",
+    }[n_letter])
 
-    ens_p = out_dir / "ensemble_svmx_subjectwise.csv"
-    if ens_p.exists():
-        f1_ens = require_complete(read_subjectwise(ens_p), 40, "ensemble_svmx")
-        e_letter, e_stats = classify_e(f1_ens)
-        fired.append(e_letter)
-        rows_all.append(e_stats)
-        print_gate_header("KC-C3 Endpoint 3", e_letter, {
-            "E1": "Report.", "E2": "ESCALATE: touches the headline.",
-        }[e_letter])
+    ens_p = out_dir / "ensemble_v2_subjectwise.csv"
+    if not ens_p.exists():
+        return _fail_closed(out_dir, f"{ens_p} not found (run kc23_c3_merge_proba.py + "
+                            f"ensemble_v2_combine.py first)")
+    f1_ens = require_complete(load_ensemble_column(ens_p, ENSEMBLE_COLUMN), 40, "ensemble_svmx")
+    e_letter, e_stats = classify_e(f1_ens)
+    fired.append(e_letter)
+    rows_all.append(e_stats)
+    print_gate_header("KC-C3 Endpoint 3", e_letter, {
+        "E1": "Report.", "E2": "ESCALATE: touches the headline.",
+    }[e_letter])
 
     out_dir.mkdir(parents=True, exist_ok=True)
     if rows_all:

@@ -89,16 +89,27 @@ _checkpoint("code_c3_inertness", "results_kc23_c3_after_persubj")
 _checkpoint("code_c5_inertness", "results_kc23_c5_inertness_check")
 
 
-def gpu(job_id, stage, seed, command, out_dir, depends_on=(), gate_script=""):
+def gpu(job_id, stage, seed, command, out_dir, depends_on=(), gate_script="", expected_outputs=""):
     gpu_rows.append({"job_id": job_id, "stage": stage, "seed": str(seed) if seed is not None else "",
                      "command": command, "out_dir": out_dir,
-                     "depends_on": ";".join(depends_on), "gate_script": gate_script})
+                     "depends_on": ";".join(depends_on), "gate_script": gate_script,
+                     "expected_outputs": expected_outputs})
 
 
-def cpu(job_id, stage, seed, command, out_dir, depends_on=(), gate_script=""):
+def cpu(job_id, stage, seed, command, out_dir, depends_on=(), gate_script="", expected_outputs=""):
     cpu_rows.append({"job_id": job_id, "stage": stage, "seed": str(seed) if seed is not None else "",
                      "command": command, "out_dir": out_dir,
-                     "depends_on": ";".join(depends_on), "gate_script": gate_script})
+                     "depends_on": ";".join(depends_on), "gate_script": gate_script,
+                     "expected_outputs": expected_outputs})
+
+
+SIAT_N = 40    # SIAT-LLMD subject count
+ENABL3S_N = 10  # ENABL3S subject count
+EO_CNN_ARCH_SIAT = f"cnn_arch_subjectwise.csv|{SIAT_N}"
+EO_CNN_ARCH_ENABL3S = f"cnn_arch_subjectwise.csv|{ENABL3S_N}"
+EO_ADABN_SIAT = f"adabn_subjectwise.csv|{SIAT_N}"
+EO_NESTED_LOSO_SIAT = f"*_nested_loso_subjectwise.csv|{SIAT_N}"
+EO_LDA_SIAT = f"lda_subjectwise.csv|{SIAT_N}"
 
 
 def instr(out_dir):
@@ -299,8 +310,8 @@ gpu_rows[[r["job_id"] for r in gpu_rows].index(d4_ids[-1])]["gate_script"] = "kc
 # ============================================================================
 # #11b (Phase 4, GPU): KC-D6 Stage 1 -- every family at seed 42
 # ============================================================================
-D6_SANITY_GATE = "kc23_d6_stats.py"       # sanity, manipulation, outcome and mechanism gates all live in one script
-D6_MANIP_GATE = "kc23_d6_stats.py"
+D6_GATE = "kc23_d6_stats.py"       # sanity, manipulation, outcome and mechanism gates all live in one script
+D6_AGGREGATE = "kc23_d6_aggregate.py"
 d6_stage1_ids = []
 adv_lambdas = [0, 0.03, 0.1, 0.3, 1, 3, 10]
 for lam in adv_lambdas:
@@ -310,9 +321,14 @@ for lam in adv_lambdas:
        f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
        f'--augmentation chandrop --adv-lambda {lam} --adv-mode marginal --epochs 40 --batch 256 '
        f'--seed 42 --out {out} --resume', out,
-       depends_on=("d0_smoke_gate", "d1_r2_s42"),
-       gate_script=(D6_SANITY_GATE if lam == 0 else ""))
+       depends_on=("d0_smoke_gate", "d1_r2_s42"))
     d6_stage1_ids.append(jid)
+# The D6.4 sanity gate only needs the lambda_max=0 arm ("after Stage 1, ADV at lambda_max=0" --
+# it does not wait for the rest of the family). kc23_d6_aggregate.py extracts d6_sanity.csv from
+# that one run's adv_subjectwise.csv; the gate script dispatches on out_dir's own name.
+cpu("d6_sanity_check", "D6-SANITY", None,
+   f'{PY} {D6_AGGREGATE} --root . --out results_kc23_d6_sanity_check',
+   "results_kc23_d6_sanity_check", depends_on=("d6_adv_marginal_l0_s42",), gate_script=D6_GATE)
 sfc_weights = [0.1, 1, 10, 100, 1000]
 for w in sfc_weights:
     out = f"results_kc23_d6_sfc_w{w}_s42"
@@ -330,7 +346,13 @@ for lam in [0.1, 1, 10]:
        f'--norm-mode per_subject --augmentation chandrop --adv-lambda {lam} --adv-mode marginal '
        f'--epochs 40 --batch 256 --seed 42 --out {out} --resume', out, depends_on=("d1_r2_s42",))
     d6_stage1_ids.append(jid)
-gpu_rows[[r["job_id"] for r in gpu_rows].index(d6_stage1_ids[-1])]["gate_script"] = D6_MANIP_GATE
+# The D6.5 manipulation gate needs every knob of every family done (per family, "across the knob
+# grid, 40 folds, seed 42 re-run") -- was wired to fire on the LAST stage-1 job's own out_dir
+# (which only ever held that one job's own knob), same wrong-directory mistake as D1/S1. Now a
+# separate pseudo-job depending on ALL of Stage 1, writing into its own shared aggregate dir.
+cpu("d6_manipulation_check", "D6-MANIP", None,
+   f'{PY} {D6_AGGREGATE} --root . --out results_kc23_d6_manipulation_check',
+   "results_kc23_d6_manipulation_check", depends_on=tuple(d6_stage1_ids), gate_script=D6_GATE)
 # ADV-C (mechanism): lambda_max at the ADV collapse point -- unknown until the
 # ADV family above has run and the collapse point is found. One placeholder,
 # same staging principle as 11c below.
@@ -345,7 +367,7 @@ cpu("d6_advc_placeholder", "D6", 42,
 # ============================================================================
 cpu("d6_stage2_placeholder", "D6-Stage2", None,
    "# PLACEHOLDER: 11c's jobs are generated ONLY after the D6 manipulation gate "
-   "(11b, gate_script=" + D6_MANIP_GATE + ") decides which families pass (G-PASS/G-WEAK). "
+   "(11b, d6_manipulation_check, gate_script=" + D6_GATE + ") decides which families pass (G-PASS/G-WEAK). "
    "Per RUN_ORDER_KC23.md item 11c, guessing these before 11b's result exists is out of "
    "scope for this generator. Write kc23_d6_stage2_job_gen.py to read 11b's gate output and "
    "append the real seed-7/123 rows for passing families to kc23_jobs_gpu.csv.",
@@ -419,25 +441,25 @@ for norm in ["global", "per_subject"]:
        f'{PY} run_cnn_arch_loso.py --npz {NPZ_AONLY} --meta {META_AONLY} --arch resnet_se '
        f'--augmentation chandrop --aug-chandrop-p 0.2 --model-tag RESNET_SE_CD --norm-mode {norm} '
        f'--seed 42 --out {out} --resume', out, depends_on=("s3_inventory",), gate_script="")
+FEAT_AONLY_FREQ = "features_out/freq_fs1920_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_Aonly_features_ext.npz"
 for norm in ["global", "per_subject"]:
     out = f"results_kc23_s3_lda_{norm}"
+    # LDA must go through run_lda_loso.py -- the script that produced the published LDA
+    # figures (68.7 per-subject, 62.8 global, Table 4.1), reproduction-proven exact on
+    # subjects 1-3 (2026-09-24) -- never train_classical_loso.py, which has no LDA
+    # implementation at all (--models LDA now raises there rather than silently no-op'ing).
+    # Features fixed 2026-09-24: this and s3_svm_per_subject below originally used
+    # FEAT_250_BASE/META_250_FEAT -- the SIAT-wide (rest-included) features, not the
+    # active-only ones results_aonly_global's own run_config.json shows the published
+    # SVM/RF reference actually used (the freq/ext Aonly features + META_AONLY).
     cpu(f"s3_lda_{norm}", "S3", None,
-       f'{PY} train_classical_loso.py --features {FEAT_250_BASE} --meta {META_250_FEAT} '
-       f'--models LDA --norm-mode {norm} --out {out} --resume', out,
-       depends_on=("s3_inventory",), gate_script="")
+       f'{PY} run_lda_loso.py --features {FEAT_AONLY_FREQ} --meta {META_AONLY} '
+       f'--norm-mode {norm} --out {out} --resume', out,
+       depends_on=("s3_inventory",), gate_script="", expected_outputs=EO_LDA_SIAT)
 cpu("s3_svm_per_subject", "S3", None,
-   f'{PY} train_classical_loso.py --features {FEAT_250_BASE} --meta {META_250_FEAT} '
+   f'{PY} train_classical_loso.py --features {FEAT_AONLY_FREQ} --meta {META_AONLY} '
    f'--models SVM --norm-mode per_subject --out results_kc23_s3_svm_per_subject --resume',
    "results_kc23_s3_svm_per_subject", depends_on=("s3_inventory",), gate_script="")
-# NOTE: --models LDA is NOT YET RUNNABLE -- audited 2026-09-24: train_classical_loso.py's model
-# dispatch (both the grid-search path and the --save-proba cheap-refit path) only branches on
-# {SVM, RF, HGB, KNN}; any other model_name falls through to a silent `else: continue` with NO
-# error, meaning these two rows would exit 0 having fit nothing at all -- worse than a crash,
-# since it isn't caught by the fail-closed gate fix (the job process itself still exits 0). This
-# was ALSO already true, undetected, for the four pre-registered c4_*_lda_* rows (KC-C4). Add an
-# LDA branch (LinearDiscriminantAnalysis, sklearn.discriminant_analysis) to train_classical_loso.py
-# before any of these six LDA rows run; flagged here rather than silently worked around, since the
-# right parameter grid is a design choice, not something to guess under this audit.
 # SVMX/HGB (per plan: "if KC-C3 lands P2 or P3") are correctly absent -- KC-C3's tuning outcome
 # (kc23_c3_tuning_stats.py) hasn't landed yet, so whether they're needed at all is still unknown;
 # no row is generated for them here, matching kc23_s3_inventory.py's own conditional.
@@ -515,11 +537,21 @@ for feat in ["tdpsd54", "rich126"]:
     for model in ["SVM", "LDA"]:
         for norm in ["per_subject", "global"]:
             out = f"results_kc23_c4_{feat}_{model.lower()}_{norm}"
-            cpu(f"c4_{feat}_{model.lower()}_{norm}", "C4", None,
-               f'{PY} train_classical_loso.py --features features_out/kc23_{feat}_features.npz '
-               f'--meta {META_250_FEAT} --models {model} --norm-mode {norm} --out {out} --resume',
-               out, depends_on=("c4_extract",),
-               gate_script=("kc23_c4_feature_stats.py" if (feat, model, norm) == ("rich126", "LDA", "global") else ""))
+            gate = "kc23_c4_feature_stats.py" if (feat, model, norm) == ("rich126", "LDA", "global") else ""
+            if model == "LDA":
+                # LDA must go through run_lda_loso.py, never train_classical_loso.py -- see the
+                # KC-S3 LDA rows above for why (it has no LDA implementation at all).
+                # load_features_npz is generic (first key, 2D array), confirmed compatible with
+                # kc23_c4_extract_rich.py's own npz format (single "X" key) by inspection.
+                cmd = (f'{PY} run_lda_loso.py --features features_out/kc23_{feat}_features.npz '
+                      f'--meta {META_250_FEAT} --norm-mode {norm} --out {out} --resume')
+                eo = EO_LDA_SIAT
+            else:
+                cmd = (f'{PY} train_classical_loso.py --features features_out/kc23_{feat}_features.npz '
+                      f'--meta {META_250_FEAT} --models {model} --norm-mode {norm} --out {out} --resume')
+                eo = EO_NESTED_LOSO_SIAT
+            cpu(f"c4_{feat}_{model.lower()}_{norm}", "C4", None, cmd, out,
+               depends_on=("c4_extract",), gate_script=gate, expected_outputs=eo)
 
 # ============================================================================
 # C-d (Phase 2-5, CPU plus ~1h GPU): KC-C5 leak decomposition
@@ -602,7 +634,7 @@ cpu("c6_ladder_enabl3s", "C6", None,
 def write_csv(path, rows):
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["job_id", "stage", "seed", "command", "out_dir",
-                                          "depends_on", "gate_script"])
+                                          "depends_on", "gate_script", "expected_outputs"])
         w.writeheader()
         w.writerows(rows)
     print(f"[write] {path}: {len(rows)} rows")

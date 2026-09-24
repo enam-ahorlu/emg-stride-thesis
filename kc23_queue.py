@@ -85,17 +85,55 @@ class Job:
         self.out_dir = row["out_dir"].strip()
         self.depends_on = [d.strip() for d in row.get("depends_on", "").split(";") if d.strip()]
         self.gate_script = row.get("gate_script", "").strip()
+        # "<glob-pattern-for-the-summary/subjectwise-file>|<expected-row-count>",
+        # e.g. "*subjectwise.csv|40". Empty = no check (aggregators, gates,
+        # placeholders, and anything not yet audited for its real output
+        # contract -- see kc23_validate_jobs.py's own report of which rows
+        # still have this blank).
+        self.expected_outputs = row.get("expected_outputs", "").strip()
         self.status = "queued"     # queued, running, done, failed, skipped(halted), skipped(complete)
         self.wallclock = None
         self.gate_rc = None
         self.proc = None
         self.t0 = None
         self.log_path = None
+        self.output_check_reason = None
 
     def as_row(self):
         return {"job_id": self.job_id, "stage": self.stage, "seed": self.seed,
                 "command": self.command, "out_dir": self.out_dir,
-                "depends_on": ";".join(self.depends_on), "gate_script": self.gate_script}
+                "depends_on": ";".join(self.depends_on), "gate_script": self.gate_script,
+                "expected_outputs": self.expected_outputs}
+
+
+def check_expected_outputs(job: "Job") -> tuple[bool, str]:
+    """Closes the "exit 0 having written nothing, or the wrong subject count"
+    bug class found repeatedly on 2026-09-24 (LDA silently no-op'ing inside
+    train_classical_loso.py; a stub run_scripted_supervised.py; etc.) at the
+    infrastructure level, independent of any one script's own care. Returns
+    (ok, reason) -- empty job.expected_outputs means "not audited for this
+    yet", not "nothing expected", so it is always ok (no false failures)."""
+    if not job.expected_outputs:
+        return True, ""
+    if "|" not in job.expected_outputs:
+        return False, f"malformed expected_outputs {job.expected_outputs!r} (want 'pattern|count')"
+    pattern, count_str = job.expected_outputs.rsplit("|", 1)
+    try:
+        expected_n = int(count_str)
+    except ValueError:
+        return False, f"malformed expected_outputs {job.expected_outputs!r}: {count_str!r} is not an int"
+    out_dir = Path(job.out_dir)
+    matches = sorted(out_dir.glob(pattern)) if out_dir.exists() else []
+    if not matches:
+        return False, f"no file matching {pattern!r} in {out_dir} (declared output missing)"
+    import pandas as pd
+    try:
+        n = len(pd.read_csv(matches[0]))
+    except Exception as e:
+        return False, f"could not read {matches[0]}: {e}"
+    if n != expected_n:
+        return False, f"{matches[0]} has {n} rows, expected {expected_n}"
+    return True, ""
 
 
 def load_jobs(csv_path: Path):
@@ -238,6 +276,12 @@ def finish(job: "Job", halted_stages: set, all_jobs: list, by_id: dict):
     ret = job.proc.returncode
     job.wallclock = round(time.time() - job.t0, 1)
     if ret == 0:
+        ok, reason = check_expected_outputs(job)
+        if not ok:
+            job.status = "failed"
+            job.output_check_reason = reason
+            print(f"[fail] {job.job_id} exited 0 but failed its expected_outputs check: {reason}")
+            return
         job.status = "done"
         rc = run_gate(job)
         job.gate_rc = rc if job.gate_rc != "NOT_IMPLEMENTED" else job.gate_rc

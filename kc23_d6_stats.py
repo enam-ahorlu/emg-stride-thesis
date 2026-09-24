@@ -129,12 +129,46 @@ def classify_mechanism(advc_at_collapse: float, adv_at_collapse: float, adv_peak
     return "C-M3", detail
 
 
+EXPECTED_FAMILIES = ("adv_marginal", "sfc", "advps")
+
+
+def _fail_closed(out_dir: Path, reason: str) -> int:
+    print(f"[D6] MISSING (fail closed): {reason}", file=sys.stderr)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "D6_VERDICT.md").write_text(
+        f"# KC-D6 verdict\n\n**Outcome: FAIL (missing input)**\n\n{reason}\n", encoding="utf-8")
+    return 20
+
+
 def run(out_dir: Path) -> int:
+    """Which checks are expected here is driven by out_dir's own name (the
+    queue only ever invokes a gate_script as `python <gate> --out <out_dir>`,
+    no other arguments) -- 'sanity' or 'manipulation' in the name, matching
+    kc23_build_job_csvs.py's d6_sanity_check / d6_manipulation_check pseudo-
+    jobs. Fixed 2026-09-24: a missing expected file used to mean "nothing to
+    check, continue" (exit 0) -- now it fails closed (exit 20), since these
+    gates are only ever invoked by a job whose own dependencies guarantee the
+    aggregator (kc23_d6_aggregate.py) already ran and should have produced it."""
     exit_code = 0
     results = {}
+    name = out_dir.name
 
-    sanity_path = out_dir / "d6_sanity.csv"
-    if sanity_path.exists():
+    expect_sanity = "sanity" in name
+    expect_manipulation = "manipulation" in name
+    if not expect_sanity and not expect_manipulation:
+        # Unknown invocation context (e.g. a hand-run smoke test): check
+        # whatever is actually present, but still fail closed if NOTHING is.
+        expect_sanity = (out_dir / "d6_sanity.csv").exists()
+        expect_manipulation = any((out_dir / f"d6_manipulation_{f}.csv").exists() for f in EXPECTED_FAMILIES)
+        if not expect_sanity and not expect_manipulation:
+            return _fail_closed(out_dir, f"{out_dir}: neither d6_sanity.csv nor any "
+                                f"d6_manipulation_<family>.csv found, and this out_dir's name gives no "
+                                f"hint which was expected")
+
+    if expect_sanity:
+        sanity_path = out_dir / "d6_sanity.csv"
+        if not sanity_path.exists():
+            return _fail_closed(out_dir, f"{sanity_path} not found")
         f1_l0 = float(pd.read_csv(sanity_path)["f1"].mean())
         s_letter, s_detail = classify_sanity(f1_l0)
         print_gate_header("KC-D6 sanity", s_letter, "Continue." if s_letter == "PASS" else
@@ -143,19 +177,21 @@ def run(out_dir: Path) -> int:
         if s_letter == "FAIL":
             exit_code = 20
 
-    for family_path in sorted(out_dir.glob("d6_manipulation_*.csv")):
-        family = family_path.stem.replace("d6_manipulation_", "")
-        df = pd.read_csv(family_path)  # cols: realization, knob, domain_probe, subject_probe
-        knobs = sorted(df["knob"].unique())
-        domain_mean = df.groupby("knob")["domain_probe"].mean().reindex(knobs).to_numpy()
-        subj_mat = df.pivot(index="realization", columns="knob", values="subject_probe").reindex(columns=knobs).to_numpy()
-        letter, detail = classify_manipulation(domain_mean, subj_mat)
-        results[f"manipulation_{family}"] = {"letter": letter, **detail}
-        print_gate_header(f"KC-D6 manipulation ({family})", letter,
-                          {"G-PASS": "Run Stage 2.", "G-WEAK": "Run Stage 2, flagged weak.",
-                           "G-FAIL": "No Stage 2."}[letter])
-        if exit_code != 20 and letter in ("G-PASS", "G-WEAK"):
-            pass  # queue's own dependency logic decides which Stage-2 jobs to run
+    if expect_manipulation:
+        for family in EXPECTED_FAMILIES:
+            family_path = out_dir / f"d6_manipulation_{family}.csv"
+            if not family_path.exists():
+                return _fail_closed(out_dir, f"{family_path} not found (family {family!r} incomplete "
+                                    f"or never run)")
+            df = pd.read_csv(family_path)  # cols: realization, knob, domain_probe, subject_probe
+            knobs = sorted(df["knob"].unique())
+            domain_mean = df.groupby("knob")["domain_probe"].mean().reindex(knobs).to_numpy()
+            subj_mat = df.pivot(index="realization", columns="knob", values="subject_probe").reindex(columns=knobs).to_numpy()
+            letter, detail = classify_manipulation(domain_mean, subj_mat)
+            results[f"manipulation_{family}"] = {"letter": letter, **detail}
+            print_gate_header(f"KC-D6 manipulation ({family})", letter,
+                              {"G-PASS": "Run Stage 2.", "G-WEAK": "Run Stage 2, flagged weak.",
+                               "G-FAIL": "No Stage 2."}[letter])
 
     out_dir.mkdir(parents=True, exist_ok=True)
     rows = [{"item": k, **v} for k, v in results.items()]
