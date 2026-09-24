@@ -32,6 +32,16 @@ indistinguishable, downstream, from the gate having actually passed -- which
 is worse than halting on a result that turns out to be fine. Found live on
 2026-09-24: kc23_s2_f0_feasibility.py crashed (rc=1) and was being treated as
 a clean pass before this fix.
+
+Restart safety: deps_satisfied() treats a dependency as satisfied when its
+status is "done" OR "skipped(complete)" (a resume recognized its out_dir as
+already finished, so it never actually ran in THIS process). Found live on
+2026-09-24, the first time this queue was ever restarted mid-run: with only
+"done" accepted, every job depending on an already-finished-before-restart
+run (which resumes as "skipped(complete)", not "done") became permanently
+unsatisfiable, and once nothing else was runnable the queue declared the
+remaining ~170 jobs "skipped(blocked)" and exited -- a resume, which should
+be a no-op, silently halted the whole remaining pipeline instead.
 A gate_script that does not exist yet (most of the per-stage stats scripts
 are written closer to when each stage actually runs, per the plan) is treated
 as "not yet implemented": the runner prints a warning and continues (rc=0
@@ -173,6 +183,9 @@ def find_held_dependents(halted_stage: str, all_jobs: list, by_id: dict) -> list
     return sorted(held)
 
 
+DONE_STATUSES = {"done", "skipped(complete)"}  # both mean "the output this depends on already exists"
+
+
 def deps_satisfied(job: "Job", by_id: dict, halted_stages: set) -> bool:
     for d in job.depends_on:
         dep = by_id.get(d)
@@ -181,7 +194,7 @@ def deps_satisfied(job: "Job", by_id: dict, halted_stages: set) -> bool:
             return False
         if dep.stage in halted_stages:
             return False
-        if dep.status != "done":
+        if dep.status not in DONE_STATUSES:
             return False
     return True
 

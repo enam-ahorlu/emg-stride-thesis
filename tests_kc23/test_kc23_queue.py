@@ -116,3 +116,45 @@ def test_run_gate_end_to_end_escalate_script_returns_20():
     job = make_job(gate_script="tests_kc23/_synthetic_escalate_gate.py")
     rc = q.run_gate(job)
     assert rc == 20
+
+
+def test_deps_satisfied_accepts_skipped_complete():
+    """Regression test for the queue-wide halt found live 2026-09-24, the
+    first time the queue was ever restarted mid-run: a dependency recognized
+    by resume as already finished gets status 'skipped(complete)', not
+    'done' -- deps_satisfied() must accept either, or every downstream job
+    of an already-finished-before-restart run becomes permanently
+    unsatisfiable and the whole remaining queue falsely looks deadlocked."""
+    upstream = make_job("upstream", stage="D1")
+    upstream.status = "skipped(complete)"
+    downstream = make_job("downstream", stage="S1")
+    downstream.depends_on = ["upstream"]
+    by_id = {"upstream": upstream, "downstream": downstream}
+    assert q.deps_satisfied(downstream, by_id, set())
+
+
+def test_deps_satisfied_rejects_queued_or_failed():
+    for bad_status in ("queued", "failed", "running"):
+        upstream = make_job("upstream", stage="D1")
+        upstream.status = bad_status
+        downstream = make_job("downstream", stage="S1")
+        downstream.depends_on = ["upstream"]
+        by_id = {"upstream": upstream, "downstream": downstream}
+        assert not q.deps_satisfied(downstream, by_id, set()), bad_status
+
+
+def test_pick_next_does_not_falsely_deadlock_after_a_resume(monkeypatch, tmp_path):
+    """End-to-end version of the same bug: with a mix of 'done' and
+    'skipped(complete)' upstream jobs (as happens after any restart),
+    main()'s own deadlock check must still find the newly-runnable job."""
+    j1 = make_job("j1", stage="A")
+    j1.status = "skipped(complete)"
+    j2 = make_job("j2", stage="A")
+    j2.status = "done"
+    j3 = make_job("j3", stage="B")
+    j3.depends_on = ["j1", "j2"]
+    by_id = {j.job_id: j for j in (j1, j2, j3)}
+    remaining = [j for j in (j1, j2, j3) if j.status == "queued"]
+    assert remaining == [j3]
+    runnable = [j for j in remaining if j.stage not in set() and q.deps_satisfied(j, by_id, set())]
+    assert runnable == [j3], "j3 must be runnable once both its deps are done/skipped(complete)"
