@@ -128,14 +128,22 @@ def stacking_descriptive(f1_stacking: np.ndarray, f1_softvote: np.ndarray, reali
 def run(out_dir: Path) -> int:
     exit_code = 0
 
+    # Fixed 2026-09-24: this letter used to be computed, used to set exit_code,
+    # and then silently dropped -- the local `letter` name was reused (and
+    # overwritten) by the per-contrast and per-headline-arm loops below, so
+    # D1_VERDICT.md never recorded it even though the gate had genuinely run
+    # and genuinely passed or failed. Found live: results_kc23_d1_repro_check/
+    # D1_VERDICT.md existed with only its header, no letter, even though the
+    # job had actually run and produced real reproduction_inputs.
+    repro_letter, repro_detail = None, None
     gate_path = out_dir / "d1_reproduction_inputs.csv"
     if gate_path.exists():
         g = pd.read_csv(gate_path).set_index("arm")["f1_mean"]
-        letter, detail = reproduction_gate(float(g["R1"]), float(g["R2"]), float(g["R10_pre"]))
-        print_gate_header("KC-D1 reproduction gate", letter,
-                          "Continue." if letter == "PASS" else "ESCALATE: code drift since publication.")
-        print(f"  {detail}")
-        if letter == "FAIL":
+        repro_letter, repro_detail = reproduction_gate(float(g["R1"]), float(g["R2"]), float(g["R10_pre"]))
+        print_gate_header("KC-D1 reproduction gate", repro_letter,
+                          "Continue." if repro_letter == "PASS" else "ESCALATE: code drift since publication.")
+        print(f"  {repro_detail}")
+        if repro_letter == "FAIL":
             exit_code = 20
 
     contrast_results = {}
@@ -178,9 +186,10 @@ def run(out_dir: Path) -> int:
                 print(f"[D1] {critical} NOT ESTABLISHED -> ESCALATE (Finding C's core changes).")
 
     headline_path = out_dir / "d1_headline_inputs.csv"
+    headline_checks = {}
     if headline_path.exists() and exit_code != 20:
         h = pd.read_csv(headline_path)
-        checks = {}
+        checks = headline_checks
         for arm, published in [("R2", PUBLISHED_R2), ("ensemble", PUBLISHED_ENSEMBLE),
                                ("R12", PUBLISHED_R12), ("global", PUBLISHED_GLOBAL)]:
             row = h[h["arm"] == arm]
@@ -205,9 +214,17 @@ def run(out_dir: Path) -> int:
         pd.DataFrame(list(contrast_results.values())).to_csv(out_dir / "D1_contrasts_verdict.csv", index=False)
     if stacking_result:
         pd.DataFrame([stacking_result]).to_csv(out_dir / "D1_C13b_stacking.csv", index=False)
-    (out_dir / "D1_VERDICT.md").write_text(
-        "# KC-D1 verdict\n\n" + "\n".join(f"- **{k}: {v['letter']}**" for k, v in contrast_results.items()) + "\n",
-        encoding="utf-8")
+
+    verdict_lines = ["# KC-D1 verdict\n"]
+    if repro_letter is not None:
+        verdict_lines.append(f"- **reproduction: {repro_letter}**")
+    for k, v in contrast_results.items():
+        verdict_lines.append(f"- **{k}: {v['letter']}**")
+    for arm, v in headline_checks.items():
+        verdict_lines.append(f"- **headline ({arm}): {v['letter']}**")
+    if not (repro_letter is not None or contrast_results or headline_checks):
+        verdict_lines.append("(no inputs present yet)")
+    (out_dir / "D1_VERDICT.md").write_text("\n".join(verdict_lines) + "\n", encoding="utf-8")
 
     return exit_code
 

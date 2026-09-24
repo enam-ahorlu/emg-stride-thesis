@@ -167,6 +167,97 @@ def test_check_expected_outputs_malformed_fails(tmp_path):
     assert not ok
 
 
+def test_check_expected_outputs_letter_mode_header_only_fails(tmp_path):
+    """The exact d1_reproduction_check bug: a verdict file exists but has
+    only its header, no letter -- must fail, not silently pass."""
+    d = tmp_path / "out"; d.mkdir()
+    (d / "X_VERDICT.md").write_text("# KC-D1 verdict\n\n", encoding="utf-8")
+    job = make_job()
+    job.out_dir = str(d)
+    job.expected_outputs = "*_VERDICT.md|LETTER"
+    ok, reason = q.check_expected_outputs(job)
+    assert not ok
+
+
+def test_check_expected_outputs_letter_mode_real_letter_passes(tmp_path):
+    d = tmp_path / "out"; d.mkdir()
+    (d / "X_VERDICT.md").write_text("# KC-D1 verdict\n\n- **reproduction: PASS**\n", encoding="utf-8")
+    job = make_job()
+    job.out_dir = str(d)
+    job.expected_outputs = "*_VERDICT.md|LETTER"
+    ok, reason = q.check_expected_outputs(job)
+    assert ok, reason
+
+
+def test_already_done_uses_expected_outputs_when_set(tmp_path):
+    d = tmp_path / "out"; d.mkdir()
+    (d / "x_VERDICT.md").write_text("# verdict\n\n", encoding="utf-8")  # header only -- not really done
+    job = make_job()
+    job.out_dir = str(d)
+    job.expected_outputs = "*_VERDICT.md|LETTER"
+    assert not q.already_done(job), "a header-only verdict must not count as done, even though is_complete() would say yes"
+
+
+def test_already_done_falls_back_to_heuristic_when_blank(tmp_path):
+    d = tmp_path / "out"; d.mkdir()
+    (d / "x_VERDICT.md").write_text("# verdict\n\n", encoding="utf-8")
+    job = make_job()
+    job.out_dir = str(d)
+    job.expected_outputs = ""
+    assert q.already_done(job)  # unaudited rows keep the old permissive behavior
+
+
+# ---- --adopt / GhostProc (2026-09-24): restart without killing an in-flight
+# job whose child process is independent of the queue's own PID.
+
+def test_ghostproc_poll_none_while_pid_alive(monkeypatch):
+    import sys as _sys
+    fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: True)
+    _sys.modules["psutil"] = fake_psutil
+    gp = q.GhostProc(pid=99999)
+    assert gp.poll() is None
+    assert gp.returncode is None
+
+
+def test_ghostproc_poll_returns_0_once_pid_gone(monkeypatch):
+    import sys as _sys
+    fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: False)
+    _sys.modules["psutil"] = fake_psutil
+    gp = q.GhostProc(pid=99999)
+    assert gp.poll() == 0
+    assert gp.returncode == 0
+
+
+def test_parse_adopt_refuses_dead_pid(monkeypatch):
+    import sys as _sys
+    fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: False)
+    _sys.modules["psutil"] = fake_psutil
+    job = make_job("real_job")
+    with pytest.raises(SystemExit):
+        q.parse_adopt("real_job=99999", [job], [], {job.job_id: job})
+
+
+def test_parse_adopt_refuses_unknown_job_id(monkeypatch):
+    import sys as _sys
+    fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: True)
+    _sys.modules["psutil"] = fake_psutil
+    with pytest.raises(SystemExit):
+        q.parse_adopt("nope=123", [], [], {})
+
+
+def test_parse_adopt_marks_running_and_routes_gpu_vs_cpu(monkeypatch):
+    import sys as _sys
+    fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: True)
+    _sys.modules["psutil"] = fake_psutil
+    gpu_job = make_job("gpu_job")
+    cpu_job = make_job("cpu_job")
+    by_id = {gpu_job.job_id: gpu_job, cpu_job.job_id: cpu_job}
+    gr, cr = q.parse_adopt("gpu_job=111,cpu_job=222", [gpu_job], [cpu_job], by_id)
+    assert gr is gpu_job and cr is cpu_job
+    assert gpu_job.status == "running" and gpu_job.proc.pid == 111
+    assert cpu_job.status == "running" and cpu_job.proc.pid == 222
+
+
 def test_finish_fails_closed_when_outputs_wrong_even_though_process_exited_0(monkeypatch, tmp_path):
     """The user's exact wording: 'FAILED ... whatever its exit code' -- a
     process that exits 0 but wrote the wrong subject count must still be

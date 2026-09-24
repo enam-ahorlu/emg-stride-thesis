@@ -109,7 +109,22 @@ EO_CNN_ARCH_SIAT = f"cnn_arch_subjectwise.csv|{SIAT_N}"
 EO_CNN_ARCH_ENABL3S = f"cnn_arch_subjectwise.csv|{ENABL3S_N}"
 EO_ADABN_SIAT = f"adabn_subjectwise.csv|{SIAT_N}"
 EO_NESTED_LOSO_SIAT = f"*_nested_loso_subjectwise.csv|{SIAT_N}"
+EO_NESTED_LOSO_ENABL3S = f"*_nested_loso_subjectwise.csv|{ENABL3S_N}"
 EO_LDA_SIAT = f"lda_subjectwise.csv|{SIAT_N}"
+EO_LDA_ENABL3S = f"lda_subjectwise.csv|{ENABL3S_N}"
+EO_ADABN_SIAT = f"adabn_subjectwise.csv|{SIAT_N}"
+EO_DEEP_CORAL_SIAT = f"deep_coral_subjectwise.csv|{SIAT_N}"
+EO_ADV_SIAT = f"adv_subjectwise.csv|{SIAT_N}"
+EO_SIMPLECNN_LOSO_SIAT = f"per_subject_metrics_cnn_loso.csv|{SIAT_N}"
+EO_D1_ARM = {  # arm -> expected_outputs, used both at seed 42 and seeds 7/123/1001
+    "r1": EO_CNN_ARCH_SIAT, "r2": EO_CNN_ARCH_SIAT, "r3": EO_CNN_ARCH_SIAT, "r4": EO_CNN_ARCH_SIAT,
+    "r5": EO_CNN_ARCH_SIAT, "r6": EO_CNN_ARCH_SIAT, "r7": EO_CNN_ARCH_SIAT, "r12": EO_CNN_ARCH_SIAT,
+    "r8": EO_SIMPLECNN_LOSO_SIAT, "r9": EO_SIMPLECNN_LOSO_SIAT,
+    "r10": EO_ADABN_SIAT, "r11": EO_DEEP_CORAL_SIAT,
+    "r13": EO_CNN_ARCH_SIAT, "r14": EO_CNN_ARCH_SIAT, "r15": EO_CNN_ARCH_SIAT,
+    "r16": EO_CNN_ARCH_SIAT, "r17": EO_CNN_ARCH_SIAT,
+}
+EO_VERDICT_LETTER = "*_VERDICT.md|LETTER"
 
 
 def instr(out_dir):
@@ -124,7 +139,7 @@ d1_s42_ids = []
 
 def _d1_arm(arm, out, cmd):
     jid = f"d1_{arm}_s42"
-    gpu(jid, "D1", 42, cmd, out, depends_on=("d0_smoke_gate",))
+    gpu(jid, "D1", 42, cmd, out, depends_on=("d0_smoke_gate",), expected_outputs=EO_D1_ARM[arm])
     d1_s42_ids.append(jid)
     return jid
 
@@ -183,7 +198,7 @@ D1_AGGREGATE = "kc23_d1_aggregate.py"
 cpu("d1_reproduction_check", "D1-REPRO", None,
    f'{PY} {D1_AGGREGATE} --root . --out results_kc23_d1_repro_check',
    "results_kc23_d1_repro_check", depends_on=("d1_r1_s42", "d1_r2_s42", "d1_r10_s42"),
-   gate_script=D1_REPRO_GATE)
+   gate_script=D1_REPRO_GATE, expected_outputs=EO_VERDICT_LETTER)
 
 # ============================================================================
 # #7 (Phase 2, GPU+CPU): KC-S1 scripted buffer, 3 realizations (base training)
@@ -198,10 +213,12 @@ cpu("d1_reproduction_check", "D1-REPRO", None,
 # branch). Attaching the stats gate to any of these jobs would crash it on a
 # precondition nobody can satisfy yet -- same mistake as KC-D1's premature
 # wiring, caught before it ran this time. Wire it once those arms exist.
+EO_S1_SUBJECTWISE = f"s1_subjectwise.csv|{40 * 3 * 9}"  # 40 subjects x {5,10,25} x 9 arms
 for seed in [42, 7, 123]:
     gpu(f"s1_base_s{seed}", "S1", seed,
        f'{PY} run_scripted_supervised.py --seed {seed} --out results_kc23_s1_scripted_s{seed} --resume',
-       f"results_kc23_s1_scripted_s{seed}", depends_on=d1_s42_ids, gate_script="")
+       f"results_kc23_s1_scripted_s{seed}", depends_on=d1_s42_ids, gate_script="",
+       expected_outputs=EO_S1_SUBJECTWISE)
 
 # ============================================================================
 # #8 (Phase 2, GPU): KC-D5 ENABL3S deep, 5 realizations (E1/E2/E3)
@@ -212,17 +229,20 @@ for seed in D5_SEEDS:
     gpu(f"d5_e1_s{seed}", "D5", seed,
        f'{PY} run_cnn_arch_loso.py --npz {NPZ_ENABL3S} --meta {META_ENABL3S} --arch resnet_se '
        f'--augmentation none --instrument {instr(f"results_kc23_d5_e1_s{seed}")} --seed {seed} '
-       f'--out results_kc23_d5_e1_s{seed} --resume', f"results_kc23_d5_e1_s{seed}", depends_on=d1_s42_ids)
+       f'--out results_kc23_d5_e1_s{seed} --resume', f"results_kc23_d5_e1_s{seed}", depends_on=d1_s42_ids,
+       expected_outputs=EO_CNN_ARCH_ENABL3S)
     gpu(f"d5_e2_s{seed}", "D5", seed,
        f'{PY} run_cnn_arch_loso.py --npz {NPZ_ENABL3S} --meta {META_ENABL3S} --arch resnet_se '
        f'--augmentation chandrop --aug-chandrop-p 0.2 --save-proba results_kc23_d5_e2_s{seed}/proba '
        f'--model-tag RESNET_SE_CD --instrument {instr(f"results_kc23_d5_e2_s{seed}")} --seed {seed} '
-       f'--out results_kc23_d5_e2_s{seed} --resume', f"results_kc23_d5_e2_s{seed}", depends_on=d1_s42_ids)
+       f'--out results_kc23_d5_e2_s{seed} --resume', f"results_kc23_d5_e2_s{seed}", depends_on=d1_s42_ids,
+       expected_outputs=EO_CNN_ARCH_ENABL3S)
     gpu(f"d5_e3_s{seed}", "D5", seed,
        f'{PY} run_cnn_arch_loso.py --npz {NPZ_ENABL3S} --meta {META_ENABL3S} --arch resnet_se '
        f'--augmentation gainjitter --aug-gain-sd 0.40 --instrument {instr(f"results_kc23_d5_e3_s{seed}")} '
        f'--seed {seed} --out results_kc23_d5_e3_s{seed} --resume', f"results_kc23_d5_e3_s{seed}",
-       depends_on=d1_s42_ids, gate_script=("kc23_d5_replication_stats.py" if seed == D5_SEEDS[-1] else ""))
+       depends_on=d1_s42_ids, gate_script=("kc23_d5_replication_stats.py" if seed == D5_SEEDS[-1] else ""),
+       expected_outputs=EO_CNN_ARCH_ENABL3S)
 
 # ============================================================================
 # #9 (Phase 3, GPU): KC-D1 Tier A, seeds 7/123/1001
@@ -247,21 +267,22 @@ for seed in [7, 123, 1001]:
             cmdline = (f'{PY} run_cnn_arch_loso.py --npz {npzv} --meta {metav} --arch {archv} '
                       f'--augmentation {augv}{extra}{proba} --instrument {instr(out)} --seed {seed} '
                       f'--out {out} --resume')
-            gpu(f"d1_{arm}_s{seed}", "D1", seed, cmdline, out, depends_on=("d1_r2_s42",))
+            gpu(f"d1_{arm}_s{seed}", "D1", seed, cmdline, out, depends_on=("d1_r2_s42",),
+               expected_outputs=EO_D1_ARM[arm])
             d1_all_seed_ids.append(f"d1_{arm}_s{seed}")
         elif arm == "r10":
             out = f"results_kc23_d1_r10_s{seed}"
             gpu(f"d1_r10_s{seed}", "D1", seed,
                f'{PY} run_adabn_cnn_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
                f'--augmentation chandrop --epochs 40 --seed {seed} --out {out} --resume', out,
-               depends_on=("d1_r2_s42",))
+               depends_on=("d1_r2_s42",), expected_outputs=EO_D1_ARM["r10"])
             d1_all_seed_ids.append(f"d1_r10_s{seed}")
         elif arm == "r11":
             out = f"results_kc23_d1_r11_s{seed}"
             gpu(f"d1_r11_s{seed}", "D1", seed,
                f'{PY} run_deep_coral_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
                f'--augmentation chandrop --coral-lambda 30 --batch 256 --seed {seed} --out {out} --resume', out,
-               depends_on=("d1_r2_s42",))
+               depends_on=("d1_r2_s42",), expected_outputs=EO_D1_ARM["r11"])
             d1_all_seed_ids.append(f"d1_r11_s{seed}")
     # R8/R9 (SimpleEMGCNN) at this seed
     for arm, aug in [("r8", None), ("r9", "chandrop")]:
@@ -269,7 +290,8 @@ for seed in [7, 123, 1001]:
         augflag = " --augment chandrop --aug-chandrop-p 0.2" if aug else ""
         gpu(f"d1_{arm}_s{seed}", "D1", seed,
            f'{PY} train_cnn_loso.py --npz {NPZ_250} --meta {META_250} --norm-mode per_subject{augflag} '
-           f'--seed {seed} --out {out} --resume', out, depends_on=("d1_r2_s42",))
+           f'--seed {seed} --out {out} --resume', out, depends_on=("d1_r2_s42",),
+           expected_outputs=EO_D1_ARM[arm])
         d1_all_seed_ids.append(f"d1_{arm}_s{seed}")
 # NOTE: the D1.5-D1.7 contrast/headline gate does NOT attach to d1_r2_s1001 --
 # that job's own depends_on is only ("d1_r2_s42",), so it can (and did, in
@@ -282,7 +304,8 @@ for seed in [7, 123, 1001]:
 # ============================================================================
 cpu("d2_reliance", "D2", None,
    f'{PY} kc23_d2_reliance_stats.py --out results_kc23_d2_reliance',
-   "results_kc23_d2_reliance", depends_on=tuple(d1_all_seed_ids), gate_script="kc23_d2_reliance_stats.py")
+   "results_kc23_d2_reliance", depends_on=tuple(d1_all_seed_ids), gate_script="kc23_d2_reliance_stats.py",
+   expected_outputs=EO_VERDICT_LETTER)
 
 # ============================================================================
 # #11 (Phase 4, GPU): KC-D4 channel-axis invariance sweep
@@ -295,7 +318,7 @@ for seed in D3_D4_SEEDS:
         gpu(jid, "D4", seed,
            f'{PY} run_cnn_arch_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
            f'--augmentation mpchandrop --aug-gain-sd {sd} --instrument {instr(out)} --seed {seed} '
-           f'--out {out} --resume', out, depends_on=("d1_r2_s1001",))
+           f'--out {out} --resume', out, depends_on=("d1_r2_s1001",), expected_outputs=EO_CNN_ARCH_SIAT)
         d4_ids.append(jid)
     for sd in [0.80, 1.00]:
         out = f"results_kc23_d4_gainjitter_sd{sd:.2f}_s{seed}"
@@ -303,7 +326,7 @@ for seed in D3_D4_SEEDS:
         gpu(jid, "D4", seed,
            f'{PY} run_cnn_arch_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
            f'--augmentation gainjitter --aug-gain-sd {sd} --instrument {instr(out)} --seed {seed} '
-           f'--out {out} --resume', out, depends_on=("d1_r2_s1001",))
+           f'--out {out} --resume', out, depends_on=("d1_r2_s1001",), expected_outputs=EO_CNN_ARCH_SIAT)
         d4_ids.append(jid)
 gpu_rows[[r["job_id"] for r in gpu_rows].index(d4_ids[-1])]["gate_script"] = "kc23_d4_invariance_stats.py"
 
@@ -321,14 +344,15 @@ for lam in adv_lambdas:
        f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
        f'--augmentation chandrop --adv-lambda {lam} --adv-mode marginal --epochs 40 --batch 256 '
        f'--seed 42 --out {out} --resume', out,
-       depends_on=("d0_smoke_gate", "d1_r2_s42"))
+       depends_on=("d0_smoke_gate", "d1_r2_s42"), expected_outputs=EO_ADV_SIAT)
     d6_stage1_ids.append(jid)
 # The D6.4 sanity gate only needs the lambda_max=0 arm ("after Stage 1, ADV at lambda_max=0" --
 # it does not wait for the rest of the family). kc23_d6_aggregate.py extracts d6_sanity.csv from
 # that one run's adv_subjectwise.csv; the gate script dispatches on out_dir's own name.
 cpu("d6_sanity_check", "D6-SANITY", None,
    f'{PY} {D6_AGGREGATE} --root . --out results_kc23_d6_sanity_check',
-   "results_kc23_d6_sanity_check", depends_on=("d6_adv_marginal_l0_s42",), gate_script=D6_GATE)
+   "results_kc23_d6_sanity_check", depends_on=("d6_adv_marginal_l0_s42",), gate_script=D6_GATE,
+   expected_outputs=EO_VERDICT_LETTER)
 sfc_weights = [0.1, 1, 10, 100, 1000]
 for w in sfc_weights:
     out = f"results_kc23_d6_sfc_w{w}_s42"
@@ -336,7 +360,7 @@ for w in sfc_weights:
     gpu(jid, "D6", 42,
        f'{PY} run_deep_coral_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
        f'--augmentation chandrop --coral-lambda {w} --coral-normalize l2 --batch 256 --seed 42 '
-       f'--out {out} --resume', out, depends_on=("d1_r2_s42",))
+       f'--out {out} --resume', out, depends_on=("d1_r2_s42",), expected_outputs=EO_DEEP_CORAL_SIAT)
     d6_stage1_ids.append(jid)
 for lam in [0.1, 1, 10]:
     out = f"results_kc23_d6_advps_l{lam}_s42"
@@ -344,7 +368,8 @@ for lam in [0.1, 1, 10]:
     gpu(jid, "D6", 42,
        f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
        f'--norm-mode per_subject --augmentation chandrop --adv-lambda {lam} --adv-mode marginal '
-       f'--epochs 40 --batch 256 --seed 42 --out {out} --resume', out, depends_on=("d1_r2_s42",))
+       f'--epochs 40 --batch 256 --seed 42 --out {out} --resume', out, depends_on=("d1_r2_s42",),
+       expected_outputs=EO_ADV_SIAT)
     d6_stage1_ids.append(jid)
 # The D6.5 manipulation gate needs every knob of every family done (per family, "across the knob
 # grid, 40 folds, seed 42 re-run") -- was wired to fire on the LAST stage-1 job's own out_dir
@@ -352,7 +377,8 @@ for lam in [0.1, 1, 10]:
 # separate pseudo-job depending on ALL of Stage 1, writing into its own shared aggregate dir.
 cpu("d6_manipulation_check", "D6-MANIP", None,
    f'{PY} {D6_AGGREGATE} --root . --out results_kc23_d6_manipulation_check',
-   "results_kc23_d6_manipulation_check", depends_on=tuple(d6_stage1_ids), gate_script=D6_GATE)
+   "results_kc23_d6_manipulation_check", depends_on=tuple(d6_stage1_ids), gate_script=D6_GATE,
+   expected_outputs=EO_VERDICT_LETTER)
 # ADV-C (mechanism): lambda_max at the ADV collapse point -- unknown until the
 # ADV family above has run and the collapse point is found. One placeholder,
 # same staging principle as 11c below.
@@ -386,7 +412,7 @@ for seed in D3_D4_SEEDS:
         gpu(jid, "D3", seed,
            f'{PY} run_cnn_arch_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
            f'--augmentation {mode} {sigma_flag} --instrument {instr(out)} --seed {seed} '
-           f'--out {out} --resume', out, depends_on=("d1_r2_s1001",))
+           f'--out {out} --resume', out, depends_on=("d1_r2_s1001",), expected_outputs=EO_CNN_ARCH_SIAT)
         d3_ids.append(jid)
 gpu_rows[[r["job_id"] for r in gpu_rows].index(d3_ids[-1])]["gate_script"] = "kc23_d3_axis_stats.py"
 
@@ -404,7 +430,7 @@ for seed in D1_TIER_B_SEEDS:
         gpu(jid, "D1B", seed,
            f'{PY} run_cnn_arch_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
            f'--augmentation {mode} {flag} --instrument {instr(out)} --seed {seed} --out {out} --resume',
-           out, depends_on=("d1_r2_s42",))
+           out, depends_on=("d1_r2_s42",), expected_outputs=EO_D1_ARM[arm])
         tierb_ids.append(jid)
 
 # ============================================================================
@@ -414,7 +440,7 @@ for seed in D1_TIER_B_SEEDS:
 cpu("d1_full_aggregate", "D1-AGG", None,
    f'{PY} {D1_AGGREGATE} --root . --out results_kc23_d1_stats',
    "results_kc23_d1_stats", depends_on=tuple(d1_all_seed_ids + tierb_ids),
-   gate_script=D1_REPRO_GATE)
+   gate_script=D1_REPRO_GATE, expected_outputs=EO_VERDICT_LETTER)
 
 # ============================================================================
 # #14 (Phase 5, GPU+CPU): KC-S3 active-only benchmark
@@ -431,7 +457,8 @@ for arch in ["simple", "resnet_se"]:
            f'{PY} run_cnn_arch_loso.py --npz {NPZ_AONLY} --meta {META_AONLY} --arch {arch} '
            f'--norm-mode {norm} --seed 42 --out {out} --resume', out,
            depends_on=("s3_inventory",),
-           gate_script="")  # KC-S3 has no halting letters per the plan; kc23_s3_inventory.py is not a gate
+           gate_script="",  # KC-S3 has no halting letters per the plan; kc23_s3_inventory.py is not a gate
+           expected_outputs=EO_CNN_ARCH_SIAT)
 # ResNet-SE+CD (the actual best deep model per the plan's own ensemble, chandrop augmentation) was
 # missing entirely -- only plain resnet_se was wired. Per kc23_s3_inventory.py's own output (run
 # 2026-09-24), present=True only for SVM/global and RF/global; every other cell below is missing.
@@ -440,7 +467,8 @@ for norm in ["global", "per_subject"]:
     gpu(f"s3_resnet_se_cd_{norm}", "S3", 42,
        f'{PY} run_cnn_arch_loso.py --npz {NPZ_AONLY} --meta {META_AONLY} --arch resnet_se '
        f'--augmentation chandrop --aug-chandrop-p 0.2 --model-tag RESNET_SE_CD --norm-mode {norm} '
-       f'--seed 42 --out {out} --resume', out, depends_on=("s3_inventory",), gate_script="")
+       f'--seed 42 --out {out} --resume', out, depends_on=("s3_inventory",), gate_script="",
+       expected_outputs=EO_CNN_ARCH_SIAT)
 FEAT_AONLY_FREQ = "features_out/freq_fs1920_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_Aonly_features_ext.npz"
 for norm in ["global", "per_subject"]:
     out = f"results_kc23_s3_lda_{norm}"
@@ -459,7 +487,8 @@ for norm in ["global", "per_subject"]:
 cpu("s3_svm_per_subject", "S3", None,
    f'{PY} train_classical_loso.py --features {FEAT_AONLY_FREQ} --meta {META_AONLY} '
    f'--models SVM --norm-mode per_subject --out results_kc23_s3_svm_per_subject --resume',
-   "results_kc23_s3_svm_per_subject", depends_on=("s3_inventory",), gate_script="")
+   "results_kc23_s3_svm_per_subject", depends_on=("s3_inventory",), gate_script="",
+   expected_outputs=EO_NESTED_LOSO_SIAT)
 # SVMX/HGB (per plan: "if KC-C3 lands P2 or P3") are correctly absent -- KC-C3's tuning outcome
 # (kc23_c3_tuning_stats.py) hasn't landed yet, so whether they're needed at all is still unknown;
 # no row is generated for them here, matching kc23_s3_inventory.py's own conditional.
@@ -479,10 +508,53 @@ cpu("s2_f0_feasibility", "S2-F0", None,
    f'{PY} adapt_external_dataset.py --root 5362627 --out results_kc23_s2_adapter_circuitmeta '
    f'--tag ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_kc23s2 --with-circuit-meta --resume '
    f'&& {PY} kc23_s2_f0_feasibility.py --out results_kc23_s2_adapter_circuitmeta --root 5362627',
-   "results_kc23_s2_adapter_circuitmeta", depends_on=(), gate_script=S2_F0_GATE)
+   "results_kc23_s2_adapter_circuitmeta", depends_on=(), gate_script=S2_F0_GATE,
+   expected_outputs="S2_F0_VERDICT.md|LETTER")
+# S2.3: per-window LOSO predictions on ENABL3S (locked SVM/ResNet-SE+CD/soft,
+# transductive + causal-100 + causal-balanced25). Reuses the circuit-meta
+# windows s2_f0_feasibility already built (row-aligned with the published
+# Freq-72 features, confirmed 2026-09-24: same 45525 rows, same subject order).
+cpu("s2_predictions", "S2-PRED", None,
+   f'{PY} kc23_s2_predictions.py --root . --out results_kc23_s2_predictions',
+   "results_kc23_s2_predictions", depends_on=("s2_f0_feasibility",),
+   # every window is predicted exactly once (its own held-out fold) x 3 models = 45525 x 3
+   expected_outputs=f"s2_predictions_causal100.csv|{45525 * 3}")
+# S2.4: the analysis over S2.3's causal-100 predictions (the plan's primary,
+# deployment-realistic condition) and the transition table already built and
+# validated (0 disagreements against the real published windows). Row count
+# is not fixed (depends on real transition counts) -- expected_outputs left
+# blank rather than guessed; kc23_s2_transitions.py's own gate-less "done"
+# status still requires the file to exist (is_complete()'s fallback).
 cpu("s2_transitions", "S2", None,
-   f'{PY} kc23_s2_transitions.py --out results_kc23_s2_transitions',
-   "results_kc23_s2_transitions", depends_on=("s2_f0_feasibility",), gate_script="")
+   f'{PY} kc23_s2_transitions.py --out results_kc23_s2_transitions '
+   f'--preds results_kc23_s2_predictions/s2_predictions_causal100.csv',
+   "results_kc23_s2_transitions", depends_on=("s2_predictions",), gate_script="")
+
+# ============================================================================
+# S2b: the 400ms ENABL3S window trade -- new adapter tag, SVM + ResNet-SE+CD
+# ============================================================================
+cpu("s2b_adapter_400", "S2b", None,
+   f'{PY} adapt_external_dataset.py --root 5362627 --out results_kc23_s2b_adapter_400 '
+   f'--tag ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b --window-ms 400 --with-circuit-meta --resume',
+   "results_kc23_s2b_adapter_400", depends_on=())
+EO_S2B_FEAT = "freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_features_ext.npz"
+cpu("s2b_extract_features", "S2b", None,
+   f'{PY} extract_features.py '
+   f'--npz results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b.npz '
+   f'--meta results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_meta.csv '
+   f'--out-dir results_kc23_s2b_features --prefix freq --use env --freq',
+   "results_kc23_s2b_features", depends_on=("s2b_adapter_400",))
+gpu("s2b_resnet_se_cd_400", "S2b", 42,
+   f'{PY} run_cnn_arch_loso.py --npz results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b.npz '
+   f'--meta results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_meta.csv '
+   f'--arch resnet_se --augmentation chandrop --aug-chandrop-p 0.2 --model-tag RESNET_SE_CD --seed 42 '
+   f'--out results_kc23_s2b_resnet_se_cd_400 --resume', "results_kc23_s2b_resnet_se_cd_400",
+   depends_on=("s2b_adapter_400",), expected_outputs=EO_CNN_ARCH_ENABL3S)
+cpu("s2b_svm_400", "S2b", None,
+   f'{PY} train_classical_loso.py --features results_kc23_s2b_features/{EO_S2B_FEAT} '
+   f'--meta results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_meta.csv '
+   f'--models SVM --norm-mode per_subject --out results_kc23_s2b_svm_400 --resume',
+   "results_kc23_s2b_svm_400", depends_on=("s2b_extract_features",), expected_outputs=EO_NESTED_LOSO_ENABL3S)
 
 # ============================================================================
 # C-a (Phase 2-5, CPU): KC-C2 whitening, 250 and 400 ms
@@ -503,7 +575,8 @@ for tag, npzf, metaf, gate_env in [("w250", FEAT_250_FREQ, META_250_FEAT, None),
     else:
         cmdline = f'{PY} run_alignment_ladder_loso.py --rungs 3,0,4,4b,4c,4d,4lw,4o --out {out} --resume'
     cpu(jid, "C2", None, cmdline, out, depends_on=("code_c2_inertness",),
-       gate_script=("kc23_c2_whitening_stats.py" if tag == "w400" else ""))
+       gate_script=("kc23_c2_whitening_stats.py" if tag == "w400" else ""),
+       expected_outputs=f"ladder_loso_3_SVM_subjectwise.csv|{SIAT_N}")
     c2_ids.append(jid)
 
 # ============================================================================
@@ -519,13 +592,15 @@ for model in ["SVM", "RF", "HGB", "KNN"]:
         cpu(jid, "C3", None,
            f'{PY} train_classical_loso.py --features {FEAT_250_FREQ} --meta {META_250_FEAT} '
            f'--models {model} --norm-mode {norm} --grid extended --search {search} --n-iter 30{proba} '
-           f'--n-jobs 1 --rf-n-jobs 4 --out {out} --resume', out, depends_on=("code_c3_inertness",))
+           f'--n-jobs 1 --rf-n-jobs 4 --out {out} --resume', out, depends_on=("code_c3_inertness",),
+           expected_outputs=EO_NESTED_LOSO_SIAT)
         c3_ids.append(jid)
 cpu("c3_ensemble", "C3", None,
    f'{PY} kc23_c3_merge_proba.py --new-svm-dir results_kc23_c3_svm_per_subject/proba '
    f'--published-dir results_ensemble_v2/proba --out results_kc23_c3_ensemble_proba '
    f'&& {PY} ensemble_v2_combine.py --proba-dir results_kc23_c3_ensemble_proba --out results_kc23_c3_ensemble',
-   "results_kc23_c3_ensemble", depends_on=tuple(c3_ids), gate_script="kc23_c3_tuning_stats.py")
+   "results_kc23_c3_ensemble", depends_on=tuple(c3_ids), gate_script="kc23_c3_tuning_stats.py",
+   expected_outputs=f"ensemble_v2_subjectwise.csv|{SIAT_N}")
 
 # ============================================================================
 # C-c (Phase 2-5, CPU): KC-C4 richer established feature sets
@@ -573,12 +648,13 @@ for dataset, feat, metaf, tag, time_units in [
     # kc23_c5_leak_stats.py's gate is given one of these leaf subdirectories
     # (whichever job triggers it) and searches its PARENT for every sibling.
     this_dataset_ids = []
+    n_subj = SIAT_N if dataset == "siat" else ENABL3S_N
     def c5_job(jid, scheme_subdir, cmd_tail, depends=("code_c5_inertness",), gate=""):
         out = f"{root}/{scheme_subdir}"
         cpu(jid, "C5", None,
            f'{PY} b8_movement_blocked_sd.py --features {feat} --meta {metaf} --models SVM,RF,LDA '
            f'--window-ms 250 --tag {tag} {cmd_tail} {tu} --out {out} --resume',
-           out, depends_on=depends, gate_script=gate)
+           out, depends_on=depends, gate_script=gate, expected_outputs=f"b8_*_subjectwise.csv|{n_subj}")
         this_dataset_ids.append(jid)
         return jid
     c5_job(f"c5_{dataset}_p50", "p50", "--scheme pooled_random --cv-unit per_subject")
@@ -608,11 +684,11 @@ for dataset, feat, metaf, tag, time_units in [
 gpu("c5_simplecnn_sd_p50", "C5", 42,
    f'{PY} b8_cnn_sd.py --npz {NPZ_250} --meta {META_250} --scheme pooled_random '
    f'--out results_kc23_c5_simplecnn_siat_p50 --resume', "results_kc23_c5_simplecnn_siat_p50",
-   depends_on=("code_c5_inertness",))
+   depends_on=("code_c5_inertness",), expected_outputs=f"b8_cnn_*_subjectwise.csv|{SIAT_N}")
 gpu("c5_simplecnn_sd_p0", "C5", 42,
    f'{PY} b8_cnn_sd.py --npz {NPZ_250} --meta {META_250} --scheme pooled_random_nonoverlap '
    f'--out results_kc23_c5_simplecnn_siat_p0 --resume', "results_kc23_c5_simplecnn_siat_p0",
-   depends_on=("code_c5_inertness",))
+   depends_on=("code_c5_inertness",), expected_outputs=f"b8_cnn_*_subjectwise.csv|{SIAT_N}")
 cpu("c5_simplecnn_sd_stage2_placeholder", "C5-Stage2", None,
    "# PLACEHOLDER: B/I at the plateau guard (C5.3's SimpleEMGCNN row) needs SIAT's own plateau g*, "
    "known only after c5_siat_wb1's gate (kc23_c5_leak_stats.py) has run. Run kc23_c5_cnn_job_gen.py "
@@ -628,7 +704,7 @@ cpu("c6_ladder_enabl3s", "C6", None,
    'set "LADDER_META=features_out_ext/freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_features_meta.csv" && '
    f'{PY} run_alignment_ladder_loso.py --rungs 3,0,1,2,4,4lw,4o --out results_kc23_c6_ladder_enabl3s '
    '--no-gate --resume', "results_kc23_c6_ladder_enabl3s", depends_on=tuple(c2_ids),
-   gate_script="kc23_c6_ladder_stats.py")
+   gate_script="kc23_c6_ladder_stats.py", expected_outputs=f"ladder_loso_3_SVM_subjectwise.csv|{ENABL3S_N}")
 
 
 def write_csv(path, rows):

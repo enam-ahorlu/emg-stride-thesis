@@ -109,23 +109,36 @@ class Job:
 def check_expected_outputs(job: "Job") -> tuple[bool, str]:
     """Closes the "exit 0 having written nothing, or the wrong subject count"
     bug class found repeatedly on 2026-09-24 (LDA silently no-op'ing inside
-    train_classical_loso.py; a stub run_scripted_supervised.py; etc.) at the
-    infrastructure level, independent of any one script's own care. Returns
-    (ok, reason) -- empty job.expected_outputs means "not audited for this
-    yet", not "nothing expected", so it is always ok (no false failures)."""
+    train_classical_loso.py; a stub run_scripted_supervised.py; the KC-D1
+    reproduction gate's own letter never landing in its verdict file; etc.)
+    at the infrastructure level, independent of any one script's own care.
+    Returns (ok, reason) -- empty job.expected_outputs means "not audited for
+    this yet", not "nothing expected", so it is always ok (no false failures).
+
+    job.expected_outputs is "<glob-pattern>|<spec>": spec is either an int
+    row count (a per-subject CSV) or the literal "LETTER" (a gate/stats/
+    aggregate row's verdict file, which must exist AND actually contain a
+    printed outcome, not just a header -- the exact bug d1_reproduction_check
+    hit: D1_VERDICT.md existed but its letter was silently dropped)."""
     if not job.expected_outputs:
         return True, ""
     if "|" not in job.expected_outputs:
-        return False, f"malformed expected_outputs {job.expected_outputs!r} (want 'pattern|count')"
-    pattern, count_str = job.expected_outputs.rsplit("|", 1)
-    try:
-        expected_n = int(count_str)
-    except ValueError:
-        return False, f"malformed expected_outputs {job.expected_outputs!r}: {count_str!r} is not an int"
+        return False, f"malformed expected_outputs {job.expected_outputs!r} (want 'pattern|count-or-LETTER')"
+    pattern, spec = job.expected_outputs.rsplit("|", 1)
     out_dir = Path(job.out_dir)
     matches = sorted(out_dir.glob(pattern)) if out_dir.exists() else []
     if not matches:
         return False, f"no file matching {pattern!r} in {out_dir} (declared output missing)"
+    if spec == "LETTER":
+        import re
+        text = matches[0].read_text(encoding="utf-8", errors="replace")
+        if not re.search(r"\*\*[^*\n]*:\s*[A-Za-z0-9][^*\n]*\*\*", text):
+            return False, f"{matches[0]} has no recognizable '**...: LETTER**' outcome line (header only?)"
+        return True, ""
+    try:
+        expected_n = int(spec)
+    except ValueError:
+        return False, f"malformed expected_outputs {job.expected_outputs!r}: {spec!r} is not an int or LETTER"
     import pandas as pd
     try:
         n = len(pd.read_csv(matches[0]))
@@ -303,6 +316,23 @@ def finish(job: "Job", halted_stages: set, all_jobs: list, by_id: dict):
         print(f"[fail] {job.job_id} exited {ret}, wallclock {job.wallclock}s -- see {job.log_path}")
 
 
+def already_done(job: "Job") -> bool:
+    """The skip rule a restart uses to decide "already done, don't re-run".
+    Fixed 2026-09-24: this used to be is_complete()'s bare "any file exists"
+    heuristic unconditionally -- how d1_reproduction_check's gate got skipped
+    on a restart (the directory had d1_reproduction_inputs.csv and a header-
+    only D1_VERDICT.md from an earlier real run, so is_complete() said "done"
+    without ever checking the gate had produced a real letter). When
+    job.expected_outputs is set, it is now the ONLY check: has the declared
+    output actually landed, with the right row count or a real letter. Jobs
+    not yet audited (expected_outputs blank) still fall back to the old
+    permissive heuristic, so they are not all newly marked incomplete."""
+    if job.expected_outputs:
+        ok, _ = check_expected_outputs(job)
+        return ok
+    return is_complete(job.out_dir)
+
+
 def pick_next(jobs, by_id, halted_stages):
     for job in jobs:
         if job.status != "queued":
@@ -310,12 +340,74 @@ def pick_next(jobs, by_id, halted_stages):
         if job.stage in halted_stages:
             job.status = "skipped(halted)"
             continue
-        if is_complete(job.out_dir):
+        if already_done(job):
             job.status = "skipped(complete)"
             continue
         if deps_satisfied(job, by_id, halted_stages):
             return job
     return None
+
+
+class GhostProc:
+    """Stands in for subprocess.Popen when a job's process was started by a
+    PREVIOUS queue instance (an --adopt job): this process never called
+    Popen() on it, so it has no real child handle to poll or reap, only the
+    PID to watch. poll() returns None while the PID is still alive; once it
+    disappears, returncode is optimistically 0 (there is no way to recover
+    the real exit code of a process this instance did not start) -- finish()'s
+    check_expected_outputs() is the actual arbiter of whether it succeeded,
+    exactly as for any other job."""
+    def __init__(self, pid: int):
+        self.pid = pid
+        self.returncode = None
+
+    def poll(self):
+        if self.returncode is None:
+            import psutil
+            if not psutil.pid_exists(self.pid):
+                self.returncode = 0
+        return self.returncode
+
+
+def parse_adopt(spec: str, gpu_jobs: list, cpu_jobs: list, by_id: dict) -> tuple:
+    """spec: 'job_id=pid[,job_id=pid...]'. Returns (gpu_running, cpu_running),
+    either or both None. Verifies each PID is actually alive (psutil) before
+    adopting it -- a stale/wrong PID is reported and refused, not silently
+    adopted, since silently believing a dead PID is still running would wedge
+    that lane forever."""
+    import psutil
+    gpu_ids = {j.job_id for j in gpu_jobs}
+    cpu_ids = {j.job_id for j in cpu_jobs}
+    gpu_running, cpu_running = None, None
+    for item in spec.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if "=" not in item:
+            sys.exit(f"[kc23-queue] --adopt: malformed entry {item!r} (want job_id=pid)")
+        jid, pid_str = item.split("=", 1)
+        jid = jid.strip()
+        try:
+            pid = int(pid_str)
+        except ValueError:
+            sys.exit(f"[kc23-queue] --adopt: {item!r}: {pid_str!r} is not a PID")
+        job = by_id.get(jid)
+        if job is None:
+            sys.exit(f"[kc23-queue] --adopt: unknown job_id {jid!r}")
+        if not psutil.pid_exists(pid):
+            sys.exit(f"[kc23-queue] --adopt: PID {pid} for {jid!r} is not running -- refusing to adopt "
+                     f"a dead PID (it would wedge this lane forever). Check the PID and retry, or omit "
+                     f"--adopt if the job has actually already finished.")
+        job.status = "running"
+        job.proc = GhostProc(pid)
+        job.t0 = time.time()
+        job.log_path = LOG_DIR / f"{jid}.log"
+        print(f"[kc23-queue] adopted {jid} (PID {pid}), will not relaunch it")
+        if jid in gpu_ids:
+            gpu_running = job
+        elif jid in cpu_ids:
+            cpu_running = job
+    return gpu_running, cpu_running
 
 
 def main():
@@ -325,6 +417,10 @@ def main():
     ap.add_argument("--poll-interval", type=float, default=5.0)
     ap.add_argument("--dry-run", action="store_true", help="print the schedule, run nothing")
     ap.add_argument("--max-jobs", type=int, default=None, help="stop after this many jobs finish (smoke testing)")
+    ap.add_argument("--adopt", default=None,
+                    help="'job_id=pid[,job_id=pid]': jobs already running from a PREVIOUS queue "
+                         "instance (independent child processes, still alive) -- adopted instead of "
+                         "relaunched. See the restart procedure in RUN_ORDER_KC23.md / KC23_STATUS.md.")
     args = ap.parse_args()
 
     gpu_jobs = load_jobs(ROOT / args.gpu_csv)
@@ -348,6 +444,8 @@ def main():
     gpu_running = None
     cpu_running = None
     n_done = 0
+    if args.adopt:
+        gpu_running, cpu_running = parse_adopt(args.adopt, gpu_jobs, cpu_jobs, by_id)
     write_status(gpu_jobs, cpu_jobs, halted_stages, gpu_running, cpu_running)
 
     while True:

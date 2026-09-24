@@ -136,17 +136,19 @@ def majority_label(win):
     return vals[i], counts[i] / counts.sum()
 
 
-def window_trial(emg_raw, labels, fs, subject, t_offset, circuit=None, with_circuit_meta=False):
+def window_trial(emg_raw, labels, fs, subject, t_offset, circuit=None, with_circuit_meta=False, win_ms=None):
     """with_circuit_meta=False (the default) is BYTE-IDENTICAL to the pre-KC23
     function: meta rows carry exactly the original six keys. KC-S2 (F0
     feasibility): with_circuit_meta=True additionally carries 'circuit' (the
     circuit id parsed from the source filename) and 't_start_circuit' (the
     within-CIRCUIT sample offset, reset to 0 at the start of every circuit --
     unlike 't_start', which is a running offset across the subject's whole
-    concatenated session)."""
+    concatenated session). win_ms=None (the default) is ALSO byte-identical to
+    the pre-KC23 function (uses the module constant WIN_MS=250); KC-S2b passes
+    win_ms=400 explicitly, never silently."""
     xf = bandpass(emg_raw, fs)
     env = envelope(xf, fs)
-    win = int(round(WIN_MS * fs / 1000.0))
+    win = int(round((win_ms if win_ms is not None else WIN_MS) * fs / 1000.0))
     step = max(1, int(round(win * (1.0 - OVERLAP))))
     Xr, Xe, meta = [], [], []
     for s in range(0, len(emg_raw) - win + 1, step):
@@ -196,6 +198,9 @@ def main():
                          "the pre-KC23 windows npz and meta CSV byte-identically; always run "
                          "this WITH a new --tag, so the published output is never touched "
                          "even if the flag is passed by mistake.")
+    ap.add_argument("--window-ms", type=float, default=None,
+                    help="KC-S2b. Window length in ms; omit for the published 250ms (byte-identical "
+                         "to the pre-KC23 default). Always run with a new --tag.")
     args = ap.parse_args()
 
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
@@ -221,7 +226,8 @@ def main():
 
         off = subj_offset.get(sid, 0)
         Xr, Xe, meta = window_trial(np.asarray(emg, float), np.asarray(labels), float(fs), sid, off,
-                                    circuit=circuit, with_circuit_meta=args.with_circuit_meta)
+                                    circuit=circuit, with_circuit_meta=args.with_circuit_meta,
+                                    win_ms=args.window_ms)
         subj_offset[sid] = off + len(emg)
         cur_Xr += Xr; cur_Xe += Xe; cur_meta += meta
         if Xr:
