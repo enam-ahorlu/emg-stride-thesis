@@ -490,3 +490,28 @@ normalization conditions) and the S2b 400ms arm. Only ~10 of ~190 job rows
 have an expected_outputs value populated so far.
 
 Tests: 189 total (up from 146 at `9368d05`), all green.
+
+## Section 9. Post-pre-registration implementation fixes (3) (24 September 2026)
+
+**Pre-registration record: commit `bf5e74d`** ("Post-pre-registration
+implementation fixes (3); decision rules unchanged since 0ba3575"). The
+KC-D1 reproduction gate's letter was silently dropped from its own verdict
+file (a shadowed local variable, not a missing computation) -- fixed, re-run
+for real: **PASS**. The queue's restart skip rule now uses expected_outputs
+exclusively when set, never the bare "a file exists" heuristic that let the
+D1 gate get skipped; populated for 188/195 runnable rows, which surfaced two
+genuinely incomplete rows previously mismarked done (`d5_e1_s42`,
+`c2_ladder_w250`) -- both now correctly auto-resume. Restarted the live queue
+via a new `--adopt` mechanism (GhostProc + psutil) without killing either
+in-flight job, confirmed on the real system (same two PIDs, no relaunch).
+KC-S2's S2.3 (`kc23_s2_predictions.py`), S2.4 (real `--preds` wired into
+`kc23_s2_transitions.py`) and S2b (`adapt_external_dataset.py --window-ms`,
+new 400ms SVM/ResNet-SE+CD jobs) all implemented before any S2 data exists.
+
+**Ambiguity flagged, not resolved:** "locked" SVM/CNN for KC-S2 means the
+same architecture/procedure as the main pipeline (fresh-fit per ENABL3S
+fold), not SIAT's per-subject best_params, which have no ENABL3S equivalent.
+
+D5: 14/15 rows verified complete; stats not run (not all 15 ready).
+
+Tests: 204 total (up from 189 at `61815ef`), all green.
