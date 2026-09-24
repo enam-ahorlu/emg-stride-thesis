@@ -426,3 +426,38 @@ individual commits (`51cd100`, `b66f67b`, `444abf0`, `7e1be9a`, `0ba3575`,
 `kc23_d1_replicate_stats.py` -- noted in that script's own docstring as a
 scope cut that does not affect any pre-registered letter, but still owed
 before the real KC-D1 write-up.
+
+## Section 7. Post-pre-registration implementation fixes (24 September 2026)
+
+**Pre-registration record: commit `9368d05`** ("Post-pre-registration
+implementation fixes; decision rules unchanged since 0ba3575"). Every
+kc23_*_stats.py threshold/classify function is untouched from `0ba3575`
+except `run_scripted_supervised.reproduction_gate` and
+`kc23_s1_scripted_stats.reproduction_gate`, which Enam's KC-S1 decision
+(24 September 2026) explicitly asked to replace (three checks instead of one,
+never a fallback on a missing value).
+
+Triggered by KC-S1's reproduction gate failing for real (identical
+deterministic 0.6914 across all three seeds, matching the published calib25
+SVM exactly -- the wrong buffer, not code drift). Full account: `run_scripted_
+supervised.py` rewritten (all 8 arms), `kc23_s1_scripted_stats.py`'s gate
+rewritten (three checks, missing input is a FAIL never a fallback), plus an
+audit of every KC23 runner/job row for the same class of failure (a gate or
+runner silently producing nothing, or comparing a value with itself, instead
+of a loud failure). Found and fixed: a live KC-C5 out_dir collision that would
+have silently discarded 10 of every 11 scheme jobs per dataset; SIAT's own
+C5 manipulation gate never firing; `c5_simplecnn_sd`'s stale placeholder
+(`b8_cnn_sd.py` gained `--scheme` in commit `7e1be9a`); `c3_ensemble`'s
+missing proba-merge step; KC-S3's inventory showing only 2 of 16 cells
+present. Found and explicitly NOT fixed (flagged as needing separate,
+unrushed work): KC-D6's sanity/manipulation gates have the same
+wrong-out_dir bug as D1/S1 did; `kc23_c3_tuning_stats.py`'s expected
+filenames don't match what the C3 classical jobs or `ensemble_v2_combine.py`
+actually write; `train_classical_loso.py` has no LDA branch at all (silently
+fits nothing for `--models LDA`, affecting the four pre-registered
+`c4_*_lda_*` rows too, not just the two new KC-S3 ones); KC-S2 (S2.3/S2.4)
+has no producing jobs yet, since deriving `mode_raw` per window correctly
+needs a design decision (re-scan raw per-sample Mode, or a documented
+time-gap heuristic) this audit did not want to guess at under time pressure.
+
+Tests: 146 total (up from 123 at `0ba3575`), all green.
