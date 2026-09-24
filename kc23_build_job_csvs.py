@@ -177,13 +177,20 @@ cpu("d1_reproduction_check", "D1-REPRO", None,
 # ============================================================================
 # #7 (Phase 2, GPU+CPU): KC-S1 scripted buffer, 3 realizations (base training)
 # ============================================================================
-S1_GATE = "kc23_s1_scripted_stats.py"
+# NOTE: kc23_s1_scripted_stats.py is NOT wired as a gate_script here. It reads
+# l0_k25_subjectwise.csv, s_ens1_k25_subjectwise.csv and s_ens2_k25_subjectwise.csv
+# via require_complete() (which raises, not skips, when a file is missing), but
+# run_scripted_supervised.py currently only implements the L0 arm (stage_l0_svm,
+# writing l0_svm_k25_subjectwise.csv -- note the different filename too) --
+# L1/L2/S-pool/S-only/S-ft/S-ens1/S-ens2 are documented structurally but not yet
+# executed (see that script's own docstring/run() "not implemented in this pass"
+# branch). Attaching the stats gate to any of these jobs would crash it on a
+# precondition nobody can satisfy yet -- same mistake as KC-D1's premature
+# wiring, caught before it ran this time. Wire it once those arms exist.
 for seed in [42, 7, 123]:
     gpu(f"s1_base_s{seed}", "S1", seed,
-       f'{PY} run_scripted_supervised.py --npz {NPZ_250} --meta {META_250} --seed {seed} '
-       f'--out results_kc23_s1_scripted_s{seed} --resume',
-       f"results_kc23_s1_scripted_s{seed}", depends_on=d1_s42_ids,
-       gate_script=(S1_GATE if seed == 123 else ""))
+       f'{PY} run_scripted_supervised.py --seed {seed} --out results_kc23_s1_scripted_s{seed} --resume',
+       f"results_kc23_s1_scripted_s{seed}", depends_on=d1_s42_ids, gate_script="")
 
 # ============================================================================
 # #8 (Phase 2, GPU): KC-D5 ENABL3S deep, 5 realizations (E1/E2/E3)
