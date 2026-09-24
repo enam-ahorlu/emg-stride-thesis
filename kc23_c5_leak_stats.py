@@ -24,6 +24,18 @@ Published published_blocked_sd: the pre-KC23 published movement-blocked SD
 figure (g implicitly 1, from results_b8_sd), passed in or read from the
 existing results_b8_sd/b8_base_w250_compare.csv sd_new_blocked column
 (mean over models given, or a single value for one model).
+
+File discovery, fixed 2026-09-24: b8_movement_blocked_sd.py's --scheme path
+(run_single_scheme) writes b8_<tag>_<scheme>_g<guard>_<cv_unit>_subjectwise.csv
+with one WIDE column per model (subject, SVM, RF, LDA) -- not the
+p50_subjectwise.csv / b{g}_subjectwise.csv narrow f1_macro files this script
+originally assumed (which nothing ever wrote; the gate would have crashed the
+first time it was actually invoked with real data). <tag> is derived from
+--out's own directory name (results_kc23_c5_leak_siat -> kc23_c5_siat), since
+the queue always invokes a gate_script as `python <gate> --out <out_dir>`
+with no other arguments. The decomposition runs on one model at a time
+(--model, default SVM, the classical headline model used throughout this
+programme); a missing scheme file is a FAIL, never a fallback.
 """
 from __future__ import annotations
 import argparse
@@ -76,20 +88,64 @@ def classify_l(p50: np.ndarray, p0: np.ndarray, i_gstar: np.ndarray, b_gstar: np
     return letters, detail
 
 
-def run(out_dir: Path, published_blocked_sd: float | None = None) -> int:
-    from kc23_stats_common import read_subjectwise, require_complete
-    p50 = require_complete(read_subjectwise(out_dir / "p50_subjectwise.csv"), 40, "P50")
-    p0 = require_complete(read_subjectwise(out_dir / "p0_subjectwise.csv"), 40, "P0")
+def tag_from_search_root(search_root: Path) -> str:
+    name = search_root.name
+    prefix = "results_kc23_c5_leak_"
+    dataset = name[len(prefix):] if name.startswith(prefix) else name
+    return f"kc23_c5_{dataset}"
+
+
+def find_scheme_file(search_root: Path, tag: str, scheme: str, guard: float | None = None) -> Path | None:
+    """Each scheme job writes into its OWN subdirectory of search_root
+    (results_kc23_c5_leak_<dataset>/<scheme_tag>/...) -- never a shared
+    directory, since is_complete() would then mark the second job to reach
+    that directory "already done" the instant the first one finishes writing
+    ANY *subjectwise.csv there. Searched one level deep accordingly."""
+    pat = (f"*/b8_{tag}_{scheme}_g{guard:g}_*_subjectwise.csv" if guard is not None
+          else f"*/b8_{tag}_{scheme}_g*_*_subjectwise.csv")
+    matches = sorted(search_root.glob(pat))
+    return matches[0] if matches else None
+
+
+def load_model_f1(path: Path, model: str) -> "pd.DataFrame":
+    df = pd.read_csv(path)
+    return df[["subject", model]].rename(columns={model: "f1_macro"})
+
+
+def run(out_dir: Path, published_blocked_sd: float | None = None, model: str = "SVM") -> int:
+    """out_dir: the triggering job's OWN subdirectory (results_kc23_c5_leak_
+    <dataset>/<scheme_tag>); its PARENT is where every sibling scheme's own
+    subdirectory lives, and where this gate's verdict is written."""
+    from kc23_stats_common import require_complete
+    search_root = out_dir.parent
+    tag = tag_from_search_root(search_root)
+
+    def load(scheme, guard=None, label=""):
+        f = find_scheme_file(search_root, tag, scheme, guard)
+        if f is None:
+            print(f"[C5] MISSING: no {label or scheme} file found under {search_root} (pattern "
+                 f"*/b8_{tag}_{scheme}_g*_*_subjectwise.csv)", file=sys.stderr)
+            return None
+        return require_complete(load_model_f1(f, model), 40, label or scheme)
+
+    p50 = load("pooled_random", label="P50")
+    p0 = load("pooled_random_nonoverlap", label="P0")
+    if p50 is None or p0 is None:
+        search_root.mkdir(parents=True, exist_ok=True)
+        (search_root / "C5_VERDICT.md").write_text(
+            "# KC-C5 verdict\n\n**Outcome: FAIL (missing P50/P0 input)**\n", encoding="utf-8")
+        return 20
+
     b_by_g = {}
     for g in (1, 2, 4, 8, 16):
-        p = out_dir / f"b{g}_subjectwise.csv"
-        if p.exists():
-            b_by_g[g] = require_complete(read_subjectwise(p), 40, f"B-{g}")
+        f1 = load("blocked", guard=float(g), label=f"B-{g}")
+        if f1 is not None:
+            b_by_g[g] = f1
     i_by_g = {}
     for g in (1, 4, 16):
-        p = out_dir / f"i{g}_subjectwise.csv"
-        if p.exists():
-            i_by_g[g] = require_complete(read_subjectwise(p), 40, f"I-{g}")
+        f1 = load("interleaved", guard=float(g), label=f"I-{g}")
+        if f1 is not None:
+            i_by_g[g] = f1
 
     g_star, plateau_detail = find_plateau(b_by_g)
     print(f"[C5] plateau detail (delta pp between consecutive guards): {plateau_detail}, g*={g_star}")
@@ -112,9 +168,9 @@ def run(out_dir: Path, published_blocked_sd: float | None = None) -> int:
     print_gate_header("KC-C5", ",".join(letters) or "none", " ".join(reading))
     print(f"  {detail}")
 
-    out_dir.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame([detail]).to_csv(out_dir / "C5_decomposition.csv", index=False)
-    (out_dir / "C5_VERDICT.md").write_text(
+    search_root.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame([detail]).to_csv(search_root / "C5_decomposition.csv", index=False)
+    (search_root / "C5_VERDICT.md").write_text(
         f"# KC-C5 verdict\n\n**Outcome(s): {letters}**\n\n{' '.join(reading)}\n", encoding="utf-8")
 
     return 20 if "L3" in letters else 0
@@ -124,8 +180,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", required=True)
     ap.add_argument("--published-blocked-sd", type=float, default=None)
+    ap.add_argument("--model", default="SVM", choices=["SVM", "RF", "LDA"])
     args = ap.parse_args()
-    sys.exit(run(Path(args.out), args.published_blocked_sd))
+    sys.exit(run(Path(args.out), args.published_blocked_sd, args.model))
 
 
 if __name__ == "__main__":

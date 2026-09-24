@@ -1,27 +1,38 @@
-"""Synthetic tests for run_scripted_supervised.py: the reproduction gate and
-balanced_buffer_indices (the K-per-movement buffer selection)."""
+"""Synthetic tests for run_scripted_supervised.py: the 3-check reproduction
+gate (rewritten 2026-09-24 -- see kc23_s1_scripted_stats.py's docstring for
+why: SVM decision route, SVM_PROBA and soft are now three separate checks,
+not one SVM check plus an "ensemble" figure that used to be compared with
+itself when its file was missing) and balanced_buffer_indices (the
+K-per-movement buffer selection, unchanged)."""
 import numpy as np
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from run_scripted_supervised import reproduction_gate, balanced_buffer_indices, PUBLISHED_BALANCED25_SVM, PUBLISHED_BALANCED25_SOFT
+from run_scripted_supervised import (reproduction_gate, balanced_buffer_indices,
+                                     PUBLISHED_SVM, PUBLISHED_SVM_PROBA, PUBLISHED_SOFT)
 
 
 def test_gate_pass():
-    letter, d = reproduction_gate(PUBLISHED_BALANCED25_SVM, PUBLISHED_BALANCED25_SOFT)
+    letter, d = reproduction_gate(PUBLISHED_SVM, PUBLISHED_SVM_PROBA, PUBLISHED_SOFT)
     assert letter == "PASS", d
 
 
 def test_gate_fail_svm_drift():
-    letter, d = reproduction_gate(0.70, PUBLISHED_BALANCED25_SOFT)  # SVM way off
+    letter, d = reproduction_gate(0.70, PUBLISHED_SVM_PROBA, PUBLISHED_SOFT)  # SVM way off
     assert letter == "FAIL", d
     assert not d["svm_ok"]
 
 
-def test_gate_fail_ensemble_drift():
-    letter, d = reproduction_gate(PUBLISHED_BALANCED25_SVM, 0.75)  # ensemble way off
+def test_gate_fail_svm_proba_drift():
+    letter, d = reproduction_gate(PUBLISHED_SVM, 0.70, PUBLISHED_SOFT)
     assert letter == "FAIL", d
-    assert not d["ensemble_ok"]
+    assert not d["svm_proba_ok"]
+
+
+def test_gate_fail_soft_outside_band():
+    letter, d = reproduction_gate(PUBLISHED_SVM, PUBLISHED_SVM_PROBA, 0.75)  # soft way off
+    assert letter == "FAIL", d
+    assert not d["soft_ok"]
 
 
 def test_buffer_indices_first_k_per_movement():

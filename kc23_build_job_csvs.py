@@ -410,6 +410,37 @@ for arch in ["simple", "resnet_se"]:
            f'--norm-mode {norm} --seed 42 --out {out} --resume', out,
            depends_on=("s3_inventory",),
            gate_script="")  # KC-S3 has no halting letters per the plan; kc23_s3_inventory.py is not a gate
+# ResNet-SE+CD (the actual best deep model per the plan's own ensemble, chandrop augmentation) was
+# missing entirely -- only plain resnet_se was wired. Per kc23_s3_inventory.py's own output (run
+# 2026-09-24), present=True only for SVM/global and RF/global; every other cell below is missing.
+for norm in ["global", "per_subject"]:
+    out = f"results_kc23_s3_resnet_se_cd_{norm}"
+    gpu(f"s3_resnet_se_cd_{norm}", "S3", 42,
+       f'{PY} run_cnn_arch_loso.py --npz {NPZ_AONLY} --meta {META_AONLY} --arch resnet_se '
+       f'--augmentation chandrop --aug-chandrop-p 0.2 --model-tag RESNET_SE_CD --norm-mode {norm} '
+       f'--seed 42 --out {out} --resume', out, depends_on=("s3_inventory",), gate_script="")
+for norm in ["global", "per_subject"]:
+    out = f"results_kc23_s3_lda_{norm}"
+    cpu(f"s3_lda_{norm}", "S3", None,
+       f'{PY} train_classical_loso.py --features {FEAT_250_BASE} --meta {META_250_FEAT} '
+       f'--models LDA --norm-mode {norm} --out {out} --resume', out,
+       depends_on=("s3_inventory",), gate_script="")
+cpu("s3_svm_per_subject", "S3", None,
+   f'{PY} train_classical_loso.py --features {FEAT_250_BASE} --meta {META_250_FEAT} '
+   f'--models SVM --norm-mode per_subject --out results_kc23_s3_svm_per_subject --resume',
+   "results_kc23_s3_svm_per_subject", depends_on=("s3_inventory",), gate_script="")
+# NOTE: --models LDA is NOT YET RUNNABLE -- audited 2026-09-24: train_classical_loso.py's model
+# dispatch (both the grid-search path and the --save-proba cheap-refit path) only branches on
+# {SVM, RF, HGB, KNN}; any other model_name falls through to a silent `else: continue` with NO
+# error, meaning these two rows would exit 0 having fit nothing at all -- worse than a crash,
+# since it isn't caught by the fail-closed gate fix (the job process itself still exits 0). This
+# was ALSO already true, undetected, for the four pre-registered c4_*_lda_* rows (KC-C4). Add an
+# LDA branch (LinearDiscriminantAnalysis, sklearn.discriminant_analysis) to train_classical_loso.py
+# before any of these six LDA rows run; flagged here rather than silently worked around, since the
+# right parameter grid is a design choice, not something to guess under this audit.
+# SVMX/HGB (per plan: "if KC-C3 lands P2 or P3") are correctly absent -- KC-C3's tuning outcome
+# (kc23_c3_tuning_stats.py) hasn't landed yet, so whether they're needed at all is still unknown;
+# no row is generated for them here, matching kc23_s3_inventory.py's own conditional.
 
 # ============================================================================
 # #15 (Phase 5, GPU+CPU): KC-S2 ENABL3S transitions -- gated on F0 feasibility
@@ -469,13 +500,9 @@ for model in ["SVM", "RF", "HGB", "KNN"]:
            f'--n-jobs 1 --rf-n-jobs 4 --out {out} --resume', out, depends_on=("code_c3_inertness",))
         c3_ids.append(jid)
 cpu("c3_ensemble", "C3", None,
-   "# NEEDS A DATA-PREP STEP FIRST: ensemble_v2_combine.py's --proba-dir points at ONE "
-   "directory holding every member's {MODEL}_sub{K:02d}.npz (its existing usage combines "
-   "SVM+RF+CNN+RESNET_SE from one shared proba dir). The KC-C3 SVM-X proba "
-   "(results_kc23_c3_svm_per_subject/proba/SVM_sub*.npz) and the published ResNet-SE+CD "
-   "proba (results_cnn_aug_resnet_se_chandrop_proba/) live in different directories and "
-   "must be merged (or symlinked) into one dir first -- not implemented here. Once merged: "
-   f'{PY} ensemble_v2_combine.py --proba-dir <merged_dir> --out results_kc23_c3_ensemble',
+   f'{PY} kc23_c3_merge_proba.py --new-svm-dir results_kc23_c3_svm_per_subject/proba '
+   f'--published-dir results_ensemble_v2/proba --out results_kc23_c3_ensemble_proba '
+   f'&& {PY} ensemble_v2_combine.py --proba-dir results_kc23_c3_ensemble_proba --out results_kc23_c3_ensemble',
    "results_kc23_c3_ensemble", depends_on=tuple(c3_ids), gate_script="kc23_c3_tuning_stats.py")
 
 # ============================================================================
@@ -503,41 +530,63 @@ for dataset, feat, metaf, tag, time_units in [
         ("enabl3s", "features_out_ext/freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_features_ext.npz",
          "features_out_ext/freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_features_meta.csv",
          "kc23_c5_enabl3s", "samples")]:
-    out = f"results_kc23_c5_leak_{dataset}"
+    root = f"results_kc23_c5_leak_{dataset}"
     tu = f"--time-units {time_units}"
-    cpu(f"c5_{dataset}_p50", "C5", None,
-       f'{PY} b8_movement_blocked_sd.py --features {feat} --meta {metaf} --models SVM,RF,LDA '
-       f'--window-ms 250 --tag {tag} --scheme pooled_random --cv-unit per_subject {tu} --out {out} --resume',
-       out, depends_on=("code_c5_inertness",))
-    cpu(f"c5_{dataset}_p0", "C5", None,
-       f'{PY} b8_movement_blocked_sd.py --features {feat} --meta {metaf} --models SVM,RF,LDA '
-       f'--window-ms 250 --tag {tag} --scheme pooled_random_nonoverlap --cv-unit per_subject {tu} --out {out} --resume',
-       out, depends_on=("code_c5_inertness",))
+    # Each scheme gets its OWN subdirectory of the shared dataset root, never
+    # the root itself: is_complete() marks a job's out_dir "already done" the
+    # moment ANY *subjectwise.csv exists there, with no notion of which job
+    # wrote it, so 11 jobs sharing one directory meant only the first to
+    # finish would ever actually run -- found live 2026-09-24 before it had
+    # silently eaten 10 of these 11 jobs (the queue hadn't reached C5 yet).
+    # kc23_c5_leak_stats.py's gate is given one of these leaf subdirectories
+    # (whichever job triggers it) and searches its PARENT for every sibling.
+    this_dataset_ids = []
+    def c5_job(jid, scheme_subdir, cmd_tail, depends=("code_c5_inertness",), gate=""):
+        out = f"{root}/{scheme_subdir}"
+        cpu(jid, "C5", None,
+           f'{PY} b8_movement_blocked_sd.py --features {feat} --meta {metaf} --models SVM,RF,LDA '
+           f'--window-ms 250 --tag {tag} {cmd_tail} {tu} --out {out} --resume',
+           out, depends_on=depends, gate_script=gate)
+        this_dataset_ids.append(jid)
+        return jid
+    c5_job(f"c5_{dataset}_p50", "p50", "--scheme pooled_random --cv-unit per_subject")
+    c5_job(f"c5_{dataset}_p0", "p0", "--scheme pooled_random_nonoverlap --cv-unit per_subject")
     for g in [1, 2, 4, 8, 16]:
-        cpu(f"c5_{dataset}_b{g}", "C5", None,
-           f'{PY} b8_movement_blocked_sd.py --features {feat} --meta {metaf} --models SVM,RF,LDA '
-           f'--window-ms 250 --tag {tag} --scheme blocked --guard-windows {g} --cv-unit per_subject {tu} --out {out} --resume',
-           out, depends_on=("code_c5_inertness",))
+        c5_job(f"c5_{dataset}_b{g}", f"b{g}", f"--scheme blocked --guard-windows {g} --cv-unit per_subject")
     for g in [1, 4, 16]:
-        cpu(f"c5_{dataset}_i{g}", "C5", None,
-           f'{PY} b8_movement_blocked_sd.py --features {feat} --meta {metaf} --models SVM,RF,LDA '
-           f'--window-ms 250 --tag {tag} --scheme interleaved --n-chunks 20 --guard-windows {g} '
-           f'--cv-unit per_subject {tu} --out {out} --resume', out, depends_on=("code_c5_inertness",))
-    jid = f"c5_{dataset}_wb1"
-    cpu(jid, "C5", None,
-       f'{PY} b8_movement_blocked_sd.py --features {feat} --meta {metaf} --models SVM,RF,LDA '
-       f'--window-ms 250 --tag {tag} --scheme blocked --guard-windows 1 --cv-unit per_subject {tu} --out {out} --resume',
-       out, depends_on=("code_c5_inertness",),
-       gate_script=("kc23_c5_leak_stats.py" if dataset == "enabl3s" else ""))
+        c5_job(f"c5_{dataset}_i{g}", f"i{g}",
+              f"--scheme interleaved --n-chunks 20 --guard-windows {g} --cv-unit per_subject")
+    jid = c5_job(f"c5_{dataset}_wb1", "wb1", "--scheme blocked --guard-windows 1 --cv-unit per_subject",
+                depends=tuple(this_dataset_ids), gate="kc23_c5_leak_stats.py")
+    # both datasets gate now -- SIAT's own plateau g* was never computed before (only enabl3s
+    # fired), yet the SimpleEMGCNN row below needs SIAT's g*. Gated on ALL of this dataset's own
+    # jobs finishing first (not just code_c5_inertness), so it can't fire before its siblings do.
     c5_ids.append(jid)
-gpu("c5_simplecnn_sd", "C5", 42,
-   "# NOT YET RUNNABLE: the plan's C5.3 arms table needs b8_cnn_sd.py to support "
-   "the same --scheme/--guard-windows options as b8_movement_blocked_sd.py, but C5.2's "
-   "code-change instructions name only b8_movement_blocked_sd.py -- b8_cnn_sd.py was NOT "
-   "extended in this Phase-1 session (flagged in the report-back as a plan gap, not "
-   "silently resolved). Its current CLI (--npz/--meta/--use/--norm/--epochs/--window-ms/"
-   "--splits/--out) has no scheme selection at all. Extend it the same way before this job runs.",
-   "results_kc23_c5_leak_siat", depends_on=("code_c5_inertness",))
+
+# b8_cnn_sd.py gained --scheme/--guard-windows/--n-chunks in commit 7e1be9a (inertness-proven on
+# CPU); P50/P0 don't depend on the plateau guard and are runnable now. B/I at "the plateau guard"
+# (C5.3) are NOT runnable yet -- g* is only known after the SIAT c5_siat_wb1 gate (above) has run;
+# kc23_c5_cnn_job_gen.py (written alongside this fix) reads that gate's C5_decomposition.csv and
+# appends the real c5_simplecnn_sd_b<g*>/c5_simplecnn_sd_i<g*> rows once it exists.
+# Each scheme gets its OWN out_dir: is_complete() marks a job's out_dir "already done" the
+# moment ANY file matching *subjectwise.csv exists there, with no notion of WHICH job wrote
+# it -- two jobs sharing a directory means the second is silently skipped the instant the
+# first finishes. Same D1/S1 out_dir-collision mistake found earlier tonight, here between
+# sibling jobs rather than sibling stages.
+gpu("c5_simplecnn_sd_p50", "C5", 42,
+   f'{PY} b8_cnn_sd.py --npz {NPZ_250} --meta {META_250} --scheme pooled_random '
+   f'--out results_kc23_c5_simplecnn_siat_p50 --resume', "results_kc23_c5_simplecnn_siat_p50",
+   depends_on=("code_c5_inertness",))
+gpu("c5_simplecnn_sd_p0", "C5", 42,
+   f'{PY} b8_cnn_sd.py --npz {NPZ_250} --meta {META_250} --scheme pooled_random_nonoverlap '
+   f'--out results_kc23_c5_simplecnn_siat_p0 --resume', "results_kc23_c5_simplecnn_siat_p0",
+   depends_on=("code_c5_inertness",))
+cpu("c5_simplecnn_sd_stage2_placeholder", "C5-Stage2", None,
+   "# PLACEHOLDER: B/I at the plateau guard (C5.3's SimpleEMGCNN row) needs SIAT's own plateau g*, "
+   "known only after c5_siat_wb1's gate (kc23_c5_leak_stats.py) has run. Run kc23_c5_cnn_job_gen.py "
+   "once results_kc23_c5_leak_siat/C5_decomposition.csv exists, to append the real "
+   "c5_simplecnn_sd_b<g*>/c5_simplecnn_sd_i<g*> GPU rows (own out_dir: results_kc23_c5_simplecnn_siat).",
+   "results_kc23_c5_simplecnn_siat", depends_on=("c5_siat_wb1",))
 
 # ============================================================================
 # C-e (Phase 2-5, CPU): KC-C6 alignment ladder on ENABL3S
