@@ -128,7 +128,7 @@ class Job:
                 "expected_outputs": self.expected_outputs, "light": "1" if self.light else ""}
 
 
-def check_expected_outputs(job: "Job") -> tuple[bool, str]:
+def check_expected_outputs(job: "Job", not_older_than: float | None = None) -> tuple[bool, str]:
     """Closes the "exit 0 having written nothing, or the wrong subject count"
     bug class found repeatedly on 2026-09-24 (LDA silently no-op'ing inside
     train_classical_loso.py; a stub run_scripted_supervised.py; the KC-D1
@@ -158,6 +158,8 @@ def check_expected_outputs(job: "Job") -> tuple[bool, str]:
         return True, ""
     if spec == "LETTER":
         import re
+        if not_older_than is not None and matches[0].stat().st_mtime < float(not_older_than) - 1.0:
+            return False, f"{matches[0]} predates this run (a stale verdict from an earlier run does not count)"
         text = matches[0].read_text(encoding="utf-8", errors="replace")
         if not re.search(r"\*\*[^*\n]*:\s*[A-Za-z0-9][^*\n]*\*\*", text):
             return False, f"{matches[0]} has no recognizable '**...: LETTER**' outcome line (header only?)"
@@ -315,12 +317,18 @@ def finish(job: "Job", halted_stages: set, all_jobs: list, by_id: dict):
     ret = job.proc.returncode
     job.wallclock = round(time.time() - job.t0, 1)
     if ret == 0:
-        ok, reason = check_expected_outputs(job)
-        if not ok:
-            job.status = "failed"
-            job.output_check_reason = reason
-            print(f"[fail] {job.job_id} exited 0 but failed its expected_outputs check: {reason}")
-            return
+        # A row with a gate_script and a "<glob>|LETTER" expectation (the aggregate-then-gate pseudo-rows: d5_stats,
+        # s1_gate, the D1 and D6 checks) has its verdict written BY THE GATE, so that file is checked after the gate
+        # runs, and it must be newer than this run. Checking it first failed d5_stats for not yet having a verdict
+        # (found 2026-09-26); it also hid that D1's check only ever passed on a verdict left by an earlier run.
+        gate_writes_verdict = bool(job.gate_script) and job.expected_outputs.endswith("|LETTER")
+        if not gate_writes_verdict:
+            ok, reason = check_expected_outputs(job)
+            if not ok:
+                job.status = "failed"
+                job.output_check_reason = reason
+                print(f"[fail] {job.job_id} exited 0 but failed its expected_outputs check: {reason}")
+                return
         job.status = "done"
         rc = run_gate(job)
         job.gate_rc = rc
@@ -331,6 +339,15 @@ def finish(job: "Job", halted_stages: set, all_jobs: list, by_id: dict):
                     f"Fail closed rather than treat this as a silent pass.")
             print(f"[gate] {job.job_id}: {note}")
             rc = 20
+        if gate_writes_verdict:
+            ok, reason = check_expected_outputs(job, not_older_than=job.t0)
+            if not ok:
+                job.status = "failed"
+                job.output_check_reason = reason
+                print(f"[fail] {job.job_id}: the gate ran (rc={rc}) but its verdict is not a fresh outcome: {reason}")
+                if rc != 20:       # a gate that says "continue" without writing a letter is a failure, not a pass
+                    note = f"the gate exited {rc} but wrote no fresh outcome letter ({reason})"
+                    rc = 20
         if rc == 20:
             halted_stages.add(job.stage)
             held = find_held_dependents(job.stage, all_jobs, by_id)
