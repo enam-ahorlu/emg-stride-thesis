@@ -13,9 +13,14 @@ Checks, per row:
     .py script name exists on disk (skips inline "# NOT YET RUNNABLE" /
     "# PLACEHOLDER" rows, which are commands-as-comments by design -- see
     KC23_PHASE1_REPORT.md and kc23_build_job_csvs.py's own docstring)
-  - every gate_script, if set, either exists or is explicitly reported as
-    missing (both are legitimate states; kc23_queue.py treats a missing gate
-    as "not yet implemented" -- this script's job is to say which is which)
+  - every gate_script, if set, must exist. HARD failure (2026-09-25): kc23_queue.py
+    now treats a gate that cannot run as a failure and halts the stage, so a row
+    naming a missing gate is a row that can only ever halt.
+  - every runnable row (any command that does not start with "#") declares
+    well-formed expected_outputs: "<glob>|<int rows>", "<glob>|LETTER" or
+    "<glob>|EXISTS". HARD failure (2026-09-25): a blank one falls back to the
+    permissive "directory has some file" completeness heuristic, which is how
+    placeholder verdicts made rows "skipped(complete)" without running.
 
 Exit 0 if every row's script and dependency references resolve (rows whose
 command is a "NOT YET RUNNABLE"/"PLACEHOLDER" comment do not count against
@@ -28,6 +33,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+EO_RE = re.compile(r"^.+\|(\d+|LETTER|EXISTS)$")
 
 
 def load_rows(path: Path):
@@ -67,18 +73,29 @@ def main() -> int:
             if dep not in id_set:
                 problems.append(f"{jid}: depends_on {dep!r} does not resolve to any job_id")
 
+        gate = r.get("gate_script", "").strip()
+        if gate and not (ROOT / gate).exists():
+            problems.append(f"{jid}: gate_script {gate!r} does not exist (a gate that cannot run halts its stage)")
+
+        if r["command"].strip().startswith("#"):
+            placeholder_count += 1            # a placeholder by design: nothing runs, nothing to declare
+            continue
+        eo = r.get("expected_outputs", "").strip()
+        if not eo:
+            problems.append(f"{jid}: runnable row has no expected_outputs")
+        elif not EO_RE.match(eo):
+            problems.append(f"{jid}: malformed expected_outputs {eo!r} (want '<glob>|<int>|LETTER|EXISTS')")
+
         script = extract_script(r["command"])
         if script is None:
-            placeholder_count += 1
+            if "python.exe" in r["command"] and " -c " in r["command"]:
+                checked_count += 1            # an inline python -c row (the Phase-1 checkpoints)
+            else:
+                placeholder_count += 1
             continue
         checked_count += 1
         if not (ROOT / script).exists():
             problems.append(f"{jid}: script {script!r} (from command) does not exist")
-
-        gate = r.get("gate_script", "").strip()
-        if gate and not (ROOT / gate).exists():
-            problems.append(f"{jid}: gate_script {gate!r} does not exist (kc23_queue.py will treat "
-                            f"this as NOT IMPLEMENTED and continue -- not a hard failure, reported for visibility)")
 
     print(f"[validate] {len(all_rows)} total rows ({len(gpu_rows)} GPU, {len(cpu_rows)} CPU)")
     print(f"[validate] {checked_count} rows with a runnable command checked, {placeholder_count} "
@@ -86,21 +103,15 @@ def main() -> int:
     if dup:
         problems.insert(0, f"duplicate job_id(s): {sorted(dup)}")
 
-    missing_gates = [p for p in problems if "gate_script" in p]
-    hard_problems = [p for p in problems if p not in missing_gates]
-
-    if missing_gates:
-        print(f"\n[validate] {len(missing_gates)} gate_script(s) not yet implemented (informational, not a failure):")
-        for p in missing_gates:
-            print(f"  - {p}")
+    hard_problems = problems
     if hard_problems:
         print(f"\n[validate] {len(hard_problems)} HARD problem(s):")
         for p in hard_problems:
             print(f"  - {p}")
         return 1
 
-    print("\n[validate] PASS: every script and every depends_on reference resolves "
-         f"(gate scripts pending implementation are reported above, not counted as failures).")
+    print("\n[validate] PASS: every script, gate_script and depends_on reference resolves, and every runnable "
+          "row declares expected_outputs.")
     return 0
 
 

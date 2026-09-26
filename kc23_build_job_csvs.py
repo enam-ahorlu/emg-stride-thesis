@@ -77,16 +77,20 @@ cpu_rows = []
 # confirms the Phase-1 artifact directory is present (near-instant, exits 0),
 # so it shows "done" the first time the queue runs.
 # ============================================================================
-def _checkpoint(job_id, check_dir):
+def _checkpoint(job_id, check_dir, expected_outputs):
+    # expected_outputs (added 2026-09-25) names a specific file the Phase-1 proof left in check_dir, so that "done"
+    # rests on that file existing, not on the directory being non-empty.
     cpu_rows.append({"job_id": job_id, "stage": "PHASE1-CHECKPOINT", "seed": "",
                      "command": f'{PY} -c "import sys,pathlib; d=pathlib.Path(r\'{check_dir}\'); '
                                 f'sys.exit(0 if d.exists() and any(d.iterdir()) else 1)"',
-                     "out_dir": check_dir, "depends_on": "", "gate_script": ""})
+                     "out_dir": check_dir, "depends_on": "", "gate_script": "",
+                     "expected_outputs": expected_outputs})
 
-_checkpoint("d0_smoke_gate", "results_kc23_d0_capture/after_cpu")
-_checkpoint("code_c2_inertness", "results_kc23_c2_inertness_check")
-_checkpoint("code_c3_inertness", "results_kc23_c3_after_persubj")
-_checkpoint("code_c5_inertness", "results_kc23_c5_inertness_check")
+_checkpoint("d0_smoke_gate", "results_kc23_d0_capture/after_cpu",
+            "augbatch__run_cnn_arch_loso_augment_batch__none.npy|EXISTS")
+_checkpoint("code_c2_inertness", "results_kc23_c2_inertness_check", "ladder_loso_3_SVM_subjectwise.csv|EXISTS")
+_checkpoint("code_c3_inertness", "results_kc23_c3_after_persubj", "*SVM_nested_loso_subjectwise.csv|EXISTS")
+_checkpoint("code_c5_inertness", "results_kc23_c5_inertness_check", "b8_base_w250_subjectwise.csv|EXISTS")
 
 
 def gpu(job_id, stage, seed, command, out_dir, depends_on=(), gate_script="", expected_outputs=""):
@@ -196,29 +200,32 @@ gpu_rows[-1]["gate_script"] = ""  # R12 has no gate itself
 # ============================================================================
 D1_AGGREGATE = "kc23_d1_aggregate.py"
 cpu("d1_reproduction_check", "D1-REPRO", None,
-   f'{PY} {D1_AGGREGATE} --root . --out results_kc23_d1_repro_check',
+   f'{PY} {D1_AGGREGATE} --root . --out results_kc23_d1_repro_check --require repro',
    "results_kc23_d1_repro_check", depends_on=("d1_r1_s42", "d1_r2_s42", "d1_r10_s42"),
    gate_script=D1_REPRO_GATE, expected_outputs=EO_VERDICT_LETTER)
 
 # ============================================================================
 # #7 (Phase 2, GPU+CPU): KC-S1 scripted buffer, 3 realizations (base training)
 # ============================================================================
-# NOTE: kc23_s1_scripted_stats.py is NOT wired as a gate_script here. It reads
-# l0_k25_subjectwise.csv, s_ens1_k25_subjectwise.csv and s_ens2_k25_subjectwise.csv
-# via require_complete() (which raises, not skips, when a file is missing), but
-# run_scripted_supervised.py currently only implements the L0 arm (stage_l0_svm,
-# writing l0_svm_k25_subjectwise.csv -- note the different filename too) --
-# L1/L2/S-pool/S-only/S-ft/S-ens1/S-ens2 are documented structurally but not yet
-# executed (see that script's own docstring/run() "not implemented in this pass"
-# branch). Attaching the stats gate to any of these jobs would crash it on a
-# precondition nobody can satisfy yet -- same mistake as KC-D1's premature
-# wiring, caught before it ran this time. Wire it once those arms exist.
+# The S1 stats gate (kc23_s1_scripted_stats.py) reads all three seed directories, so it cannot be the gate_script of
+# any single s1_base row without firing before its siblings exist. It is wired as its own pseudo-row, s1_gate, below
+# (the same pattern as d1_reproduction_check and d6_*_check). A stale note here, from before run_scripted_supervised.py
+# implemented every arm, said the gate could not be wired; that stopped being true on 2026-09-24 and the gate was
+# then never wired, so its D-S outcome never reached the halt protocol (found 2026-09-25).
 EO_S1_SUBJECTWISE = f"s1_subjectwise.csv|{40 * 3 * 9}"  # 40 subjects x {5,10,25} x 9 arms
 for seed in [42, 7, 123]:
     gpu(f"s1_base_s{seed}", "S1", seed,
        f'{PY} run_scripted_supervised.py --seed {seed} --out results_kc23_s1_scripted_s{seed} --resume',
        f"results_kc23_s1_scripted_s{seed}", depends_on=d1_s42_ids, gate_script="",
        expected_outputs=EO_S1_SUBJECTWISE)
+# --report-only writes the full verdict (letter, K curve, S-ft against L1, determinism check) and exits 0; the queue
+# then runs the same script again as the gate, so a D-S (exit 20) still reaches the halt protocol. Decision D-6b
+# (25 September 2026) accepted D-S for the current data, and results_kc23_s1_gate/S1_VERDICT.md already exists with
+# its letter, so this row is skipped as complete on the current seeds and only re-fires if they are re-run.
+cpu("s1_gate", "S1-GATE", None,
+   f'{PY} kc23_s1_scripted_stats.py --out results_kc23_s1_gate --report-only',
+   "results_kc23_s1_gate", depends_on=("s1_base_s42", "s1_base_s7", "s1_base_s123"),
+   gate_script="kc23_s1_scripted_stats.py", expected_outputs="S1_VERDICT.md|LETTER")
 
 # ============================================================================
 # #8 (Phase 2, GPU): KC-D5 ENABL3S deep, 5 realizations (E1/E2/E3)
@@ -241,8 +248,16 @@ for seed in D5_SEEDS:
        f'{PY} run_cnn_arch_loso.py --npz {NPZ_ENABL3S} --meta {META_ENABL3S} --arch resnet_se '
        f'--augmentation gainjitter --aug-gain-sd 0.40 --instrument {instr(f"results_kc23_d5_e3_s{seed}")} '
        f'--seed {seed} --out results_kc23_d5_e3_s{seed} --resume', f"results_kc23_d5_e3_s{seed}",
-       depends_on=d1_s42_ids, gate_script=("kc23_d5_replication_stats.py" if seed == D5_SEEDS[-1] else ""),
-       expected_outputs=EO_CNN_ARCH_ENABL3S)
+       depends_on=d1_s42_ids, gate_script="", expected_outputs=EO_CNN_ARCH_ENABL3S)
+
+# The D5 gate used to sit on d5_e3_s2026, whose out_dir holds only that one run. The stats script read two CSVs that
+# nothing produced, wrote a header-only D5_VERDICT.md and exited 0 (found 2026-09-25). It now runs as its own row
+# after kc23_d5_aggregate.py builds those inputs from all 15 runs (decision D-6c: directions from the thesis on SIAT).
+d5_run_ids = tuple(f"d5_e{e}_s{s}" for s in D5_SEEDS for e in (1, 2, 3))
+cpu("d5_stats", "D5-STATS", None,
+   f'{PY} kc23_d5_aggregate.py --root . --out results_kc23_d5_stats',
+   "results_kc23_d5_stats", depends_on=d5_run_ids, gate_script="kc23_d5_replication_stats.py",
+   expected_outputs="D5_VERDICT.md|LETTER")
 
 # ============================================================================
 # #9 (Phase 3, GPU): KC-D1 Tier A, seeds 7/123/1001
@@ -350,7 +365,7 @@ for lam in adv_lambdas:
 # it does not wait for the rest of the family). kc23_d6_aggregate.py extracts d6_sanity.csv from
 # that one run's adv_subjectwise.csv; the gate script dispatches on out_dir's own name.
 cpu("d6_sanity_check", "D6-SANITY", None,
-   f'{PY} {D6_AGGREGATE} --root . --out results_kc23_d6_sanity_check',
+   f'{PY} {D6_AGGREGATE} --root . --out results_kc23_d6_sanity_check --require sanity',
    "results_kc23_d6_sanity_check", depends_on=("d6_adv_marginal_l0_s42",), gate_script=D6_GATE,
    expected_outputs=EO_VERDICT_LETTER)
 sfc_weights = [0.1, 1, 10, 100, 1000]
@@ -376,7 +391,7 @@ for lam in [0.1, 1, 10]:
 # (which only ever held that one job's own knob), same wrong-directory mistake as D1/S1. Now a
 # separate pseudo-job depending on ALL of Stage 1, writing into its own shared aggregate dir.
 cpu("d6_manipulation_check", "D6-MANIP", None,
-   f'{PY} {D6_AGGREGATE} --root . --out results_kc23_d6_manipulation_check',
+   f'{PY} {D6_AGGREGATE} --root . --out results_kc23_d6_manipulation_check --require manipulation',
    "results_kc23_d6_manipulation_check", depends_on=tuple(d6_stage1_ids), gate_script=D6_GATE,
    expected_outputs=EO_VERDICT_LETTER)
 # ADV-C (mechanism): lambda_max at the ADV collapse point -- unknown until the
@@ -438,7 +453,7 @@ for seed in D1_TIER_B_SEEDS:
 # realizations exist (48 Tier A + 15 Tier B)
 # ============================================================================
 cpu("d1_full_aggregate", "D1-AGG", None,
-   f'{PY} {D1_AGGREGATE} --root . --out results_kc23_d1_stats',
+   f'{PY} {D1_AGGREGATE} --root . --out results_kc23_d1_stats --require full',
    "results_kc23_d1_stats", depends_on=tuple(d1_all_seed_ids + tierb_ids),
    gate_script=D1_REPRO_GATE, expected_outputs=EO_VERDICT_LETTER)
 
@@ -449,7 +464,8 @@ NPZ_AONLY = "windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_Aonly.npz"
 META_AONLY = "features_out/freq_fs1920_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_Aonly_features_meta.csv"
 cpu("s3_inventory", "S3", None,
    f'{PY} kc23_s3_inventory.py --out results_kc23_s3_active_benchmark',
-   "results_kc23_s3_active_benchmark", depends_on=("d1_r2_s42",))
+   "results_kc23_s3_active_benchmark", depends_on=("d1_r2_s42",),
+   expected_outputs="active_only_inventory.csv|16")   # 8 model families x 2 normalizations
 for arch in ["simple", "resnet_se"]:
     for norm in ["global", "per_subject"]:
         out = f"results_kc23_s3_{arch}_{norm}"
@@ -519,16 +535,25 @@ cpu("s2_predictions", "S2-PRED", None,
    "results_kc23_s2_predictions", depends_on=("s2_f0_feasibility",),
    # every window is predicted exactly once (its own held-out fold) x 3 models = 45525 x 3
    expected_outputs=f"s2_predictions_causal100.csv|{45525 * 3}")
-# S2.4: the analysis over S2.3's causal-100 predictions (the plan's primary,
-# deployment-realistic condition) and the transition table already built and
-# validated (0 disagreements against the real published windows). Row count
-# is not fixed (depends on real transition counts) -- expected_outputs left
-# blank rather than guessed; kc23_s2_transitions.py's own gate-less "done"
-# status still requires the file to exist (is_complete()'s fallback).
+# The ground-truth transition table (S2.2), built from the raw per-sample Mode signal and validated against the
+# published windows (0 disagreements). 952 = 238 transitions of each of the 4 retained types over the 10 subjects.
+S2_CIRCUITMETA_META = ("results_kc23_s2_adapter_circuitmeta/"
+                       "windows_ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_kc23s2_meta.csv")
+cpu("s2_transition_table", "S2-TABLE", None,
+   f'{PY} kc23_s2_transition_table.py --root 5362627 --out results_kc23_s2_transition_table '
+   f'--windows-meta {S2_CIRCUITMETA_META}',
+   "results_kc23_s2_transition_table", depends_on=("s2_f0_feasibility",),
+   expected_outputs="s2_transition_table.csv|952")
+# S2.4, rewritten 2026-09-25: the analysis over ALL THREE conditions' predictions, per model, against the
+# ground-truth transition table. The old version had no expected_outputs, so a 107-byte placeholder verdict from
+# 09-23 made it "skipped(complete)" without it ever reading the predictions (and it would have pooled the three
+# models and mis-scaled window times if it had). 9 rows = 3 conditions x 3 models.
 cpu("s2_transitions", "S2", None,
    f'{PY} kc23_s2_transitions.py --out results_kc23_s2_transitions '
-   f'--preds results_kc23_s2_predictions/s2_predictions_causal100.csv',
-   "results_kc23_s2_transitions", depends_on=("s2_predictions",), gate_script="")
+   f'--preds-dir results_kc23_s2_predictions '
+   f'--table results_kc23_s2_transition_table/s2_transition_table.csv',
+   "results_kc23_s2_transitions", depends_on=("s2_predictions", "s2_transition_table"), gate_script="",
+   expected_outputs="s2_measures.csv|9")
 
 # ============================================================================
 # S2b: the 400ms ENABL3S window trade -- new adapter tag, SVM + ResNet-SE+CD
@@ -536,18 +561,21 @@ cpu("s2_transitions", "S2", None,
 cpu("s2b_adapter_400", "S2b", None,
    f'{PY} adapt_external_dataset.py --root 5362627 --out results_kc23_s2b_adapter_400 '
    f'--tag ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b --window-ms 400 --with-circuit-meta --resume',
-   "results_kc23_s2b_adapter_400", depends_on=())
+   "results_kc23_s2b_adapter_400", depends_on=(),
+   expected_outputs="windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_meta.csv|28125")
 EO_S2B_FEAT = "freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_features_ext.npz"
 cpu("s2b_extract_features", "S2b", None,
    f'{PY} extract_features.py '
    f'--npz results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b.npz '
    f'--meta results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_meta.csv '
    f'--out-dir results_kc23_s2b_features --prefix freq --use env --freq',
-   "results_kc23_s2b_features", depends_on=("s2b_adapter_400",))
+   "results_kc23_s2b_features", depends_on=("s2b_adapter_400",),
+   expected_outputs="freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_features_meta.csv|28125")
 gpu("s2b_resnet_se_cd_400", "S2b", 42,
    f'{PY} run_cnn_arch_loso.py --npz results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b.npz '
    f'--meta results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_meta.csv '
-   f'--arch resnet_se --augmentation chandrop --aug-chandrop-p 0.2 --model-tag RESNET_SE_CD --seed 42 '
+   f'--arch resnet_se --augmentation chandrop --aug-chandrop-p 0.2 --model-tag RESNET_SE_CD '
+   f'--save-proba results_kc23_s2b_resnet_se_cd_400/proba --seed 42 '
    f'--out results_kc23_s2b_resnet_se_cd_400 --resume', "results_kc23_s2b_resnet_se_cd_400",
    depends_on=("s2b_adapter_400",), expected_outputs=EO_CNN_ARCH_ENABL3S)
 cpu("s2b_svm_400", "S2b", None,
@@ -606,8 +634,11 @@ cpu("c3_ensemble", "C3", None,
 # C-c (Phase 2-5, CPU): KC-C4 richer established feature sets
 # ============================================================================
 cpu("c4_extract", "C4", None,
-   f'{PY} kc23_c4_extract_rich.py --out features_out',
-   "features_out", depends_on=("c3_ensemble",))
+   f'{PY} kc23_c4_extract_rich.py --out features_out --freq72 features_out/'
+   f'freq_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR_features_ext.npz',
+   "features_out", depends_on=("c3_ensemble",),
+   # BOTH feature files: the command used to pass no --freq72, so Rich-126 was never built (fixed 2026-09-25)
+   expected_outputs="kc23_rich126_features.npz|EXISTS")
 for feat in ["tdpsd54", "rich126"]:
     for model in ["SVM", "LDA"]:
         for norm in ["per_subject", "global"]:
@@ -707,12 +738,24 @@ cpu("c6_ladder_enabl3s", "C6", None,
    gate_script="kc23_c6_ladder_stats.py", expected_outputs=f"ladder_loso_3_SVM_subjectwise.csv|{ENABL3S_N}")
 
 
+# LIGHT rows (2026-09-25): read-only aggregators, gates and verdict builders, single-threaded, seconds to a minute or
+# two. kc23_queue.py runs them in their own slot beside the ONE heavy CPU job, so a gate or a verdict is not starved
+# behind hours of ladder or tuning work (the CPU lane is booked for about 16 more hours with c2_ladder_w250 alone).
+# They are never "CPU-heavy", they never use more than one process, and a light row never runs two at once.
+LIGHT_JOB_IDS = {
+    "d0_smoke_gate", "code_c2_inertness", "code_c3_inertness", "code_c5_inertness",   # instant checkpoint checks
+    "d1_reproduction_check", "d1_full_aggregate", "d2_reliance", "d5_stats", "s1_gate",
+    "d6_sanity_check", "d6_manipulation_check", "s3_inventory", "s2_transition_table", "s2_transitions",
+}
+
+
 def write_csv(path, rows):
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["job_id", "stage", "seed", "command", "out_dir",
-                                          "depends_on", "gate_script", "expected_outputs"])
+                                          "depends_on", "gate_script", "expected_outputs", "light"])
         w.writeheader()
-        w.writerows(rows)
+        for r in rows:
+            w.writerow({**r, "light": "1" if r["job_id"] in LIGHT_JOB_IDS else ""})
     print(f"[write] {path}: {len(rows)} rows")
 
 

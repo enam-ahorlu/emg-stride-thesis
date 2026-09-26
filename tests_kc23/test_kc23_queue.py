@@ -89,18 +89,19 @@ def test_finish_unexpected_rc_fails_closed(monkeypatch, crash_rc):
     assert f"rc={crash_rc}" in text, "the halt entry should record the actual unexpected exit code"
 
 
-def test_finish_not_implemented_gate_does_not_fail_closed(monkeypatch):
-    """A gate script that simply doesn't exist yet is a known, documented gap
-    (job.gate_rc == 'NOT_IMPLEMENTED') -- distinct from a crash, and must NOT
-    trip the new fail-closed path."""
+def test_finish_missing_gate_script_halts_the_stage(monkeypatch):
+    """Changed 2026-09-25. A gate script that does not exist used to be treated
+    as 'not yet implemented' (rc 0, continue), which let a stage pass with its
+    gate never having run. It is now a failure like any other unrunnable gate:
+    the stage halts and KC23_HALT.md records it."""
     job = make_job(stage="STAGEZ", gate_script="does_not_exist.py")
     job.proc = FakeProc(0)
     job.t0 = 0
     halted = set()
     q.finish(job, halted, [job], {job.job_id: job})
-    assert job.gate_rc == "NOT_IMPLEMENTED"
-    assert halted == set()
-    assert not q.HALT_MD.exists()
+    assert job.gate_rc == 20
+    assert halted == {"STAGEZ"}
+    assert q.HALT_MD.exists()
 
 
 def test_run_gate_end_to_end_crash_script_returns_nonzero(tmp_path):
@@ -213,7 +214,7 @@ def test_already_done_falls_back_to_heuristic_when_blank(tmp_path):
 def test_ghostproc_poll_none_while_pid_alive(monkeypatch):
     import sys as _sys
     fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: True)
-    _sys.modules["psutil"] = fake_psutil
+    monkeypatch.setitem(_sys.modules, "psutil", fake_psutil)   # restored after the test (it used to leak)
     gp = q.GhostProc(pid=99999)
     assert gp.poll() is None
     assert gp.returncode is None
@@ -222,7 +223,7 @@ def test_ghostproc_poll_none_while_pid_alive(monkeypatch):
 def test_ghostproc_poll_returns_0_once_pid_gone(monkeypatch):
     import sys as _sys
     fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: False)
-    _sys.modules["psutil"] = fake_psutil
+    monkeypatch.setitem(_sys.modules, "psutil", fake_psutil)   # restored after the test (it used to leak)
     gp = q.GhostProc(pid=99999)
     assert gp.poll() == 0
     assert gp.returncode == 0
@@ -231,7 +232,7 @@ def test_ghostproc_poll_returns_0_once_pid_gone(monkeypatch):
 def test_parse_adopt_refuses_dead_pid(monkeypatch):
     import sys as _sys
     fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: False)
-    _sys.modules["psutil"] = fake_psutil
+    monkeypatch.setitem(_sys.modules, "psutil", fake_psutil)   # restored after the test (it used to leak)
     job = make_job("real_job")
     with pytest.raises(SystemExit):
         q.parse_adopt("real_job=99999", [job], [], {job.job_id: job})
@@ -240,7 +241,7 @@ def test_parse_adopt_refuses_dead_pid(monkeypatch):
 def test_parse_adopt_refuses_unknown_job_id(monkeypatch):
     import sys as _sys
     fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: True)
-    _sys.modules["psutil"] = fake_psutil
+    monkeypatch.setitem(_sys.modules, "psutil", fake_psutil)   # restored after the test (it used to leak)
     with pytest.raises(SystemExit):
         q.parse_adopt("nope=123", [], [], {})
 
@@ -248,7 +249,7 @@ def test_parse_adopt_refuses_unknown_job_id(monkeypatch):
 def test_parse_adopt_marks_running_and_routes_gpu_vs_cpu(monkeypatch):
     import sys as _sys
     fake_psutil = __import__("types").SimpleNamespace(pid_exists=lambda p: True)
-    _sys.modules["psutil"] = fake_psutil
+    monkeypatch.setitem(_sys.modules, "psutil", fake_psutil)   # restored after the test (it used to leak)
     gpu_job = make_job("gpu_job")
     cpu_job = make_job("cpu_job")
     by_id = {gpu_job.job_id: gpu_job, cpu_job.job_id: cpu_job}
