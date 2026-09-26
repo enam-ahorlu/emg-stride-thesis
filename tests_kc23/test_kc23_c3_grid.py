@@ -81,9 +81,10 @@ def test_extended_run_records_the_chosen_multiplier_in_a_sidecar_and_leaves_the_
 
 
 def test_default_grid_path_is_unchanged_against_git_head(tmp_path):
-    r = subprocess.run(["git", "show", "HEAD:06_Code/train_classical_loso.py"], cwd=REPO, capture_output=True, text=True)
+    # the pre-change script: the parent of d613a06 (HEAD itself now contains the change, which would turn this into a skip)
+    r = subprocess.run(["git", "show", "d613a06^:train_classical_loso.py"], cwd=REPO, capture_output=True, text=True)
     if r.returncode != 0 or not r.stdout:
-        r = subprocess.run(["git", "show", "HEAD:train_classical_loso.py"], cwd=REPO, capture_output=True, text=True)
+        r = subprocess.run(["git", "show", "d613a06^:06_Code/train_classical_loso.py"], cwd=REPO, capture_output=True, text=True)
     if r.returncode != 0 or not r.stdout:
         pytest.skip("git HEAD copy unavailable")
     if "svm_extended_grid" in r.stdout:
