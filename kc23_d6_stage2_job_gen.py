@@ -42,28 +42,28 @@ FAMILY_SPECS = {
         "knobs": [0, 0.03, 0.1, 0.3, 1, 3, 10],
         "job_id": lambda lam, seed: f"d6_adv_marginal_l{lam}_s{seed}",
         "out_dir": lambda lam, seed: f"results_kc23_d6_adv_marginal_l{lam}_s{seed}",
-        "command": lambda lam, seed, out: (
+        "command": lambda lam, seed, out, extra="": (
             f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
             f'--augmentation chandrop --adv-lambda {lam} --adv-mode marginal --epochs 40 --batch 256 '
-            f'--instrument {out}/instr --seed {seed} --out {out} --resume'),
+            f'--instrument {out}/instr --within-class-probe{extra} --seed {seed} --out {out} --resume'),
     },
     "sfc": {
         "knobs": [0.1, 1, 10, 100, 1000],
         "job_id": lambda w, seed: f"d6_sfc_w{w}_s{seed}",
         "out_dir": lambda w, seed: f"results_kc23_d6_sfc_w{w}_s{seed}",
-        "command": lambda w, seed, out: (
+        "command": lambda w, seed, out, extra="": (
             f'{PY} run_deep_coral_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
             f'--augmentation chandrop --coral-lambda {w} --coral-normalize l2 --batch 256 --seed {seed} '
-            f'--instrument {out}/instr --out {out} --resume'),
+            f'--instrument {out}/instr{extra} --out {out} --resume'),
     },
     "advps": {
         "knobs": [0.1, 1, 10],
         "job_id": lambda lam, seed: f"d6_advps_l{lam}_s{seed}",
         "out_dir": lambda lam, seed: f"results_kc23_d6_advps_l{lam}_s{seed}",
-        "command": lambda lam, seed, out: (
+        "command": lambda lam, seed, out, extra="": (
             f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
             f'--norm-mode per_subject --augmentation chandrop --adv-lambda {lam} --adv-mode marginal '
-            f'--epochs 40 --batch 256 --seed {seed} --instrument {out}/instr --out {out} --resume'),
+            f'--epochs 40 --batch 256 --seed {seed} --instrument {out}/instr{extra} --out {out} --resume'),
     },
 }
 EO = {"adv_marginal": "adv_subjectwise.csv|40", "sfc": "deep_coral_subjectwise.csv|40", "advps": "adv_subjectwise.csv|40"}
@@ -142,6 +142,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--gates-csv", required=True, help="D6_gates.csv from kc23_d6_stats.py's --out")
     ap.add_argument("--gpu-csv", default=str(ROOT / "kc23_jobs_gpu.csv"))
+    ap.add_argument("--cpu-csv", default=str(ROOT / "kc23_jobs_cpu.csv"),
+                    help="the light outcome pseudo-row goes here, to the light lane, not the GPU lane")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -150,11 +152,12 @@ def main():
         print("[d6-stage2-gen] no family passed (G-PASS/G-WEAK) -- nothing to append")
         return 0
     rows = build_stage2_rows(families)
-    rows.append(outcome_row(rows, args.gates_csv))
+    outcome = outcome_row(rows, args.gates_csv)
     if args.dry_run:
-        print(f"[d6-stage2-gen] --dry-run: would append {len(rows)} row(s), nothing written")
+        print(f"[d6-stage2-gen] --dry-run: would append {len(rows)} GPU row(s) and the outcome row, nothing written")
         return 0
     append_rows(Path(args.gpu_csv), rows)
+    append_rows(Path(args.cpu_csv), [outcome])
     return 0
 
 

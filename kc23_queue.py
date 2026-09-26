@@ -298,6 +298,40 @@ def write_status(gpu_jobs, cpu_jobs, halted_stages, gpu_running, cpu_running):
     STATUS_MD.write_text("".join(lines), encoding="utf-8")
 
 
+# Hardening (26 September 2026). The runner died with exit code 0xC000013A (STATUS_CONTROL_C_EXIT), the code a console process gets
+# when its console window is closed (or on Ctrl+C), and took its running job with it: the scheduled task ran the runner attached
+# to a console that Windows Terminal hosts (WindowsTerminal.exe, OpenConsole.exe and conhost.exe start with it), and every job
+# shared that console. Now (1) a job starts in its OWN hidden console (CREATE_NO_WINDOW) and its OWN process group
+# (CREATE_NEW_PROCESS_GROUP), with no stdin, so a signal or a close aimed at the runner's console cannot reach it; and (2) the
+# task runs the runner under pythonw.exe with --redirect-output: no console at all, output to the two log files, Ctrl+C and
+# Ctrl+Break ignored.
+CREATE_NEW_PROCESS_GROUP = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+DETACH_FLAGS = (CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW) if os.name == "nt" else 0
+
+
+def spawn_detached(command: str, log_handle, cwd) -> "subprocess.Popen":
+    """Start a job that cannot be signalled through the runner's console. shell=True on Windows: a plain argv list (even with an
+    absolute .exe path) intermittently failed to resolve there (WinError 2) when the cwd contains spaces; the shell handles
+    quoting and PATH the way a person typing the command at a prompt would."""
+    kw = {"creationflags": DETACH_FLAGS} if os.name == "nt" else {"start_new_session": True}
+    return subprocess.Popen(command, stdout=log_handle, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, cwd=cwd,
+                            shell=True, **kw)
+
+
+def redirect_output_and_ignore_console_signals() -> None:
+    """--redirect-output (also switched on when there is no console: pythonw.exe): write stdout and stderr to the queue log files,
+    line-buffered, and ignore Ctrl+C / Ctrl+Break so a stray keypress in some other terminal cannot stop the runner. A deliberate
+    stop is a process kill (Stop-Process), which the job hand-off procedure survives."""
+    import signal
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    sys.stdout = open(LOG_DIR / "queue_stdout.log", "a", encoding="utf-8", buffering=1)
+    sys.stderr = open(LOG_DIR / "queue_stderr.log", "a", encoding="utf-8", buffering=1)
+    for name in ("SIGINT", "SIGBREAK"):
+        if hasattr(signal, name):
+            signal.signal(getattr(signal, name), signal.SIG_IGN)
+
+
 def launch(job: "Job") -> "Job":
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_path = LOG_DIR / f"{job.job_id}.log"
@@ -305,12 +339,7 @@ def launch(job: "Job") -> "Job":
     with open(log_path, "a", encoding="utf-8") as lf:
         lf.write(f"\n=== START {datetime.now().isoformat()} ===\n{job.command}\n")
         lf.flush()
-        # shell=True on Windows: a plain argv list (even with an absolute .exe
-        # path) intermittently failed to resolve here (WinError 2) when the
-        # cwd contains spaces; the shell handles quoting/PATH resolution the
-        # same way a person typing the command at a prompt would.
-        job.proc = subprocess.Popen(job.command, stdout=lf, stderr=subprocess.STDOUT,
-                                    cwd=ROOT, shell=True)
+        job.proc = spawn_detached(job.command, lf, ROOT)
     job.t0 = time.time()
     job.log_path = log_path
     job.status = "running"
@@ -688,7 +717,12 @@ def main():
                     help="'job_id[,job_id]': forget a persisted failure so the job is queued again")
     ap.add_argument("--clear-halt", default=None,
                     help="'STAGE[,STAGE]': forget a persisted halt after Enam's decision on the escalation")
+    ap.add_argument("--redirect-output", action="store_true",
+                    help="write stdout/stderr to _run_logs/kc23/queue_{stdout,stderr}.log and ignore Ctrl+C / Ctrl+Break "
+                         "(the scheduled task runs pythonw.exe with this flag: no console, nothing to close)")
     args = ap.parse_args()
+    if args.redirect_output or sys.stdout is None:
+        redirect_output_and_ignore_console_signals()
 
     gpu_jobs = load_jobs(ROOT / args.gpu_csv)
     cpu_jobs = load_jobs(ROOT / args.cpu_csv)

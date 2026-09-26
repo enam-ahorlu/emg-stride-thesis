@@ -6,8 +6,11 @@
 #   powershell -ExecutionPolicy Bypass -File kc23_queue_task.ps1 -Action Unregister
 #
 # What the task does
-#   - Runs `.venv\Scripts\python.exe kc23_queue.py` from this folder, output appended to _run_logs\kc23\queue_stdout.log
-#     and queue_stderr.log.
+#   - Runs `.venv\Scripts\pythonw.exe -u kc23_queue.py --redirect-output` from this folder (26 September 2026: no console at all,
+#     so there is no window to close; output goes to _run_logs\kc23\queue_stdout.log and queue_stderr.log; Ctrl+C and Ctrl+Break
+#     are ignored). It used to run python.exe under cmd.exe, which Task Scheduler hosted in a Windows Terminal window; closing that
+#     window ended the runner with exit code 0xC000013A and killed its running job. Jobs now start in their own hidden console and
+#     process group (kc23_queue.spawn_detached).
 #   - Triggers: at logon of the current user, and every 5 minutes indefinitely. The runner takes a lock file
 #     (_run_logs\kc23\queue.lock), so an extra launch while a runner is alive exits at once with code 3 and touches
 #     nothing. If the runner has crashed or been killed (an app restart, a closed terminal), the next launch takes the
@@ -29,11 +32,12 @@ param(
 $TaskName = "KC23Queue"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Py = Join-Path $Here ".venv\Scripts\python.exe"
+$Pyw = Join-Path $Here ".venv\Scripts\pythonw.exe"
 $User = "$env:USERDOMAIN\$env:USERNAME"
 
 function Get-TaskXml {
-    # -u: unbuffered, so queue_stdout.log is live rather than filling in 8 KB blocks
-    $args1 = '/c ""' + $Py + '" -u kc23_queue.py >> "_run_logs\kc23\queue_stdout.log" 2>> "_run_logs\kc23\queue_stderr.log""'
+    # -u: unbuffered; --redirect-output: the runner opens its own log files (pythonw has no stdout)
+    $args1 = '-u kc23_queue.py --redirect-output'
     $start = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
     @"
 <?xml version="1.0" encoding="UTF-16"?>
@@ -83,7 +87,7 @@ function Get-TaskXml {
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>cmd.exe</Command>
+      <Command>$([System.Security.SecurityElement]::Escape($Pyw))</Command>
       <Arguments>$([System.Security.SecurityElement]::Escape($args1))</Arguments>
       <WorkingDirectory>$Here</WorkingDirectory>
     </Exec>
@@ -94,7 +98,7 @@ function Get-TaskXml {
 
 switch ($Action) {
     "Register" {
-        if (-not (Test-Path $Py)) { throw "python not found at $Py" }
+        if (-not (Test-Path $Pyw)) { throw "pythonw not found at $Pyw" }
         New-Item -ItemType Directory -Force -Path (Join-Path $Here "_run_logs\kc23") | Out-Null
         Register-ScheduledTask -TaskName $TaskName -Xml (Get-TaskXml) -Force | Out-Null
         Write-Host "Registered task $TaskName for $User."

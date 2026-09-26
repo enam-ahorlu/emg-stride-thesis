@@ -151,14 +151,22 @@ def cell_row(family: str, norm: str, root: Path) -> dict:
             "full_class_set_f1_mean": full, "provenance": "prior" if prior else "new", "source": dname}
 
 
-def c3_lands_p2_or_p3(root: Path) -> bool:
+def c3_status(root: Path) -> tuple[bool, str]:
+    """(SVM-X and HGB cells required?, sentence for the verdict). The plan's condition is "if KC-C3 lands P2 or P3"; a
+    P-OUT (outside the pre-registered grid) does not meet it, so the extra cells are not required (Enam, 26 September)."""
     v = root / "results_kc23_c3_ensemble" / "C3_VERDICT.md"
     if not v.exists():
         raise InputError(f"{v} missing: whether SVM-X and HGB belong in the benchmark depends on KC-C3 landing P2 or P3")
     m = re.search(r"\*\*Outcomes:\s*([^*\n]+)\*\*", v.read_text(encoding="utf-8"))
     if not m:
         raise InputError(f"{v} has no 'Outcomes:' line (KC-C3 did not produce a letter)")
-    return bool({t.strip() for t in m.group(1).split(",")} & {"P2", "P3"})
+    letters = [t.strip() for t in m.group(1).split(",") if t.strip()]
+    if {"P2", "P3"} & set(letters):
+        return True, f"KC-C3 landed {', '.join(letters)}: the SVM-X and HGB cells are included."
+    if "P-OUT" in letters:
+        return False, ("KC-C3 landed P-OUT (outside the pre-registered grid). The plan's condition for the extra SVM-X and HGB "
+                       "cells is P2 or P3, so they are not required and were not run.")
+    return False, f"KC-C3 landed {', '.join(letters)}, not P2 or P3: the SVM-X and HGB cells are not required."
 
 
 def hierarchy(table: pd.DataFrame) -> tuple[str, list[str]]:
@@ -179,7 +187,8 @@ def hierarchy(table: pd.DataFrame) -> tuple[str, list[str]]:
 def run(out_dir: Path, root: Path | None = None) -> int:
     root = root or ROOT
     try:
-        families = BASE_FAMILIES + (CONDITIONAL_FAMILIES if c3_lands_p2_or_p3(root) else [])
+        extra_needed, c3_sentence = c3_status(root)
+        families = BASE_FAMILIES + (CONDITIONAL_FAMILIES if extra_needed else [])
         rows = [cell_row(f, n, root) for f in families for n in NORMS
                 if not (f == "ensemble" and n == "global")]          # the published active-only ensemble is per-subject only
     except InputError as e:
@@ -203,6 +212,7 @@ def run(out_dir: Path, root: Path | None = None) -> int:
         + (", ".join(new_fams) or "none") + ".\n\n"
         + ("Order changes against the full-class-set benchmark:\n\n" + "\n".join(f"- {f}" for f in flips) + "\n" if flips else
            "No pair of families with a full-class-set counterpart changes order.\n")
+        + f"\n{c3_sentence}\n"
         + "\nThe ensemble row is the published active-only soft vote (results_aonly_ensemble), per-subject normalization only; its "
           "DNS to WAK rate is the per-subject mean it stores (no pooled figure).\n", encoding="utf-8")
     print(f"[S3] benchmark: {len(table)} cells written")

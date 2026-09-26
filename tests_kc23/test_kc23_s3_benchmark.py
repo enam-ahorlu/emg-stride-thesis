@@ -199,3 +199,18 @@ def test_the_lda_runner_writes_predictions_only_when_asked(tmp_path):
     a, c = go("plain"), go("with", "--save-preds")
     assert not (a / "predictions_folds").exists() and len(list((c / "predictions_folds").glob("*_y_pred.npy"))) == 5
     pd.testing.assert_frame_equal(pd.read_csv(a / "lda_subjectwise.csv"), pd.read_csv(c / "lda_subjectwise.csv"))    # inert on the result
+
+
+def test_a_p_out_outcome_means_the_extra_cells_are_not_required_and_the_verdict_says_so(tmp_path):
+    build(tmp_path, c3="**Outcomes: P-OUT, N1, E1**")
+    assert b.run(tmp_path / "o", tmp_path) == 0
+    t = pd.read_csv(tmp_path / "o" / "benchmark_active_only.csv")
+    assert len(t) == 13 and not ({"SVMX", "HGB"} & set(t["family"]))
+    v = (tmp_path / "o" / "S3_VERDICT.md").read_text()
+    assert "landed P-OUT" in v and "not required and were not run" in v
+
+
+def test_p1_states_that_the_extra_cells_are_not_required(tmp_path):
+    build(tmp_path)
+    assert b.run(tmp_path / "o", tmp_path) == 0
+    assert "not P2 or P3" in (tmp_path / "o" / "S3_VERDICT.md").read_text()

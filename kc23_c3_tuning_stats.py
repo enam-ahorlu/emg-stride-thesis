@@ -71,6 +71,7 @@ N_SUBJECTS = 40
 SVM_C_BASE = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30]
 SVM_GAMMA_MULT_BASE = [0.01, 0.1, 0.3, 1, 3, 10]
 EDGE_FOLDS_MORE_THAN = 10
+EDGE_RERUN_DIR = "results_kc23_c3_svm_{norm}_edge"     # written by the edge-rule rerun rows (kc23_c3_edge_job_gen.py)
 
 
 class InputError(Exception):
@@ -169,6 +170,15 @@ def svm_edge_hits(svm_dir: Path, norm: str) -> dict:
     return {"rows": rows}
 
 
+def load_edge_rerun(root: Path, norm: str):
+    """The edge-rule rerun of SVM-X for one normalization, or None when the rule was not run for it. A directory that
+    exists but is incomplete is an error (a half-finished rerun must not be silently ignored)."""
+    d = root / EDGE_RERUN_DIR.format(norm=norm)
+    if not d.exists():
+        return None
+    return _subjectwise(d, f"SVM-X {norm} edge rerun")
+
+
 def fit_time_totals(root: Path, norms=("per_subject", "global")) -> pd.DataFrame:
     rows = []
     for fam, pattern in FAMILY_DIRS.items():
@@ -236,6 +246,9 @@ def run(out_dir: Path, root: Path | None = None) -> int:
         for norm in ("per_subject", "global"):
             edge_rows += svm_edge_hits(root / FAMILY_DIRS["svmx"].format(norm=norm), norm)["rows"]
         times = fit_time_totals(root)
+        edge_rerun = {n: load_edge_rerun(root, n) for n in ("per_subject", "global")}
+        edge_rerun_hits = {n: svm_edge_hits(root / EDGE_RERUN_DIR.format(norm=n), n)["rows"]
+                           for n, v in edge_rerun.items() if v is not None}
 
         ens_p = out_dir / "ensemble_v2_subjectwise.csv"
         if not ens_p.exists():
@@ -281,6 +294,35 @@ def run(out_dir: Path, root: Path | None = None) -> int:
     rows_all.append(e_stats)
     print_gate_header("KC-C3 Endpoint 3", e_letter, {"E1": "Report.", "E2": "ESCALATE: touches the headline."}[e_letter])
 
+    # ---- the edge-rule rerun: "report both runs". The letters above are the BASE run; when a rerun exists the same letters are
+    # recomputed with the rerun SVM-X in its place, and either reading escalating escalates (as in C4).
+    sens_fired, edge_run_md = [], ""
+    if any(v is not None for v in edge_rerun.values()):
+        ps2 = edge_rerun["per_subject"]["f1_macro"].to_numpy(float) if edge_rerun["per_subject"] is not None else candidates["svmx"]
+        cands2 = {**candidates, "svmx": ps2}
+        best2 = max(cands2, key=lambda k: cands2[k].mean())
+        p2, _ = classify_p(resnet_cd, cands2[best2])
+        gains2 = dict(family_gains)
+        g2 = edge_rerun["global"]["f1_macro"].to_numpy(float) if edge_rerun["global"] is not None else family_gains["svmx"][1]
+        gains2["svmx"] = (ps2, g2)
+        n2, _ = classify_n(gains2)
+        sens_fired = [p2, n2]
+        base_means = {"per_subject": candidates["svmx"].mean(), "global": family_gains["svmx"][1].mean()}
+        lines = []
+        for n, v in edge_rerun.items():
+            if v is None:
+                lines.append(f"| {n} | {base_means[n]:.4f} | not run | | |")
+                continue
+            hits = edge_rerun_hits[n]
+            lines.append(f"| {n} | {base_means[n]:.4f} | {v['f1_macro'].mean():.4f} | {(v['f1_macro'].mean() - base_means[n]) * 100:+.2f} | "
+                         + "; ".join(f"{h['axis']}: {h['folds_at_low_edge']} low, {h['folds_at_high_edge']} high" for h in hits) + " |")
+        differs = [f"{a} -> {b}" for a, b in ((p_letter, p2), (n_letter, n2)) if a != b]
+        edge_run_md = ("\n\n## Edge-rule rerun (both runs reported)\n\n| norm | base SVM-X F1 | rerun SVM-X F1 | change (pt) | rerun edge hits |\n"
+                       "|---|---|---|---|---|\n" + "\n".join(lines) + f"\n\nLetters recomputed with the rerun SVM-X in place of the base: "
+                       f"Endpoint 1 {p2}, Endpoint 2 {n2}. "
+                       + (f"They differ from the base letters ({'; '.join(differs)}): both readings are reported and either "
+                          f"escalating escalates." if differs else "They match the base letters."))
+
     edge = pd.DataFrame(edge_rows)
     triggered = bool(edge["triggered"].any())
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -311,12 +353,12 @@ def run(out_dir: Path, root: Path | None = None) -> int:
         f"Soft vote with the best new classical member ({best_member.upper()}, per-subject mean F1 {means[best_member]:.4f}) "
         f"and ResNet-SE+CD: {f1_best_member.mean():.4f}, {bm_delta:+.2f} pt against {PUBLISHED_ENSEMBLE:.3f} "
         f"(reported, no letter).\n\n## Edge-hit table (SVM-X)\n\n{edge_md}\n\n## Fit-time totals\n\n{time_md}\n\n"
-        + ("\n\n".join(notes) + "\n" if notes else ""), encoding="utf-8")
+        + edge_run_md + "\n\n" + ("\n\n".join(notes) + "\n" if notes else ""), encoding="utf-8")
 
     escalate = {"P2", "P3", "N2", "E2"}
-    if any(l in escalate for l in fired):
+    if any(l in escalate for l in fired + sens_fired):
         return 20
-    if any(l.endswith("-OUT") for l in fired):
+    if any(l.endswith("-OUT") for l in fired + sens_fired):
         return 10
     return 0
 
