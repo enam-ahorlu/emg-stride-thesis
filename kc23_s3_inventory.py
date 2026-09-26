@@ -28,6 +28,11 @@ NORMS = ["global", "per_subject"]
 KNOWN_AONLY_DIRS = {
     ("SVM", "global"): "results_aonly_global",
     ("RF", "global"): "results_aonly_global",
+    # found present in the 26 September conformance pass (the manifest's name match missed them): seed 42, default grid,
+    # the same active-only features; and the per-subject ResNet-SE+CD (chandrop 0.2) and the active-only ensemble
+    ("SVM", "per_subject"): "results_aonly_persubj",
+    ("RF", "per_subject"): "results_aonly_persubj",
+    ("resnet_se_cd", "per_subject"): "results_aonly_resnet_se_cd_persubj",
 }
 
 

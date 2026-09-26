@@ -2,139 +2,228 @@
 """
 kc23_d6_aggregate.py
 ======================
-Turns completed KC-D6 Stage-1 per-knob run folders into the two input files
-kc23_d6_stats.py reads: d6_sanity.csv (f1 per subject, from the ADV-marginal
-lambda_max=0 arm) and d6_manipulation_<family>.csv (realization, knob,
-domain_probe, subject_probe -- realization = LOSO subject, per
-EXPERIMENT_PLAN_KC23_DEEP.md 6.2/6.5: "40 folds, seed 42 re-run").
+KC-D6 aggregator. Rewritten 26 September 2026 (KC23_PREREG_CONFORMANCE.md). The
+earlier version fed `class_probe_tgt_bacc` (a CLASS probe on the target subject)
+into the gate as "subject_probe", and used the SUBJECT as the Page-test
+"realization"; the unseen-subject probe the plan names (D0.3, embed_probes.csv)
+was never written by the D6 runners. They now take --instrument, and this reads
+it. Nothing is defaulted.
 
-Written 2026-09-24 for the same reason kc23_d1_aggregate.py exists: the D6
-sanity/manipulation gates were wired to fire on a single knob's own private
-out_dir, which never held these files.
+Per arm (family, knob, seed) it reads the run directory:
+  run_config.json                   checked against the arm (seed, knob, mode, normalization, augmentation)
+  adv_subjectwise.csv | deep_coral_subjectwise.csv   f1_macro
+  alignment_subjectwise.csv         domain_probe_bacc (source against target), feat_norm_src
+  training_log.csv                  per fold: the validation loss at the best epoch, and any non-finite loss
+  instr/embed_probes.csv            subject_probe_bacc (unseen subjects), class silhouette, class probe
+and requires the same 40 folds in every file, with no NaN in any measure.
 
-Real output schemas (confirmed against results_kc23_d6_smoke_marginal/
-_classcond/_cdan and results_kc23_d05_smoke_l2, the fixtures used to test
-this):
-  adv_subjectwise.csv        (ADV family, run_adv_align_loso.py):
-    subject, arch, adv_lambda, adv_mode, oracle, diverged, f1_macro, bal_acc
-  deep_coral_subjectwise.csv (SFC family, run_deep_coral_align_loso.py):
-    subject, target_pass, ..., coral_lambda, ...
-  alignment_subjectwise.csv  (both families, the D2c alignment_metrics +
-    D0.3 probes instrumentation):
-    subject, ..., domain_probe_bacc, class_probe_tgt_bacc, class_probe_src_bacc
-  "domain probe" = domain_probe_bacc; "unseen-subject probe" =
-  class_probe_tgt_bacc (measured on the held-out subject's own validation
-  windows, per 6.2's "neither the classifier nor the adversary ever sees").
+Divergence (plan 6.3, fixed): an arm has diverged if the source validation loss at its best epoch exceeds twice
+that of the same seed's lambda_max = 0 arm, or any loss is NaN. Applied with the lambda 0 comparison to the ADV
+family (adv_marginal has a lambda 0 arm); SFC and ADV-PS have no zero arm in their own harness, so only the NaN clause
+applies to them. A diverged arm is flagged, never dropped; the retry with --grad-clip 5.0 is a job-level step (a
+retry directory, if present, is NOT silently substituted here).
 
-Idempotent and safe to re-run: a family's manipulation input is written only
-once EVERY knob in its grid has produced a real alignment_subjectwise.csv;
-never a partial subset. Sanity is written once the lambda_max=0 run exists.
+Modes (--require):
+  sanity        d6_sanity.csv                      ADV lambda 0, seed 42
+  manipulation  d6_family_<family>.csv x3 (seed 42), d6_arm_divergence.csv
+  outcome       d6_family_<family>.csv (seeds 42, 7, 123) for every family whose manipulation gate letter was
+                G-PASS or G-WEAK (read from --gates), d6_arm_divergence.csv
+Any missing or malformed input exits 1 and writes nothing.
 """
 from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
-# Must match kc23_build_job_csvs.py's Stage-1 generation and
-# kc23_d6_stage2_job_gen.py's FAMILY_SPECS exactly.
+from kc23_run_loader import read_config
+
 FAMILY_KNOBS = {
     "adv_marginal": [0, 0.03, 0.1, 0.3, 1, 3, 10],
     "sfc": [0.1, 1, 10, 100, 1000],
     "advps": [0.1, 1, 10],
 }
-FAMILY_OUT_DIR = {
-    "adv_marginal": lambda knob: f"results_kc23_d6_adv_marginal_l{knob}_s42",
-    "sfc": lambda knob: f"results_kc23_d6_sfc_w{knob}_s42",
-    "advps": lambda knob: f"results_kc23_d6_advps_l{knob}_s42",
+FAMILY_DIR = {
+    "adv_marginal": lambda knob, seed: f"results_kc23_d6_adv_marginal_l{knob}_s{seed}",
+    "sfc": lambda knob, seed: f"results_kc23_d6_sfc_w{knob}_s{seed}",
+    "advps": lambda knob, seed: f"results_kc23_d6_advps_l{knob}_s{seed}",
 }
+SUBJECTWISE = {"adv_marginal": "adv_subjectwise.csv", "sfc": "deep_coral_subjectwise.csv",
+               "advps": "adv_subjectwise.csv"}
 KNOWN_FAMILIES = list(FAMILY_KNOBS)
+STAGE1_SEED = 42
+OUTCOME_SEEDS = [42, 7, 123]
+N_FOLDS = 40
+DIVERGENCE_RATIO = 2.0
+MEASURES = ["f1", "domain_probe_bacc", "subject_probe_bacc", "class_silhouette", "class_probe_bacc", "feat_norm_src",
+            "best_val_loss"]
 
 
-def load_alignment(root: Path, family: str, knob) -> pd.DataFrame | None:
-    d = root / FAMILY_OUT_DIR[family](knob)
-    f = d / "alignment_subjectwise.csv"
-    if not f.exists():
-        return None
-    df = pd.read_csv(f)
-    needed = {"subject", "domain_probe_bacc", "class_probe_tgt_bacc"}
-    if not needed.issubset(df.columns):
-        print(f"[d6-aggregate] {f}: missing columns {needed - set(df.columns)}", file=sys.stderr)
-        return None
-    return df[["subject", "domain_probe_bacc", "class_probe_tgt_bacc"]]
+def _read(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        raise FileNotFoundError(f"missing input: {path}")
+    return pd.read_csv(path)
 
 
-def build_sanity(root: Path) -> pd.DataFrame | None:
-    d = root / FAMILY_OUT_DIR["adv_marginal"](0)
-    f = d / "adv_subjectwise.csv"
-    if not f.exists():
-        print(f"[d6-aggregate] sanity: {f} not found -- lambda_max=0 arm not done yet")
-        return None
-    df = pd.read_csv(f)
-    # Fail closed (2026-09-25): the old code fell back to ALL rows when no adv_lambda == 0 row existed, which
-    # would have scored the sanity gate on non-zero-lambda runs. No such row means the sanity input is absent.
-    if "adv_lambda" not in df.columns or df[df["adv_lambda"] == 0].empty:
-        print(f"[d6-aggregate] sanity: {f} has no adv_lambda == 0 rows", file=sys.stderr)
-        return None
-    lam0 = df[df["adv_lambda"] == 0]
-    return lam0[["subject", "f1_macro"]].rename(columns={"f1_macro": "f1"})
+def _expect_config(family: str, knob, seed: int, cfg: dict, label: str) -> None:
+    def need(k, v):
+        if cfg.get(k) != v:
+            raise ValueError(f"{label}: run_config {k}={cfg.get(k)!r}, expected {v!r} (wrong arm or mislabelled)")
+    need("seed", seed)
+    need("arch", "resnet_se")
+    need("augmentation", "chandrop")
+    need("epochs", 40)
+    need("batch", 256)
+    if family in ("adv_marginal", "advps"):
+        need("adv_mode", "marginal")
+        need("norm_mode", "global" if family == "adv_marginal" else "per_subject")
+        if abs(float(cfg.get("adv_lambda", -1)) - float(knob)) > 1e-9:
+            raise ValueError(f"{label}: adv_lambda={cfg.get('adv_lambda')!r}, expected {knob}")
+    else:
+        need("coral_normalize", "l2")
+        need("target_pass", "train")
+        if abs(float(cfg.get("coral_lambda", -1)) - float(knob)) > 1e-9:
+            raise ValueError(f"{label}: coral_lambda={cfg.get('coral_lambda')!r}, expected {knob}")
 
 
-def build_manipulation(root: Path, family: str) -> pd.DataFrame | None:
-    knobs = FAMILY_KNOBS[family]
+def _fold_series(df: pd.DataFrame, col: str, label: str) -> pd.Series:
+    if "subject" not in df.columns or col not in df.columns:
+        raise ValueError(f"{label}: lacks subject/{col}")
+    if df["subject"].duplicated().any() or len(df) != N_FOLDS:
+        raise ValueError(f"{label}: needs {N_FOLDS} unique folds, found {len(df)} rows")
+    if df[col].isna().any():
+        raise ValueError(f"{label}: NaN in {col}")
+    return df.set_index("subject")[col].astype(float).sort_index()
+
+
+def load_arm(root: Path, family: str, knob, seed: int) -> pd.DataFrame:
+    d = root / FAMILY_DIR[family](knob, seed)
+    label = d.name
+    _expect_config(family, knob, seed, read_config(d), label)
+    sw = _read(d / SUBJECTWISE[family])
+    al = _read(d / "alignment_subjectwise.csv")
+    ep = _read(d / "instr" / "embed_probes.csv")
+    tl = _read(d / "training_log.csv")
+
+    out = pd.DataFrame({"f1": _fold_series(sw, "f1_macro", f"{label} f1")})
+    out["domain_probe_bacc"] = _fold_series(al, "domain_probe_bacc", f"{label} domain probe")
+    out["feat_norm_src"] = _fold_series(al, "feat_norm_src", f"{label} embedding norm")
+    out["subject_probe_bacc"] = _fold_series(ep, "subject_probe_bacc", f"{label} unseen-subject probe")
+    out["class_silhouette"] = _fold_series(ep, "held_out_class_silhouette", f"{label} class silhouette")
+    out["class_probe_bacc"] = _fold_series(ep, "held_out_class_probe_bacc", f"{label} class probe")
+    if set(out.index) != set(sw["subject"]):
+        raise ValueError(f"{label}: subject sets differ between files")
+
+    best_loss, nonfinite = {}, {}
+    for s, g in tl.groupby("subject"):
+        vl = g["val_loss"].to_numpy(float)
+        bad = (~np.isfinite(vl)).any() or (("diverged" in g.columns) and (g["diverged"].fillna(0) == 1).any())
+        best = g[g["best"] == 1] if "best" in g.columns else g.iloc[0:0]
+        best_loss[int(s)] = float(best["val_loss"].iloc[-1]) if len(best) else float("nan")
+        nonfinite[int(s)] = bool(bad or not len(best))
+    if set(best_loss) != set(out.index):
+        raise ValueError(f"{label}: training_log folds differ from the result folds")
+    out["best_val_loss"] = pd.Series(best_loss)
+    out["nonfinite"] = pd.Series(nonfinite)
+    out["family"], out["knob"], out["realization"] = family, knob, seed
+    return out.reset_index().rename(columns={"index": "subject"})
+
+
+def arm_divergence(arms: dict, family: str) -> pd.DataFrame:
+    """arms: {(knob, seed): fold frame}. Diverged per the plan's rule; NaN-only where there is no lambda 0 arm."""
     rows = []
-    for knob in knobs:
-        df = load_alignment(root, family, knob)
-        if df is None:
-            print(f"[d6-aggregate] manipulation/{family}: knob {knob} not complete yet "
-                 f"({FAMILY_OUT_DIR[family](knob)}/alignment_subjectwise.csv missing) -- "
-                 f"not writing this family's manipulation input yet")
-            return None
-        for _, r in df.iterrows():
-            rows.append({"realization": int(r["subject"]), "knob": knob,
-                        "domain_probe": float(r["domain_probe_bacc"]),
-                        "subject_probe": float(r["class_probe_tgt_bacc"])})
+    for (knob, seed), df in arms.items():
+        nonfinite = bool(df["nonfinite"].any())
+        mean_loss = float(df["best_val_loss"].mean(skipna=True)) if df["best_val_loss"].notna().any() else float("nan")
+        ratio = float("nan")
+        exceeds = False
+        if family == "adv_marginal":
+            zero = arms.get((0, seed))
+            if zero is None:
+                raise ValueError(f"adv_marginal seed {seed}: no lambda 0 arm to judge divergence against")
+            zero_loss = float(zero["best_val_loss"].mean(skipna=True))
+            ratio = mean_loss / zero_loss if zero_loss > 0 else float("inf")
+            exceeds = bool(knob != 0 and ratio > DIVERGENCE_RATIO)
+        rows.append({"family": family, "knob": knob, "realization": seed, "mean_best_val_loss": mean_loss,
+                     "ratio_to_lambda0": ratio, "nonfinite_loss": nonfinite,
+                     "diverged": bool(nonfinite or exceeds)})
     return pd.DataFrame(rows)
 
 
-def run(out_dir: Path, root: Path, require: str | None = None) -> int:
-    """Fail closed (2026-09-25): the old version exited 0 having written
-    nothing whenever the runs were not complete. `require`:
-      "sanity"        d6_sanity.csv must be written (writes only that)
-      "manipulation"  d6_manipulation_<family>.csv must be written for EVERY
-                      family (writes only those)
-      None            at least one output must be written
-    Exit 1, and none of the output files left behind, otherwise."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-    names = ["d6_sanity.csv"] + [f"d6_manipulation_{f}.csv" for f in KNOWN_FAMILIES]
-    for n in names:
-        (out_dir / n).unlink(missing_ok=True)
+def build_family(root: Path, family: str, seeds: list[int]):
+    arms = {(k, s): load_arm(root, family, k, s) for s in seeds for k in FAMILY_KNOBS[family]}
+    div = arm_divergence(arms, family)
+    long = pd.concat(arms.values(), ignore_index=True)
+    long = long.merge(div[["knob", "realization", "diverged"]], on=["knob", "realization"], how="left")
+    cols = ["family", "knob", "realization", "subject"] + MEASURES + ["nonfinite", "diverged"]
+    return long[cols], div
 
-    sanity = build_sanity(root) if require in (None, "sanity") else None
-    manips = {f: build_manipulation(root, f) for f in KNOWN_FAMILIES} if require in (None, "manipulation") else {}
 
-    problems = []
-    if require == "sanity" and sanity is None:
-        problems.append("d6_sanity input (the lambda 0 arm) is not complete")
-    if require == "manipulation":
-        gaps = [f for f in KNOWN_FAMILIES if manips.get(f) is None]
-        if gaps:
-            problems.append(f"manipulation input not complete for families {gaps}")
-    if require is None and sanity is None and all(m is None for m in manips.values()):
-        problems.append("nothing was ready to write")
-    if problems:
-        print("[d6-aggregate] FAIL, no output written: " + "; ".join(problems), file=sys.stderr)
+def build_sanity(root: Path) -> pd.DataFrame:
+    d = root / FAMILY_DIR["adv_marginal"](0, STAGE1_SEED)
+    _expect_config("adv_marginal", 0, STAGE1_SEED, read_config(d), d.name)
+    df = _read(d / "adv_subjectwise.csv")
+    if "adv_lambda" not in df.columns or df[df["adv_lambda"] == 0].empty:
+        raise ValueError(f"{d.name}: no adv_lambda == 0 rows (no fallback to other lambdas)")
+    lam0 = df[df["adv_lambda"] == 0]
+    if lam0["subject"].duplicated().any() or len(lam0) != N_FOLDS or lam0["f1_macro"].isna().any():
+        raise ValueError(f"{d.name}: needs {N_FOLDS} unique non-NaN lambda 0 folds, found {len(lam0)}")
+    return lam0[["subject", "f1_macro"]].rename(columns={"f1_macro": "f1"}).reset_index(drop=True)
+
+
+def passing_families(gates_csv: Path) -> dict[str, str]:
+    """Families whose manipulation letter is G-PASS or G-WEAK and whose normalization check (SFC) did not fail."""
+    g = _read(gates_csv)
+    out = {}
+    for _, r in g.iterrows():
+        item = str(r["item"])
+        if item.startswith("manipulation_") and str(r["letter"]) in ("G-PASS", "G-WEAK"):
+            norm_ok = r["norm_ok"] if "norm_ok" in g.columns and pd.notna(r["norm_ok"]) else True
+            if bool(norm_ok):
+                out[item[len("manipulation_"):]] = str(r["letter"])
+    return out
+
+
+FILES = ["d6_sanity.csv"] + [f"d6_family_{f}.csv" for f in KNOWN_FAMILIES] + ["d6_arm_divergence.csv",
+                                                                              "d6_no_passing_family.csv"]
+
+
+def run(out_dir: Path, root: Path, require: str | None = None, gates: Path | None = None) -> int:
+    """Fail closed. --require picks what must be complete; exit 1 and no output file otherwise."""
+    if require not in ("sanity", "manipulation", "outcome"):
+        print("[d6-aggregate] FAIL: --require sanity|manipulation|outcome is mandatory", file=sys.stderr)
         return 1
-
-    if sanity is not None:
-        sanity.to_csv(out_dir / "d6_sanity.csv", index=False)
-        print(f"[d6-aggregate] wrote d6_sanity.csv ({len(sanity)} subjects)")
-    for family, manip in manips.items():
-        if manip is not None:
-            manip.to_csv(out_dir / f"d6_manipulation_{family}.csv", index=False)
-            print(f"[d6-aggregate] wrote d6_manipulation_{family}.csv "
-                  f"({manip['realization'].nunique()} subjects x {manip['knob'].nunique()} knobs)")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for n in FILES:
+        (out_dir / n).unlink(missing_ok=True)
+    try:
+        written: dict[str, pd.DataFrame] = {}
+        if require == "sanity":
+            written["d6_sanity.csv"] = build_sanity(root)
+        else:
+            if require == "manipulation":
+                families = {f: STAGE1_SEED for f in KNOWN_FAMILIES}
+                seeds_of = {f: [STAGE1_SEED] for f in KNOWN_FAMILIES}
+            else:
+                gp = passing_families(gates or (root / "results_kc23_d6_manipulation_check" / "D6_gates.csv"))
+                seeds_of = {f: OUTCOME_SEEDS for f in gp}
+                if not gp:   # plan 6.7: a G-FAIL on every family is itself the result; say so instead of writing nothing
+                    written['d6_no_passing_family.csv'] = pd.DataFrame({'note': ['no family passed the manipulation gate']})
+            divs = []
+            for f, seeds in seeds_of.items():
+                fam, div = build_family(root, f, seeds)
+                written[f"d6_family_{f}.csv"] = fam
+                divs.append(div)
+            if divs:
+                written["d6_arm_divergence.csv"] = pd.concat(divs, ignore_index=True)
+    except (FileNotFoundError, ValueError, KeyError) as e:
+        print(f"[d6-aggregate] FAIL, no output written: {e}", file=sys.stderr)
+        return 1
+    for name, df in written.items():
+        df.to_csv(out_dir / name, index=False)
+    print(f"[d6-aggregate] wrote {sorted(written)} ({require})")
     return 0
 
 
@@ -142,10 +231,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", required=True)
     ap.add_argument("--root", default=".")
-    ap.add_argument("--require", choices=["sanity", "manipulation"], default=None,
-                    help="which part must be complete (the queue rows pass this); exit 1 if it is not")
+    ap.add_argument("--require", choices=["sanity", "manipulation", "outcome"], default=None)
+    ap.add_argument("--gates", default=None, help="outcome mode: D6_gates.csv from the manipulation check")
     args = ap.parse_args()
-    sys.exit(run(Path(args.out), Path(args.root), args.require))
+    sys.exit(run(Path(args.out), Path(args.root), args.require, Path(args.gates) if args.gates else None))
 
 
 if __name__ == "__main__":

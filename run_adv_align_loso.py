@@ -373,6 +373,13 @@ def main():
     ap.add_argument("--n-src-embed", type=int, default=4000)
     ap.add_argument("--heldout", type=int, default=None); ap.add_argument("--resume", action="store_true")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--instrument", default=None,
+                    help="KC-D0.3 for KC-D6 (added 26 September 2026): after each fold, write the D0.3 measurements "
+                         "(occlusion, attenuation, permutation reliance and the unseen-subject embedding probes: "
+                         "embed_probes.csv) into this directory, taken on the held-out subject and the fold's "
+                         "validation subjects, which neither the classifier nor the adversary trains on. Absent "
+                         "(default): none of this code runs and every output is unchanged.")
+    ap.add_argument("--probe-cap", type=int, default=100, help="Windows per subject and class for the probes.")
     args = ap.parse_args()
 
     if args.adv_mode == "classcond" and not args.oracle_target_labels:
@@ -385,6 +392,8 @@ def main():
         torch.cuda.manual_seed_all(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     out_dir = Path(args.out); out_dir.mkdir(parents=True, exist_ok=True)
+    from run_config_dump import dump_run_config       # plan Section 0 rule 3: every arm writes run_config.json
+    dump_run_config(out_dir, args, resolved_paths={"npz": args.npz, "meta": args.meta})
     csv_path = out_dir / "adv_subjectwise.csv"
     al_path = out_dir / "alignment_subjectwise.csv"
     log_path = out_dir / "training_log.csv"
@@ -457,6 +466,14 @@ def main():
         al = {"subject": int(heldout), "adv_mode": args.adv_mode, "epochs_run": len(log),
               "best_epoch": int(max([e["epoch"] for e in log if e.get("best") == 1] or [0]))}
         al.update(alignment_metrics(Fs, ys_pool[idx], Ft, y[te], args.seed + heldout, args.adv_lambda))
+
+        if args.instrument:
+            # Before the fold's rows are written, so a crash here re-runs the whole fold on --resume rather than
+            # leaving a fold with rows and no probes. instrument_fold snapshots and restores every RNG it touches.
+            from run_cnn_arch_loso import instrument_fold
+            instrument_fold(model, Xte, y[te], int(heldout), args.arch, args.instrument, device, row["f1_macro"],
+                            seed=args.seed, Xva=Xtr_all[m_va], yva=ytr_all[m_va], subj_va=subtr[m_va],
+                            probe_cap=args.probe_cap)
 
         pd.DataFrame([dict(e, subject=int(heldout), adv_lambda=args.adv_lambda) for e in log]).to_csv(
             log_path, mode="a", header=not log_path.exists(), index=False)

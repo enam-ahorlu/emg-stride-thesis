@@ -267,6 +267,12 @@ def main():
                          "computes no CORAL term; only legal with --coral-lambda 0.")
     ap.add_argument("--heldout", type=int, default=None); ap.add_argument("--resume", action="store_true")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--instrument", default=None,
+                    help="KC-D0.3 for KC-D6 SFC (added 26 September 2026): after each fold, write the D0.3 "
+                         "measurements (occlusion, attenuation, permutation reliance and the unseen-subject "
+                         "embedding probes) into this directory. Absent (default): none of this code runs and "
+                         "every output is byte-identical to the pre-change script.")
+    ap.add_argument("--probe-cap", type=int, default=100, help="Windows per subject and class for the probes.")
     args = ap.parse_args()
 
     if args.target_pass == "none" and args.coral_lambda != 0:
@@ -277,6 +283,8 @@ def main():
         torch.cuda.manual_seed_all(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     out_dir = Path(args.out); out_dir.mkdir(parents=True, exist_ok=True)
+    from run_config_dump import dump_run_config       # plan Section 0 rule 3; a new file only, no existing output changes
+    dump_run_config(out_dir, args, resolved_paths={"npz": args.npz, "meta": args.meta})
     csv_path = out_dir / "deep_coral_subjectwise.csv"
     al_path = out_dir / "alignment_subjectwise.csv"
     log_path = out_dir / "training_log.csv"
@@ -340,6 +348,12 @@ def main():
         al = {"subject": int(heldout), "target_pass": args.target_pass, "epochs_run": len(log),
               "best_epoch": int(max([e["epoch"] for e in log if e["best"] == 1] or [0]))}
         al.update(alignment_metrics(Fs, ys_pool[idx], Ft, y[te], args.seed + heldout, args.coral_lambda))
+
+        if args.instrument:
+            from run_cnn_arch_loso import instrument_fold      # imported only when asked for: the default path is untouched
+            instrument_fold(model, Xte, y[te], int(heldout), args.arch, args.instrument, device, row["f1_macro"],
+                            seed=args.seed, Xva=Xtr_all[m_va], yva=ytr_all[m_va], subj_va=subtr[m_va],
+                            probe_cap=args.probe_cap)
 
         pd.DataFrame([dict(e, subject=int(heldout), coral_lambda=args.coral_lambda) for e in log]).to_csv(
             log_path, mode="a", header=not log_path.exists(), index=False)

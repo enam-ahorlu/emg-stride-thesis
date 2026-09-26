@@ -54,6 +54,9 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--n-jobs", type=int, default=1)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--save-preds", action="store_true",
+                    help="KC-S3: also write per-window predictions, predictions_folds/{features_stem}_LDA_sub{K:02d}_y_{true,pred}.npy "
+                         "(the layout train_classical_loso.py writes), for the DNS->WAK critical-error rate. Inert when absent.")
     ap.add_argument("--out", default="results_lda_persubj")
     args = ap.parse_args()
 
@@ -95,6 +98,10 @@ def main():
                "bal_acc": float(balanced_accuracy_score(yte, yhat)),
                "acc": float(accuracy_score(yte, yhat)),
                "best_shrinkage": str(search.best_params_["clf__shrinkage"])}
+        if args.save_preds:
+            pf = out_dir / "predictions_folds"; pf.mkdir(exist_ok=True)
+            stem = f"{Path(args.features).stem}_LDA_sub{int(heldout):02d}"
+            np.save(pf / f"{stem}_y_true.npy", yte.astype(np.int32)); np.save(pf / f"{stem}_y_pred.npy", np.asarray(yhat).astype(np.int32))
         pd.DataFrame([row]).to_csv(csv_path, mode="a", header=not csv_path.exists(), index=False)
         done.add(heldout)
         print(f"[fold] Sub{heldout:02d} LDA f1={row['f1_macro']:.4f} (shrink={row['best_shrinkage']})", flush=True)

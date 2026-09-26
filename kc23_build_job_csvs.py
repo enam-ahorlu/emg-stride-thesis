@@ -317,8 +317,11 @@ for seed in [7, 123, 1001]:
 # ============================================================================
 # #10 (Phase 3, CPU): KC-D2 reliance analysis (analysis only, on D1's instrumented runs)
 # ============================================================================
+# The stats script reads d2_persubject_sums.csv, which nothing produced (the row ran the stats script as its own command).
+# kc23_d2_aggregate.py builds it from the instrumented D1 runs (occlusion, attenuation and permutation sums, no clipping);
+# the gate then writes D2_VERDICT.md, and the queue checks it carries a letter (26 Sept 2026 conformance pass).
 cpu("d2_reliance", "D2", None,
-   f'{PY} kc23_d2_reliance_stats.py --out results_kc23_d2_reliance',
+   f'{PY} kc23_d2_aggregate.py --root . --out results_kc23_d2_reliance',
    "results_kc23_d2_reliance", depends_on=tuple(d1_all_seed_ids), gate_script="kc23_d2_reliance_stats.py",
    expected_outputs=EO_VERDICT_LETTER)
 
@@ -343,7 +346,8 @@ for seed in D3_D4_SEEDS:
            f'--augmentation gainjitter --aug-gain-sd {sd} --instrument {instr(out)} --seed {seed} '
            f'--out {out} --resume', out, depends_on=("d1_r2_s1001",), expected_outputs=EO_CNN_ARCH_SIAT)
         d4_ids.append(jid)
-gpu_rows[[r["job_id"] for r in gpu_rows].index(d4_ids[-1])]["gate_script"] = "kc23_d4_invariance_stats.py"
+# The D4 gate no longer sits on the last run (d4_gainjitter_sd1.00_s123): it fired before its siblings existed and read
+# inputs nothing produced. d4_stats (below, after Tier B) aggregates every run and then gates.
 
 # ============================================================================
 # #11b (Phase 4, GPU): KC-D6 Stage 1 -- every family at seed 42
@@ -358,7 +362,7 @@ for lam in adv_lambdas:
     gpu(jid, "D6", 42,
        f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
        f'--augmentation chandrop --adv-lambda {lam} --adv-mode marginal --epochs 40 --batch 256 '
-       f'--seed 42 --out {out} --resume', out,
+       f'--instrument {instr(out)} --seed 42 --out {out} --resume', out,
        depends_on=("d0_smoke_gate", "d1_r2_s42"), expected_outputs=EO_ADV_SIAT)
     d6_stage1_ids.append(jid)
 # The D6.4 sanity gate only needs the lambda_max=0 arm ("after Stage 1, ADV at lambda_max=0" --
@@ -375,7 +379,7 @@ for w in sfc_weights:
     gpu(jid, "D6", 42,
        f'{PY} run_deep_coral_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
        f'--augmentation chandrop --coral-lambda {w} --coral-normalize l2 --batch 256 --seed 42 '
-       f'--out {out} --resume', out, depends_on=("d1_r2_s42",), expected_outputs=EO_DEEP_CORAL_SIAT)
+       f'--instrument {instr(out)} --out {out} --resume', out, depends_on=("d1_r2_s42",), expected_outputs=EO_DEEP_CORAL_SIAT)
     d6_stage1_ids.append(jid)
 for lam in [0.1, 1, 10]:
     out = f"results_kc23_d6_advps_l{lam}_s42"
@@ -383,7 +387,7 @@ for lam in [0.1, 1, 10]:
     gpu(jid, "D6", 42,
        f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
        f'--norm-mode per_subject --augmentation chandrop --adv-lambda {lam} --adv-mode marginal '
-       f'--epochs 40 --batch 256 --seed 42 --out {out} --resume', out, depends_on=("d1_r2_s42",),
+       f'--epochs 40 --batch 256 --seed 42 --instrument {instr(out)} --out {out} --resume', out, depends_on=("d1_r2_s42",),
        expected_outputs=EO_ADV_SIAT)
     d6_stage1_ids.append(jid)
 # The D6.5 manipulation gate needs every knob of every family done (per family, "across the knob
@@ -429,7 +433,7 @@ for seed in D3_D4_SEEDS:
            f'--augmentation {mode} {sigma_flag} --instrument {instr(out)} --seed {seed} '
            f'--out {out} --resume', out, depends_on=("d1_r2_s1001",), expected_outputs=EO_CNN_ARCH_SIAT)
         d3_ids.append(jid)
-gpu_rows[[r["job_id"] for r in gpu_rows].index(d3_ids[-1])]["gate_script"] = "kc23_d3_axis_stats.py"
+# Likewise the D3 gate no longer sits on d3_x4_s123; d3_stats (below) aggregates every run and then gates.
 
 # ============================================================================
 # #13 (Phase 4, GPU): KC-D1 Tier B (R13-R17), 3 realizations
@@ -452,10 +456,31 @@ for seed in D1_TIER_B_SEEDS:
 # #13b (Phase 4, CPU): KC-D1.5-D1.7 full aggregate gate, once all 63 D1+D1B
 # realizations exist (48 Tier A + 15 Tier B)
 # ============================================================================
+# The soft vote and stacking of the seed-specific ResNet-SE+CD with the published SVM, RF and CNN (C13, C13b): the aggregator
+# reads results_kc23_d1_ensemble_s<seed>/ensemble_s<seed>.csv, which nothing built before kc23_d1_ensemble.py.
+d1_ensemble_ids = []
+for seed in [42, 7, 123, 1001]:
+    out = f"results_kc23_d1_ensemble_s{seed}"
+    cpu(f"d1_ensemble_s{seed}", "D1-ENS", seed,
+       f'{PY} kc23_d1_ensemble.py --root . --seed {seed} --out {out}', out, depends_on=(f"d1_r2_s{seed}",),
+       expected_outputs=f"ensemble_s{seed}.csv|{SIAT_N}")
+    d1_ensemble_ids.append(f"d1_ensemble_s{seed}")
 cpu("d1_full_aggregate", "D1-AGG", None,
    f'{PY} {D1_AGGREGATE} --root . --out results_kc23_d1_stats --require full',
-   "results_kc23_d1_stats", depends_on=tuple(d1_all_seed_ids + tierb_ids),
+   "results_kc23_d1_stats", depends_on=tuple(d1_all_seed_ids + tierb_ids + d1_ensemble_ids),
    gate_script=D1_REPRO_GATE, expected_outputs=EO_VERDICT_LETTER)
+
+# ============================================================================
+# #12b / #11d (Phase 4, CPU): KC-D3 and KC-D4 stats -- aggregate every run, then gate
+# ============================================================================
+cpu("d3_stats", "D3-STATS", None,
+   f'{PY} kc23_d3_aggregate.py --root . --out results_kc23_d3_stats', "results_kc23_d3_stats",
+   depends_on=tuple(d3_ids) + tuple(f"d1_{a}_s{sd}" for a in ("r1", "r3") for sd in D3_D4_SEEDS),
+   gate_script="kc23_d3_axis_stats.py", expected_outputs="D3_VERDICT.md|LETTER")
+cpu("d4_stats", "D4-STATS", None,
+   f'{PY} kc23_d4_aggregate.py --root . --out results_kc23_d4_stats', "results_kc23_d4_stats",
+   depends_on=tuple(d4_ids) + tuple(tierb_ids) + tuple(f"d1_{a}_s{sd}" for a in ("r1", "r2", "r3") for sd in D3_D4_SEEDS),
+   gate_script="kc23_d4_invariance_stats.py", expected_outputs="D4_VERDICT.md|LETTER")
 
 # ============================================================================
 # #14 (Phase 5, GPU+CPU): KC-S3 active-only benchmark
@@ -471,20 +496,20 @@ for arch in ["simple", "resnet_se"]:
         out = f"results_kc23_s3_{arch}_{norm}"
         gpu(f"s3_{arch}_{norm}", "S3", 42,
            f'{PY} run_cnn_arch_loso.py --npz {NPZ_AONLY} --meta {META_AONLY} --arch {arch} '
-           f'--norm-mode {norm} --seed 42 --out {out} --resume', out,
+           f'--norm-mode {norm} --seed 42 --save-proba {out}/proba --model-tag S3_{arch.upper()} '
+           f'--out {out} --resume', out,
            depends_on=("s3_inventory",),
            gate_script="",  # KC-S3 has no halting letters per the plan; kc23_s3_inventory.py is not a gate
            expected_outputs=EO_CNN_ARCH_SIAT)
-# ResNet-SE+CD (the actual best deep model per the plan's own ensemble, chandrop augmentation) was
-# missing entirely -- only plain resnet_se was wired. Per kc23_s3_inventory.py's own output (run
-# 2026-09-24), present=True only for SVM/global and RF/global; every other cell below is missing.
-for norm in ["global", "per_subject"]:
-    out = f"results_kc23_s3_resnet_se_cd_{norm}"
-    gpu(f"s3_resnet_se_cd_{norm}", "S3", 42,
-       f'{PY} run_cnn_arch_loso.py --npz {NPZ_AONLY} --meta {META_AONLY} --arch resnet_se '
-       f'--augmentation chandrop --aug-chandrop-p 0.2 --model-tag RESNET_SE_CD --norm-mode {norm} '
-       f'--seed 42 --out {out} --resume', out, depends_on=("s3_inventory",), gate_script="",
-       expected_outputs=EO_CNN_ARCH_SIAT)
+# ResNet-SE+CD, global only: the per-subject cell already exists as results_aonly_resnet_se_cd_persubj (seed 42, chandrop 0.2,
+# resnet_se, per_subject, same active-only windows, proba saved), and the plan says "run only the missing cells" (S3.2 item 2),
+# so the earlier per-subject row is dropped (26 Sept 2026; it had not run). kc23_s3_benchmark.py reads the existing directory.
+out = "results_kc23_s3_resnet_se_cd_global"
+gpu("s3_resnet_se_cd_global", "S3", 42,
+   f'{PY} run_cnn_arch_loso.py --npz {NPZ_AONLY} --meta {META_AONLY} --arch resnet_se '
+   f'--augmentation chandrop --aug-chandrop-p 0.2 --model-tag RESNET_SE_CD --norm-mode global '
+   f'--seed 42 --save-proba {out}/proba --out {out} --resume', out, depends_on=("s3_inventory",), gate_script="",
+   expected_outputs=EO_CNN_ARCH_SIAT)
 FEAT_AONLY_FREQ = "features_out/freq_fs1920_windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_Aonly_features_ext.npz"
 for norm in ["global", "per_subject"]:
     out = f"results_kc23_s3_lda_{norm}"
@@ -498,13 +523,22 @@ for norm in ["global", "per_subject"]:
     # SVM/RF reference actually used (the freq/ext Aonly features + META_AONLY).
     cpu(f"s3_lda_{norm}", "S3", None,
        f'{PY} run_lda_loso.py --features {FEAT_AONLY_FREQ} --meta {META_AONLY} '
-       f'--norm-mode {norm} --out {out} --resume', out,
+       f'--norm-mode {norm} --save-preds --out {out} --resume', out,
        depends_on=("s3_inventory",), gate_script="", expected_outputs=EO_LDA_SIAT)
 cpu("s3_svm_per_subject", "S3", None,
    f'{PY} train_classical_loso.py --features {FEAT_AONLY_FREQ} --meta {META_AONLY} '
    f'--models SVM --norm-mode per_subject --out results_kc23_s3_svm_per_subject --resume',
    "results_kc23_s3_svm_per_subject", depends_on=("s3_inventory",), gate_script="",
    expected_outputs=EO_NESTED_LOSO_SIAT)
+# s3_svm_per_subject duplicates results_aonly_persubj (same features, flags and seed) and had already run; the benchmark reads
+# the earlier directory and keeps this one only as a reproduction check.
+# The benchmark table and S3_VERDICT.md (S3.3): one row per family x normalization with the DNS->WAK critical-error rate.
+cpu("s3_benchmark", "S3", None,
+   f'{PY} kc23_s3_benchmark.py --out results_kc23_s3_active_benchmark',
+   "results_kc23_s3_active_benchmark",
+   depends_on=("s3_inventory", "s3_simple_global", "s3_simple_per_subject", "s3_resnet_se_global", "s3_resnet_se_per_subject",
+               "s3_resnet_se_cd_global", "s3_lda_global", "s3_lda_per_subject", "c3_ensemble"),
+   expected_outputs="benchmark_active_only.csv|EXISTS")
 # SVMX/HGB (per plan: "if KC-C3 lands P2 or P3") are correctly absent -- KC-C3's tuning outcome
 # (kc23_c3_tuning_stats.py) hasn't landed yet, so whether they're needed at all is still unknown;
 # no row is generated for them here, matching kc23_s3_inventory.py's own conditional.
@@ -568,21 +602,23 @@ cpu("s2b_extract_features", "S2b", None,
    f'{PY} extract_features.py '
    f'--npz results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b.npz '
    f'--meta results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_meta.csv '
-   f'--out-dir results_kc23_s2b_features --prefix freq --use env --freq',
+   f'--out-dir results_kc23_s2b_features --prefix freq --use raw --freq --fs 1000 --no-wavelet',
    "results_kc23_s2b_features", depends_on=("s2b_adapter_400",),
    expected_outputs="freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_features_meta.csv|28125")
-gpu("s2b_resnet_se_cd_400", "S2b", 42,
-   f'{PY} run_cnn_arch_loso.py --npz results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b.npz '
-   f'--meta results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_meta.csv '
-   f'--arch resnet_se --augmentation chandrop --aug-chandrop-p 0.2 --model-tag RESNET_SE_CD '
-   f'--save-proba results_kc23_s2b_resnet_se_cd_400/proba --seed 42 '
-   f'--out results_kc23_s2b_resnet_se_cd_400 --resume', "results_kc23_s2b_resnet_se_cd_400",
-   depends_on=("s2b_adapter_400",), expected_outputs=EO_CNN_ARCH_ENABL3S)
-cpu("s2b_svm_400", "S2b", None,
-   f'{PY} train_classical_loso.py --features results_kc23_s2b_features/{EO_S2B_FEAT} '
-   f'--meta results_kc23_s2b_adapter_400/windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_meta.csv '
-   f'--models SVM --norm-mode per_subject --out results_kc23_s2b_svm_400 --resume',
-   "results_kc23_s2b_svm_400", depends_on=("s2b_extract_features",), expected_outputs=EO_NESTED_LOSO_ENABL3S)
+# The window trade needs per-window predictions with circuit and time to score decision delay (S2.4), so the two old rows
+# (run_cnn_arch_loso --save-proba and train_classical_loso, which give LOSO F1 with no window times) are replaced by ONE row
+# that runs the same locked pipeline as s2_predictions on the 400 ms windows (kc23_s2_predictions.py --window-ms 400), then
+# kc23_s2b_window_trade.py scores 250 against 400 ms and regenerates S2_VERDICT.md with Reading 2 (26 Sept 2026 conformance).
+cpu("s2b_predictions_400", "S2b", None,
+   f'{PY} kc23_s2_predictions.py --root . --out results_kc23_s2b_predictions --window-ms 400',
+   "results_kc23_s2b_predictions", depends_on=("s2b_extract_features",),
+   expected_outputs=f"s2_predictions_causal100.csv|{28125 * 3}")
+cpu("s2b_window_trade", "S2b", None,
+   f'{PY} kc23_s2b_window_trade.py --out results_kc23_s2b_window_trade --preds-250 results_kc23_s2_predictions '
+   f'--preds-400 results_kc23_s2b_predictions --table results_kc23_s2_transition_table/s2_transition_table.csv '
+   f'--s2-out results_kc23_s2_transitions',
+   "results_kc23_s2b_window_trade", depends_on=("s2b_predictions_400", "s2_predictions", "s2_transition_table"),
+   expected_outputs="s2b_measures.csv|9")
 
 # ============================================================================
 # C-a (Phase 2-5, CPU): KC-C2 whitening, 250 and 400 ms
@@ -602,10 +638,14 @@ for tag, npzf, metaf, gate_env in [("w250", FEAT_250_FREQ, META_250_FEAT, None),
                   f'{PY} run_alignment_ladder_loso.py --rungs 3,0,4,4b,4c,4d,4lw,4o --out {out} --no-gate --resume')
     else:
         cmdline = f'{PY} run_alignment_ladder_loso.py --rungs 3,0,4,4b,4c,4d,4lw,4o --out {out} --resume'
-    cpu(jid, "C2", None, cmdline, out, depends_on=("code_c2_inertness",),
-       gate_script=("kc23_c2_whitening_stats.py" if tag == "w400" else ""),
+    # The C2 gate needs the geometry rows (the subject probe under 4o), so it moved from c2_ladder_w400 to c2_geometry_w400.
+    cpu(jid, "C2", None, cmdline, out, depends_on=("code_c2_inertness",), gate_script="",
        expected_outputs=f"ladder_loso_3_SVM_subjectwise.csv|{SIAT_N}")
     c2_ids.append(jid)
+    if tag == "w400":
+        cpu("c2_geometry_w400", "C2", None,
+           f'{PY} kc23_c6_geometry.py --out {out} --feat {npzf} --meta {metaf} --rungs 3,0,4b,4c,4d,4lw,4o --resume',
+           out, depends_on=(jid,), gate_script="kc23_c2_whitening_stats.py", expected_outputs="ladder_geometry.csv|EXISTS")
 
 # ============================================================================
 # C-b (Phase 2-5, CPU): KC-C3 classical tuning parity
@@ -616,16 +656,28 @@ for model in ["SVM", "RF", "HGB", "KNN"]:
         out = f"results_kc23_c3_{model.lower()}_{norm}"
         jid = f"c3_{model.lower()}_{norm}"
         search = "grid" if model in ("SVM", "KNN") else "random"
-        proba = f" --save-proba --proba-out {out}/proba" if (model == "SVM" and norm == "per_subject") else ""
+        # The tuning row NEVER carries --save-proba: that flag is train_classical_loso.py's cheap refit path (no search,
+        # best_params taken from --reuse-params-dir, default results_loso_freq_persubj). The first SVM-X run combined
+        # them, so all 40 folds used the published C=1 / gamma='scale' and the "tuned" SVM was the published one
+        # (mean F1 0.7767); found in the 26 September conformance pass, that directory is set aside (INVALID.md).
         cpu(jid, "C3", None,
            f'{PY} train_classical_loso.py --features {FEAT_250_FREQ} --meta {META_250_FEAT} '
-           f'--models {model} --norm-mode {norm} --grid extended --search {search} --n-iter 30{proba} '
+           f'--models {model} --norm-mode {norm} --grid extended --search {search} --n-iter 30 '
            f'--n-jobs 1 --rf-n-jobs 4 --out {out} --resume', out, depends_on=("code_c3_inertness",),
            expected_outputs=EO_NESTED_LOSO_SIAT)
         c3_ids.append(jid)
+        if norm == "per_subject" and model in ("SVM", "RF", "HGB"):
+            # probabilities for the ensemble (C3 Endpoint 3) and the best-member soft vote: a refit with the SELECTED params
+            rid = f"{jid}_proba"
+            cpu(rid, "C3", None,
+               f'{PY} train_classical_loso.py --features {FEAT_250_FREQ} --meta {META_250_FEAT} '
+               f'--models {model} --norm-mode {norm} --save-proba --proba-out {out}/proba '
+               f'--reuse-params-dir {out} --n-jobs 1 --rf-n-jobs 4 --out {out}_refit --resume', f"{out}_refit",
+               depends_on=(jid,), expected_outputs=EO_NESTED_LOSO_SIAT)
+            c3_ids.append(rid)
 cpu("c3_ensemble", "C3", None,
    f'{PY} kc23_c3_merge_proba.py --new-svm-dir results_kc23_c3_svm_per_subject/proba '
-   f'--published-dir results_ensemble_v2/proba --out results_kc23_c3_ensemble_proba '
+   f'--published-dir results_ensemble_v2/proba_aug_chandrop --out results_kc23_c3_ensemble_proba '
    f'&& {PY} ensemble_v2_combine.py --proba-dir results_kc23_c3_ensemble_proba --out results_kc23_c3_ensemble',
    "results_kc23_c3_ensemble", depends_on=tuple(c3_ids), gate_script="kc23_c3_tuning_stats.py",
    expected_outputs=f"ensemble_v2_subjectwise.csv|{SIAT_N}")
@@ -654,7 +706,8 @@ for feat in ["tdpsd54", "rich126"]:
                 eo = EO_LDA_SIAT
             else:
                 cmd = (f'{PY} train_classical_loso.py --features features_out/kc23_{feat}_features.npz '
-                      f'--meta {META_250_FEAT} --models {model} --norm-mode {norm} --out {out} --resume')
+                      f'--meta {META_250_FEAT} --models {model} --norm-mode {norm} --grid extended --search grid '
+                      f'--n-jobs 1 --out {out} --resume')     # plan C4.3: SVM-X, the KC-C3 grid (was the default grid)
                 eo = EO_NESTED_LOSO_SIAT
             cpu(f"c4_{feat}_{model.lower()}_{norm}", "C4", None, cmd, out,
                depends_on=("c4_extract",), gate_script=gate, expected_outputs=eo)
@@ -688,19 +741,25 @@ for dataset, feat, metaf, tag, time_units in [
            out, depends_on=depends, gate_script=gate, expected_outputs=f"b8_*_subjectwise.csv|{n_subj}")
         this_dataset_ids.append(jid)
         return jid
-    c5_job(f"c5_{dataset}_p50", "p50", "--scheme pooled_random --cv-unit per_subject")
-    c5_job(f"c5_{dataset}_p0", "p0", "--scheme pooled_random_nonoverlap --cv-unit per_subject")
+    # Plan C5.3: P50, P0, B-g and I-g are the POOLED cv-unit (the subject-inclusive construction of the published SD
+    # figures); W-B1 is the ONE per_subject arm ("naming control: a true per-subject model"). Every arm used to be
+    # per_subject, which made W-B1 identical to B-1 (conformance pass, 26 Sept 2026; no C5 data existed).
+    c5_job(f"c5_{dataset}_p50", "p50", "--scheme pooled_random --cv-unit pooled")
+    c5_job(f"c5_{dataset}_p0", "p0", "--scheme pooled_random_nonoverlap --cv-unit pooled")
     for g in [1, 2, 4, 8, 16]:
-        c5_job(f"c5_{dataset}_b{g}", f"b{g}", f"--scheme blocked --guard-windows {g} --cv-unit per_subject")
+        c5_job(f"c5_{dataset}_b{g}", f"b{g}", f"--scheme blocked --guard-windows {g} --cv-unit pooled")
     for g in [1, 4, 16]:
         c5_job(f"c5_{dataset}_i{g}", f"i{g}",
-              f"--scheme interleaved --n-chunks 20 --guard-windows {g} --cv-unit per_subject")
-    jid = c5_job(f"c5_{dataset}_wb1", "wb1", "--scheme blocked --guard-windows 1 --cv-unit per_subject",
-                depends=tuple(this_dataset_ids), gate="kc23_c5_leak_stats.py")
-    # both datasets gate now -- SIAT's own plateau g* was never computed before (only enabl3s
-    # fired), yet the SimpleEMGCNN row below needs SIAT's g*. Gated on ALL of this dataset's own
-    # jobs finishing first (not just code_c5_inertness), so it can't fire before its siblings do.
+              f"--scheme interleaved --n-chunks 20 --guard-windows {g} --cv-unit pooled")
+    jid = c5_job(f"c5_{dataset}_wb1", "wb1", "--scheme blocked --guard-windows 1 --cv-unit per_subject")
     c5_ids.append(jid)
+    # The verdict is its own light pseudo-row (the gate reads every sibling arm and writes results_kc23_c5_leak_<ds>/
+    # C5_VERDICT.md, which the queue then checks for a LETTER line). It used to hang off the W-B1 row, whose own
+    # expected output is a b8 csv, so a gate that wrote no letter was never noticed.
+    cpu(f"c5_{dataset}_verdict", "C5", None,
+       f'{PY} kc23_c5_leak_stats.py --out {root}', root, depends_on=tuple(this_dataset_ids),
+       gate_script="kc23_c5_leak_stats.py", expected_outputs="C5_VERDICT.md|LETTER")
+    c5_ids.append(f"c5_{dataset}_verdict")
 
 # b8_cnn_sd.py gained --scheme/--guard-windows/--n-chunks in commit 7e1be9a (inertness-proven on
 # CPU); P50/P0 don't depend on the plateau guard and are runnable now. B/I at "the plateau guard"
@@ -725,7 +784,7 @@ cpu("c5_simplecnn_sd_stage2_placeholder", "C5-Stage2", None,
    "known only after c5_siat_wb1's gate (kc23_c5_leak_stats.py) has run. Run kc23_c5_cnn_job_gen.py "
    "once results_kc23_c5_leak_siat/C5_decomposition.csv exists, to append the real "
    "c5_simplecnn_sd_b<g*>/c5_simplecnn_sd_i<g*> GPU rows (own out_dir: results_kc23_c5_simplecnn_siat).",
-   "results_kc23_c5_simplecnn_siat", depends_on=("c5_siat_wb1",))
+   "results_kc23_c5_simplecnn_siat", depends_on=("c5_siat_verdict",))
 
 # ============================================================================
 # C-e (Phase 2-5, CPU): KC-C6 alignment ladder on ENABL3S
@@ -734,8 +793,16 @@ cpu("c6_ladder_enabl3s", "C6", None,
    'set "LADDER_FEAT=features_out_ext/freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_features_ext.npz" && '
    'set "LADDER_META=features_out_ext/freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_features_meta.csv" && '
    f'{PY} run_alignment_ladder_loso.py --rungs 3,0,1,2,4,4lw,4o --out results_kc23_c6_ladder_enabl3s '
-   '--no-gate --resume', "results_kc23_c6_ladder_enabl3s", depends_on=tuple(c2_ids),
-   gate_script="kc23_c6_ladder_stats.py", expected_outputs=f"ladder_loso_3_SVM_subjectwise.csv|{ENABL3S_N}")
+   '--no-gate --resume', "results_kc23_c6_ladder_enabl3s", depends_on=tuple(c2_ids), gate_script="",
+   expected_outputs=f"ladder_loso_3_SVM_subjectwise.csv|{ENABL3S_N}")
+# C6 geometry rows (MMD, W1, the three probes pooled and within-movement, silhouette) on ENABL3S through the C2 environment
+# override, then the C6 gate (R1 needs the centering fraction of the probe drop).
+C6_FEAT = "features_out_ext/freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_features_ext.npz"
+C6_META = "features_out_ext/freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w250_ov50_conf60_features_meta.csv"
+cpu("c6_geometry", "C6", None,
+   f'{PY} kc23_c6_geometry.py --out results_kc23_c6_ladder_enabl3s --feat {C6_FEAT} --meta {C6_META} '
+   f'--rungs 3,0,1,2,4,4lw,4o --resume', "results_kc23_c6_ladder_enabl3s", depends_on=("c6_ladder_enabl3s",),
+   gate_script="kc23_c6_ladder_stats.py", expected_outputs="ladder_geometry.csv|EXISTS")
 
 
 # LIGHT rows (2026-09-25): read-only aggregators, gates and verdict builders, single-threaded, seconds to a minute or
@@ -745,6 +812,7 @@ cpu("c6_ladder_enabl3s", "C6", None,
 LIGHT_JOB_IDS = {
     "d0_smoke_gate", "code_c2_inertness", "code_c3_inertness", "code_c5_inertness",   # instant checkpoint checks
     "d1_reproduction_check", "d1_full_aggregate", "d2_reliance", "d5_stats", "s1_gate",
+    "c5_siat_verdict", "c5_enabl3s_verdict", "s2b_window_trade", "s3_benchmark", "d3_stats", "d4_stats",
     "d6_sanity_check", "d6_manipulation_check", "s3_inventory", "s2_transition_table", "s2_transitions",
 }
 

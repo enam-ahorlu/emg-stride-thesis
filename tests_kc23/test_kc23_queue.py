@@ -320,3 +320,16 @@ def test_pick_next_does_not_falsely_deadlock_after_a_resume(monkeypatch, tmp_pat
     assert remaining == [j3]
     runnable = [j for j in remaining if j.stage not in set() and q.deps_satisfied(j, by_id, set())]
     assert runnable == [j3], "j3 must be runnable once both its deps are done/skipped(complete)"
+
+
+def test_status_notes_survive_status_regeneration(tmp_path, monkeypatch):
+    import kc23_queue as q
+    monkeypatch.setattr(q, "STATUS_MD", tmp_path / "KC23_STATUS.md")
+    monkeypatch.setattr(q, "STATUS_NOTES_MD", tmp_path / "KC23_STATUS_NOTES.md")
+    q.write_status([], [], set(), None, None)
+    assert "Notes" not in (tmp_path / "KC23_STATUS.md").read_text()
+    (tmp_path / "KC23_STATUS_NOTES.md").write_text("Commit abc1234: conformance.\n", encoding="utf-8")
+    q.write_status([], [], set(), None, None)
+    q.write_status([], [], set(), None, None)          # regenerated twice: the note is there once, not lost and not doubled
+    text = (tmp_path / "KC23_STATUS.md").read_text()
+    assert text.count("Commit abc1234: conformance.") == 1 and "preserved across regenerations" in text

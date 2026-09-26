@@ -45,7 +45,7 @@ FAMILY_SPECS = {
         "command": lambda lam, seed, out: (
             f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
             f'--augmentation chandrop --adv-lambda {lam} --adv-mode marginal --epochs 40 --batch 256 '
-            f'--seed {seed} --out {out} --resume'),
+            f'--instrument {out}/instr --seed {seed} --out {out} --resume'),
     },
     "sfc": {
         "knobs": [0.1, 1, 10, 100, 1000],
@@ -54,7 +54,7 @@ FAMILY_SPECS = {
         "command": lambda w, seed, out: (
             f'{PY} run_deep_coral_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
             f'--augmentation chandrop --coral-lambda {w} --coral-normalize l2 --batch 256 --seed {seed} '
-            f'--out {out} --resume'),
+            f'--instrument {out}/instr --out {out} --resume'),
     },
     "advps": {
         "knobs": [0.1, 1, 10],
@@ -63,9 +63,10 @@ FAMILY_SPECS = {
         "command": lambda lam, seed, out: (
             f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
             f'--norm-mode per_subject --augmentation chandrop --adv-lambda {lam} --adv-mode marginal '
-            f'--epochs 40 --batch 256 --seed {seed} --out {out} --resume'),
+            f'--epochs 40 --batch 256 --seed {seed} --instrument {out}/instr --out {out} --resume'),
     },
 }
+EO = {"adv_marginal": "adv_subjectwise.csv|40", "sfc": "deep_coral_subjectwise.csv|40", "advps": "adv_subjectwise.csv|40"}
 STAGE2_SEEDS = [7, 123]
 
 
@@ -99,15 +100,26 @@ def build_stage2_rows(families: dict[str, str]) -> list[dict]:
                 out = spec["out_dir"](knob, seed)
                 cmd = spec["command"](knob, seed, out)
                 rows.append({"job_id": jid, "stage": "D6", "seed": str(seed), "command": cmd,
-                            "out_dir": out, "depends_on": ";".join(STAGE1_DEPENDS), "gate_script": ""})
+                            "out_dir": out, "depends_on": ";".join(STAGE1_DEPENDS), "gate_script": "",
+                            "expected_outputs": EO[family]})
         print(f"[d6-stage2-gen] {family} ({letter}): {len(spec['knobs'])} knobs x "
               f"{len(STAGE2_SEEDS)} seeds appended", flush=True)
     return rows
 
 
+def outcome_row(rows: list[dict], gates_csv: str) -> dict:
+    """The D6 outcome gate as a light pseudo-row: aggregates the seeds 42/7/123 arms of every passing family
+    (kc23_d6_aggregate.py --require outcome --gates ...) and the gate writes D6_VERDICT.md, which the queue then checks
+    for a letter. It waits for every Stage-2 row."""
+    return {"job_id": "d6_outcome_check", "stage": "D6-OUTCOME", "seed": "",
+            "command": f'{PY} kc23_d6_aggregate.py --root . --out results_kc23_d6_outcome_check --require outcome --gates {gates_csv}',
+            "out_dir": "results_kc23_d6_outcome_check", "depends_on": ";".join(r["job_id"] for r in rows),
+            "gate_script": "kc23_d6_stats.py", "expected_outputs": "*_VERDICT.md|LETTER", "light": "1"}
+
+
 def append_rows(gpu_csv: Path, rows: list[dict]) -> int:
     existing_ids = set()
-    fieldnames = ["job_id", "stage", "seed", "command", "out_dir", "depends_on", "gate_script"]
+    fieldnames = ["job_id", "stage", "seed", "command", "out_dir", "depends_on", "gate_script", "expected_outputs", "light"]
     if gpu_csv.exists():
         with open(gpu_csv, newline="", encoding="utf-8") as f:
             for r in csv.DictReader(f):
@@ -138,6 +150,7 @@ def main():
         print("[d6-stage2-gen] no family passed (G-PASS/G-WEAK) -- nothing to append")
         return 0
     rows = build_stage2_rows(families)
+    rows.append(outcome_row(rows, args.gates_csv))
     if args.dry_run:
         print(f"[d6-stage2-gen] --dry-run: would append {len(rows)} row(s), nothing written")
         return 0

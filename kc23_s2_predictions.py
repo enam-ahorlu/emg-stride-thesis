@@ -49,11 +49,20 @@ MOVEMENT_TO_MODE_RAW = {"WAK": 1, "UPS": 4, "DNS": 5, "STDUP": -1}  # MODE_LW/SA
 CONDITIONS = ["transductive", "causal100", "causal_balanced25"]
 
 
-def load_common(root: Path):
+# The S2b (400 ms) run is this same pipeline on the 400 ms circuit-meta windows: every path below has the 250 ms value as its
+# default, so a call without SPEC is byte-for-byte the S2.3 job.
+SPEC_250 = {"circuitmeta_dir": CIRCUITMETA_DIR, "tag": CIRCUITMETA_TAG, "feat": FEAT_ENABL3S, "meta_feat": META_ENABL3S_FEAT}
+SPEC_400 = {"circuitmeta_dir": "results_kc23_s2b_adapter_400", "tag": "ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b",
+            "feat": "results_kc23_s2b_features/freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_features_ext.npz",
+            "meta_feat": "results_kc23_s2b_features/freq_windows_ENABL3S_WAK_UPS_DNS_STDUP_w400_ov50_conf60_kc23s2b_features_meta.csv"}
+
+
+def load_common(root: Path, spec: dict | None = None):
+    spec = spec or SPEC_250
     from train_classical_loso import load_features_npz, encode_labels
-    X_feat = load_features_npz(root / FEAT_ENABL3S).astype(np.float64)
-    meta_feat = pd.read_csv(root / META_ENABL3S_FEAT)
-    meta_cm = pd.read_csv(root / CIRCUITMETA_DIR / f"windows_{CIRCUITMETA_TAG}_meta.csv")
+    X_feat = load_features_npz(root / spec["feat"]).astype(np.float64)
+    meta_feat = pd.read_csv(root / spec["meta_feat"])
+    meta_cm = pd.read_csv(root / spec["circuitmeta_dir"] / f"windows_{spec['tag']}_meta.csv")
     if len(meta_feat) != len(meta_cm) or not (meta_feat["subject"].to_numpy() == meta_cm["subject"].to_numpy()).all():
         raise ValueError("features_ext and circuit-meta window sets are not row-aligned -- "
                          "re-check both were built with the same adapter tag/params")
@@ -63,7 +72,7 @@ def load_common(root: Path):
     t_end_s = (meta_cm["t_start_circuit"].to_numpy() + meta_cm["win_samples"].to_numpy()) / meta_cm["fs"].to_numpy()
     fs = meta_cm["fs"].to_numpy()
     mode_raw = meta_cm["movement"].map(MOVEMENT_TO_MODE_RAW).to_numpy()
-    npz = np.load(root / CIRCUITMETA_DIR / f"windows_{CIRCUITMETA_TAG}.npz")
+    npz = np.load(root / spec["circuitmeta_dir"] / f"windows_{spec['tag']}.npz")
     X_env = npz["X_env"].astype(np.float32)
     return X_feat, X_env, y, subjects, circuits, t_end_s, fs, mode_raw
 
@@ -153,11 +162,11 @@ def run_subject(heldout, X_feat, X_env, y, subjects, circuits, t_end_s, fs, mode
     return rows_by_cond
 
 
-def run(out_dir: Path, root: Path, subjects_filter: set | None = None) -> int:
+def run(out_dir: Path, root: Path, subjects_filter: set | None = None, spec: dict | None = None) -> int:
     import torch
     out_dir.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    X_feat, X_env, y, subjects, circuits, t_end_s, fs, mode_raw = load_common(root)
+    X_feat, X_env, y, subjects, circuits, t_end_s, fs, mode_raw = load_common(root, spec)
     subs_u = sorted(np.unique(subjects).tolist())
     if subjects_filter:
         subs_u = [s for s in subs_u if s in subjects_filter]
@@ -188,9 +197,11 @@ def main():
     ap.add_argument("--root", default=".")
     ap.add_argument("--out", default="results_kc23_s2_predictions")
     ap.add_argument("--subjects", default=None)
+    ap.add_argument("--window-ms", type=int, default=250, choices=[250, 400],
+                    help="250 (default, the S2.3 job) or 400 (S2b, the window trade)")
     args = ap.parse_args()
     subj_filter = {int(s) for s in args.subjects.split(",")} if args.subjects else None
-    sys.exit(run(Path(args.out), Path(args.root), subj_filter))
+    sys.exit(run(Path(args.out), Path(args.root), subj_filter, SPEC_400 if args.window_ms == 400 else SPEC_250))
 
 
 if __name__ == "__main__":

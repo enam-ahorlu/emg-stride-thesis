@@ -72,3 +72,18 @@ def test_append_rows_idempotent(tmp_path):
 
 def test_family_specs_cover_every_stage1_family():
     assert set(FAMILY_SPECS) == {"adv_marginal", "sfc", "advps"}
+
+
+def test_stage2_rows_are_instrumented_and_declare_their_outputs():
+    import kc23_d6_stage2_job_gen as g
+    rows = g.build_stage2_rows({"adv_marginal": "G-PASS", "sfc": "G-WEAK", "advps": "G-PASS"})
+    assert rows and all("--instrument" in r["command"] and r["expected_outputs"].endswith("|40") for r in rows)
+
+
+def test_the_outcome_pseudo_row_waits_for_every_stage2_row_and_is_gated_on_a_letter():
+    import kc23_d6_stage2_job_gen as g
+    rows = g.build_stage2_rows({"sfc": "G-PASS"})
+    o = g.outcome_row(rows, "results_kc23_d6_manipulation_check/D6_gates.csv")
+    assert set(o["depends_on"].split(";")) == {r["job_id"] for r in rows}
+    assert "--require outcome" in o["command"] and o["gate_script"] == "kc23_d6_stats.py"
+    assert o["expected_outputs"] == "*_VERDICT.md|LETTER" and "outcome" in o["out_dir"]

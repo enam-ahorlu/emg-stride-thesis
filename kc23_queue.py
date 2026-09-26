@@ -86,6 +86,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 LOG_DIR = ROOT / "_run_logs" / "kc23"
 STATUS_MD = ROOT / "KC23_STATUS.md"
+STATUS_NOTES_MD = ROOT / "KC23_STATUS_NOTES.md"   # hand-written, never regenerated; appended to KC23_STATUS.md on every write
 HALT_MD = ROOT / "KC23_HALT.md"
 
 PYTHON = str(ROOT / ".venv" / "Scripts" / "python.exe")
@@ -289,6 +290,11 @@ def write_status(gpu_jobs, cpu_jobs, halted_stages, gpu_running, cpu_running):
             lines.append(f"| {j.job_id} | {j.stage} | {j.seed} | {j.status} | "
                          f"{j.wallclock if j.wallclock is not None else ''} | {gate_disp} |\n")
         lines.append("\n")
+    # KC23_STATUS.md is rewritten from scratch on every scheduler tick, so anything written into it by hand is lost.
+    # Notes that must survive (commit hashes, decisions) live in KC23_STATUS_NOTES.md and are appended here verbatim.
+    if STATUS_NOTES_MD.exists():
+        lines.append("## Notes (from KC23_STATUS_NOTES.md, preserved across regenerations)\n\n")
+        lines.append(STATUS_NOTES_MD.read_text(encoding="utf-8").rstrip() + "\n")
     STATUS_MD.write_text("".join(lines), encoding="utf-8")
 
 

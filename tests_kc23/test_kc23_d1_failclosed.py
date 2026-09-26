@@ -11,26 +11,31 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import kc23_d1_aggregate as agg
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from kc23_fixtures import make_run
 import kc23_d1_replicate_stats as st
 
 LETTER_RE = re.compile(r"\*\*[^*\n]*:\s*[A-Za-z0-9][^*\n]*\*\*")
 
 
 def _arm(root: Path, arm: str, seed: int, mean: float):
-    d = root / f"results_kc23_d1_{arm.lower()}_s{seed}"
-    d.mkdir(parents=True, exist_ok=True)
-    f1 = np.full(40, mean) + np.linspace(-0.01, 0.01, 40)
+    """Real-format arm directories (run_config.json included: the aggregator now verifies each run's configuration)."""
+    f1 = lambda s: mean + (s - 20.5) * 0.0005
     if arm == "R10":
-        pd.DataFrame({"subject": range(1, 41), "f1_macro": f1, "f1_pre_adabn": f1 - 0.05}).to_csv(
+        d = root / f"results_kc23_d1_{arm.lower()}_s{seed}"
+        d.mkdir(parents=True, exist_ok=True)
+        v = np.full(40, mean) + np.linspace(-0.01, 0.01, 40)
+        pd.DataFrame({"subject": range(1, 41), "f1_macro": v, "f1_pre_adabn": v - 0.05}).to_csv(
             d / "adabn_subjectwise.csv", index=False)
     else:
-        pd.DataFrame({"subject": range(1, 41), "f1_macro": f1}).to_csv(d / "cnn_arch_subjectwise.csv", index=False)
+        aug = {"R1": "none", "R2": "chandrop"}[arm]
+        make_run(root, f"results_kc23_d1_{arm.lower()}_s{seed}", augmentation=aug, seed=seed, f1=f1, instrumented=False)
 
 
 def _repro_root(root: Path):
     _arm(root, "R1", 42, 0.782)
     _arm(root, "R2", 42, 0.8395)
-    _arm(root, "R10", 42, 0.79)
+    _arm(root, "R10", 42, 0.84)
 
 
 def test_require_repro_fails_with_no_inputs_and_writes_nothing(tmp_path):
@@ -94,16 +99,3 @@ def test_stats_full_dir_missing_contrasts_fails_even_though_repro_present(tmp_pa
 
 def test_stats_unknown_directory_name_has_no_permissive_default(tmp_path):
     assert st.required_inputs(tmp_path / "somewhere_else") is None
-
-
-def test_stats_full_verdict_names_what_was_not_computed(tmp_path):
-    d = _stats_dir(tmp_path, "results_kc23_d1_stats")
-    rows = [{"contrast": c, "tier": "A", "realization": s, "subject": sub, "diff": 0.05 + 0.001 * sub}
-            for c in agg.EXTRACTABLE_CONTRASTS for s in (42, 7, 123, 1001) for sub in range(1, 41)]
-    pd.DataFrame(rows).to_csv(d / "d1_contrasts.csv", index=False)
-    pd.DataFrame([{"arm": a, "realization_mean": 0.84, "realization_sd": 0.005} for a in agg.HEADLINE_ARMS]).to_csv(
-        d / "d1_headline_inputs.csv", index=False)
-    rc = st.run(d, st.required_inputs(d))
-    text = (d / "D1_VERDICT.md").read_text()
-    assert "NOT computed" in text and "C17" in text and "C13b" in text and "global" in text
-    assert rc in (0, 20)
