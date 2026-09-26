@@ -83,3 +83,6 @@ features_out_ext/checkpoints/
 # Over GitHub's 100 MB per-file limit. The derived feature matrices and the
 # window metadata beside them ARE tracked, so the experiment re-runs from them.
 features_out_filter/windows_*.npz
+
+# separate environment for the D1 MixedLM secondary model only (statsmodels); .venv stays frozen for reproduction
+.venv_stats/

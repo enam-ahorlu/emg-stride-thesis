@@ -32,7 +32,7 @@ def f1_of(mean, seed_shift=0.0, k=1.0):
     return lambda s: mean + seed_shift + d[s]
 
 
-SEED_SHIFT = {42: 0.0, 7: 0.002, 123: -0.002, 1001: 0.001}
+SEED_SHIFT = {42: 0.0, 7: 0.002, 123: -0.002, 1001: 0.001, 2026: -0.001}
 BASE = {"R1": 0.782, "R2": 0.8395, "R3": 0.848, "R4": 0.760, "R5": 0.825, "R6": 0.750, "R7": 0.812, "R8": 0.760,
         "R9": 0.760, "R10": 0.818, "R10pre": 0.772, "R11": 0.826, "R12": 0.860, "R13": 0.835, "R14": 0.837, "R15": 0.815,
         "R16": 0.849, "R17": 0.838}
@@ -113,16 +113,18 @@ def test_every_registered_contrast_is_produced(agg_out):
     assert set(agg.NULL_CONTRASTS) == {"C15", "C16a", "C16b"} and "C16c" in agg.REGISTERED_BH_FAMILY
 
 
-def test_realizations_tier_a_tier_b_and_the_published_fifth(agg_out):
+def test_realizations_tier_a_five_seeds_tier_b_three_and_published_only_as_a_sensitivity_row(agg_out):
     df = pd.read_csv(agg_out / "d1_contrasts.csv")
     real = lambda c: set(df[df.contrast == c].realization.astype(str))
-    assert real("C1") == {"42", "7", "123", "1001", "published"}          # R2 and R1 both have a published run
-    assert real("C9") == {"42", "7", "123", "1001", "published"}          # R2 and R10(post)
-    assert real("C14") == {"42", "7", "123", "1001", "published"}          # R12 and R2
-    assert real("C13") == {"42", "7", "123", "1001", "published"}          # ensemble and R2
-    assert real("C2") == {"42", "7", "123", "1001"}                        # R3 has no mapped published run
+    five = {"42", "7", "123", "1001", "2026"}
+    assert agg.TIER_A_SEEDS == [42, 7, 123, 1001, 2026] and agg.TIER_B_SEEDS == [42, 7, 123]
+    assert real("C1") == five | {"published"}          # R2 and R1 both have a published run: the extra row is the sensitivity
+    assert real("C9") == five | {"published"}
+    assert real("C14") == five | {"published"}
+    assert real("C13") == five | {"published"}
+    assert real("C2") == five                          # R3 has no mapped published run
     assert real("C3") == {"42", "7", "123"} and set(df[df.contrast == "C3"].tier) == {"B"}
-    assert real("C12") == {"42", "7", "123", "1001", "published"}
+    assert real("C12") == five | {"published"}
     assert set(df[df.contrast == "C16c"].tier) == {"B"}                    # R15 is Tier B
 
 
@@ -150,7 +152,7 @@ def test_headline_arms_ensemble_and_global(agg_out):
 
 def test_c17_factors_are_per_realization(agg_out):
     f = pd.read_csv(agg_out / "d1_c17_factors.csv")
-    assert set(f.comparison) == {"R2 against R1", "R5 against R4"} and len(f) == 8
+    assert set(f.comparison) == {"R2 against R1", "R5 against R4"} and len(f) == 10
     assert f["factor"].between(1.9, 2.1).all()
 
 
@@ -185,11 +187,20 @@ def test_bh_runs_over_the_fixed_registered_family_of_17(agg_out):
     assert res.loc[list(agg.NULL_CONTRASTS), "p_bh"].isna().all()       # nulls are not in the difference-test family
 
 
-def test_sensitivity_without_the_published_run_is_reported(agg_out):
+def test_the_published_run_is_a_sensitivity_never_the_fifth_realization(agg_out):
     res = pd.read_csv(agg_out / "D1_contrasts_verdict.csv").set_index("contrast")
-    assert res.loc["C1", "n_realizations"] == 5 and res.loc["C1", "n_realizations_without_published"] == 4
-    assert res.loc["C2", "n_realizations"] == res.loc["C2", "n_realizations_without_published"] == 4
-    assert "Sensitivity (published run excluded)" in (agg_out / "D1_VERDICT.md").read_text()
+    assert res.loc["C1", "n_realizations"] == 5 and res.loc["C1", "n_realizations_with_published"] == 6
+    assert res.loc["C2", "n_realizations"] == res.loc["C2", "n_realizations_with_published"] == 5
+    assert res.loc["C1", "n_seeds_same_sign"] <= 5
+    assert "Sensitivity (the published run added as an extra realization)" in (agg_out / "D1_VERDICT.md").read_text()
+
+
+def test_the_letters_come_from_the_seeds_alone(agg_out):
+    df = pd.read_csv(agg_out / "d1_contrasts.csv")
+    seeds_only = st.contrast_table(df[df["realization"].astype(str) != "published"], include_published=True)
+    res = pd.read_csv(agg_out / "D1_contrasts_verdict.csv").set_index("contrast")
+    for c in ("C1", "C12", "C13", "C14"):
+        assert res.loc[c, "letter"] == seeds_only[c]["letter"]
 
 
 def test_run_variance_deliverable(agg_out):

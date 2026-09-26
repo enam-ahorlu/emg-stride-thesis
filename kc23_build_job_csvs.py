@@ -59,7 +59,7 @@ FEAT_250_BASE = "features_out/windows_WAK_UPS_DNS_STDUP_v1_w250_ov50_conf60_AorR
 FEAT_400_FREQ = "features_out/freq_windows_WAK_UPS_DNS_STDUP_v1_w400_ov50_conf60_AorR_features_ext.npz"
 META_400_FEAT = META_400
 
-D1_TIER_A_SEEDS = [42, 7, 123, 1001]
+D1_TIER_A_SEEDS = [42, 7, 123, 1001, 2026]   # 2026 added 26 Sept (Enam): 5 realizations from one code era
 D1_TIER_B_SEEDS = [42, 7, 123]
 D3_D4_SEEDS = [42, 7, 123]
 D5_SEEDS = [42, 7, 123, 1001, 2026]
@@ -260,11 +260,11 @@ cpu("d5_stats", "D5-STATS", None,
    expected_outputs="D5_VERDICT.md|LETTER")
 
 # ============================================================================
-# #9 (Phase 3, GPU): KC-D1 Tier A, seeds 7/123/1001
+# #9 (Phase 3, GPU): KC-D1 Tier A, seeds 7/123/1001/2026 (2026 is queued after the others: it is the last loop pass)
 # ============================================================================
 d1_arms_no89 = ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r10", "r11", "r12"]  # r8/r9 use train_cnn_loso.py
 d1_all_seed_ids = list(d1_s42_ids)
-for seed in [7, 123, 1001]:
+for seed in [7, 123, 1001, 2026]:
     for arm in d1_arms_no89:
         base = {"r1": ("resnet_se", "none", NPZ_250, META_250), "r2": ("resnet_se", "chandrop", NPZ_250, META_250),
                "r3": ("resnet_se", "gainjitter", NPZ_250, META_250), "r4": ("resnet", "none", NPZ_250, META_250),
@@ -362,7 +362,7 @@ for lam in adv_lambdas:
     gpu(jid, "D6", 42,
        f'{PY} run_adv_align_loso.py --npz {NPZ_250} --meta {META_250} --arch resnet_se '
        f'--augmentation chandrop --adv-lambda {lam} --adv-mode marginal --epochs 40 --batch 256 '
-       f'--instrument {instr(out)} --seed 42 --out {out} --resume', out,
+       f'--instrument {instr(out)} --within-class-probe --seed 42 --out {out} --resume', out,
        depends_on=("d0_smoke_gate", "d1_r2_s42"), expected_outputs=EO_ADV_SIAT)
     d6_stage1_ids.append(jid)
 # The D6.4 sanity gate only needs the lambda_max=0 arm ("after Stage 1, ADV at lambda_max=0" --
@@ -402,9 +402,9 @@ cpu("d6_manipulation_check", "D6-MANIP", None,
 # ADV family above has run and the collapse point is found. One placeholder,
 # same staging principle as 11c below.
 cpu("d6_advc_placeholder", "D6", 42,
-   "# PLACEHOLDER: ADV-C's lambda_max grid is the ADV collapse point (Section 6.2), "
-   "determined only after the ADV family (d6_adv_marginal_l*_s42) has run. Generate its "
-   "real job rows with a follow-up script once the collapse point is known.",
+   "# PLACEHOLDER: ADV-C's lambda_max is the ADV collapse point (plan 6.2), known only after ADV has run at seeds 42, 7 and 123. "
+   "Run kc23_d6_advc_job_gen.py then (it appends the ADV-C GPU rows and the d6_mechanism_check / d6_secondary_check light rows); "
+   "kc23_d6_cdan_job_gen.py only if ADV-C lands C-M1; kc23_d6_retry_job_gen.py for any arm that diverged (one retry, --grad-clip 5.0).",
    "results_kc23_d6_advc_s42", depends_on=tuple(j for j in d6_stage1_ids if j.startswith("d6_adv_marginal")))
 
 # ============================================================================
@@ -459,7 +459,7 @@ for seed in D1_TIER_B_SEEDS:
 # The soft vote and stacking of the seed-specific ResNet-SE+CD with the published SVM, RF and CNN (C13, C13b): the aggregator
 # reads results_kc23_d1_ensemble_s<seed>/ensemble_s<seed>.csv, which nothing built before kc23_d1_ensemble.py.
 d1_ensemble_ids = []
-for seed in [42, 7, 123, 1001]:
+for seed in D1_TIER_A_SEEDS:
     out = f"results_kc23_d1_ensemble_s{seed}"
     cpu(f"d1_ensemble_s{seed}", "D1-ENS", seed,
        f'{PY} kc23_d1_ensemble.py --root . --seed {seed} --out {out}', out, depends_on=(f"d1_r2_s{seed}",),
@@ -741,18 +741,15 @@ for dataset, feat, metaf, tag, time_units in [
            out, depends_on=depends, gate_script=gate, expected_outputs=f"b8_*_subjectwise.csv|{n_subj}")
         this_dataset_ids.append(jid)
         return jid
-    # Plan C5.3: P50, P0, B-g and I-g are the POOLED cv-unit (the subject-inclusive construction of the published SD
-    # figures); W-B1 is the ONE per_subject arm ("naming control: a true per-subject model"). Every arm used to be
-    # per_subject, which made W-B1 identical to B-1 (conformance pass, 26 Sept 2026; no C5 data existed).
-    c5_job(f"c5_{dataset}_p50", "p50", "--scheme pooled_random --cv-unit pooled")
-    c5_job(f"c5_{dataset}_p0", "p0", "--scheme pooled_random_nonoverlap --cv-unit pooled")
+    # Enam's ruling of 26 Sept (pre-data): the published Table 4.2 classical SD figures are PER-SUBJECT models (eval_sd loops
+    # over subjects), so per_subject is the primary cv-unit for every arm; W-B1 and the pooled arms are dropped.
+    c5_job(f"c5_{dataset}_p50", "p50", "--scheme pooled_random --cv-unit per_subject")
+    c5_job(f"c5_{dataset}_p0", "p0", "--scheme pooled_random_nonoverlap --cv-unit per_subject")
     for g in [1, 2, 4, 8, 16]:
-        c5_job(f"c5_{dataset}_b{g}", f"b{g}", f"--scheme blocked --guard-windows {g} --cv-unit pooled")
+        c5_job(f"c5_{dataset}_b{g}", f"b{g}", f"--scheme blocked --guard-windows {g} --cv-unit per_subject")
     for g in [1, 4, 16]:
         c5_job(f"c5_{dataset}_i{g}", f"i{g}",
-              f"--scheme interleaved --n-chunks 20 --guard-windows {g} --cv-unit pooled")
-    jid = c5_job(f"c5_{dataset}_wb1", "wb1", "--scheme blocked --guard-windows 1 --cv-unit per_subject")
-    c5_ids.append(jid)
+              f"--scheme interleaved --n-chunks 20 --guard-windows {g} --cv-unit per_subject")
     # The verdict is its own light pseudo-row (the gate reads every sibling arm and writes results_kc23_c5_leak_<ds>/
     # C5_VERDICT.md, which the queue then checks for a LETTER line). It used to hang off the W-B1 row, whose own
     # expected output is a b8 csv, so a gate that wrote no letter was never noticed.

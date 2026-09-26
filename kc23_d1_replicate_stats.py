@@ -42,10 +42,10 @@ is the analysis around them:
   - C16 is three comparisons: the two plateau pairs (C16a R13-R2, C16b R17-R2) are
     nulls (TOST) and the fall (C16c R15-R2) is a difference test. Before, all of
     C16 was treated as a null.
-  - Tier A uses the published seed-42 run as a fifth realization where every arm of
-    a contrast has one (kc23_d1_published_runs.csv). EVERY analysis is also reported
-    without it (the plan's sensitivity); the escalation rule uses the primary
-    analysis (with the published run), and a difference in letter is stated.
+  - Tier A has 5 realizations from the same code era (seeds 42, 7, 123, 1001, 2026; Enam's ruling of
+    26 September). The published runs (kc23_d1_published_runs.csv) are a SENSITIVITY analysis only: every
+    letter, the escalation rule and the headline gate use the seeds alone, and the with-published letters are
+    reported beside them with any difference stated.
   - the run-variance deliverable (SD of the 40-fold mean per arm, the pooled SD with
     its degrees of freedom and chi-square 95% interval, the per-fold SD distribution).
   - the secondary model (F1 ~ arm + (1|subject) + (1|seed), statsmodels MixedLM) is
@@ -221,30 +221,51 @@ def run_variance(af: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     return pd.DataFrame(rows), summ
 
 
+STATS_PYTHON = Path(__file__).resolve().parent / ".venv_stats" / "Scripts" / "python.exe"
+MIXEDLM_SCRIPT = Path(__file__).resolve().parent / "kc23_d1_mixedlm.py"
+
+
+def _mixedlm_in_stats_env(af: pd.DataFrame) -> tuple[str, pd.DataFrame | None]:
+    """statsmodels is NOT installed in .venv (frozen for reproduction); it lives in .venv_stats, used only for this model. The
+    fit runs in that interpreter on a CSV round trip. Anything that goes wrong is stated in the verdict, never silent."""
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="kc23_d1_mlm_") as tmp:
+        inp, outp = Path(tmp) / "af.csv", Path(tmp) / "mixedlm.csv"
+        af.to_csv(inp, index=False)
+        r = subprocess.run([str(STATS_PYTHON), str(MIXEDLM_SCRIPT), "--in", str(inp), "--out", str(outp)],
+                           capture_output=True, text=True, timeout=1800)
+        if r.returncode != 0 or not outp.exists():
+            return ("Secondary mixed model: NOT computed, the statsmodels environment (.venv_stats) failed "
+                    f"({(r.stderr or r.stdout).strip()[-200:]})."), None
+        res = pd.read_csv(outp)
+    ok = res[res["status"] == "ok"]
+    failed = res[res["status"] != "ok"]
+    msg = (f"Secondary mixed model (F1 ~ arm + (1|subject) + (1|seed)) fitted in .venv_stats ({r.stdout.strip().split(':')[0].split(']')[-1].strip() or 'statsmodels'}): "
+           f"{len(ok)} of {len(res)} two-arm contrasts; see D1_secondary_mixedlm.csv.")
+    if len(failed):
+        msg += " Not fitted: " + ", ".join(f"{x.contrast} ({x.status})" for x in failed.itertuples()) + "."
+    return msg, res
+
+
 def secondary_model(af: pd.DataFrame) -> tuple[str, pd.DataFrame | None]:
-    """D1.5 item 3: F1 ~ arm + (1|subject) + (1|seed) via statsmodels MixedLM, for the two-arm contrasts. Returns
-    (a sentence for the verdict, a table or None). If statsmodels is not importable the sentence says NOT computed."""
+    """D1.5 item 3: F1 ~ arm + (1|subject) + (1|seed) via statsmodels MixedLM, for the two-arm contrasts. Returns (a sentence for
+    the verdict, a table or None). In-process when statsmodels is importable; otherwise in the separate .venv_stats environment;
+    otherwise the sentence says NOT computed. The letters never depend on it (D1.5 items 1 and 2 carry the verdict)."""
     try:
-        import statsmodels.formula.api as smf
+        import statsmodels  # noqa: F401
     except Exception:
+        if STATS_PYTHON.exists():
+            return _mixedlm_in_stats_env(af)
         return ("Secondary mixed model (F1 ~ arm + (1|subject) + (1|seed)): NOT computed, statsmodels is not installed in "
-                "this environment. The letters do not depend on it (D1.5 items 1 and 2 carry the verdict)."), None
-    rows = []
-    d = af[af["realization"].astype(str) != "published"].copy()
-    d["seed"] = d["realization"].astype(str)
-    try:
-        for cid, (a, b) in TWO_ARM_CONTRASTS.items():
-            sub = d[d["arm"].isin([a, b])].copy()
-            sub["is_a"] = (sub["arm"] == a).astype(float)
-            sub["one"] = 1
-            md = smf.mixedlm("f1 ~ is_a", sub, groups=sub["one"],
-                             vc_formula={"subject": "0 + C(subject)", "seed": "0 + C(seed)"}).fit(reml=True)
-            ci = md.conf_int().loc["is_a"]
-            rows.append({"contrast": cid, "fixed_effect_pp": float(md.params["is_a"] * 100), "lo_pp": float(ci[0] * 100),
-                         "hi_pp": float(ci[1] * 100)})
-    except Exception as e:      # a failure of the SECONDARY model must not halt the stage; say so
-        return (f"Secondary mixed model: NOT computed, the fit failed ({type(e).__name__}: {e})."), None
-    return "Secondary mixed model (F1 ~ arm + (1|subject) + (1|seed)) fitted; see D1_secondary_mixedlm.csv.", pd.DataFrame(rows)
+                "this environment and .venv_stats does not exist. The letters do not depend on it (D1.5 items 1 and 2 "
+                "carry the verdict)."), None
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("kc23_d1_mixedlm", MIXEDLM_SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    res = mod.fit_all(af)
+    return ("Secondary mixed model (F1 ~ arm + (1|subject) + (1|seed)) fitted; see D1_secondary_mixedlm.csv."), res
 
 
 def required_inputs(out_dir: Path):
@@ -307,8 +328,8 @@ def run(out_dir: Path, require=None) -> int:
                 raise InputError(f"contrasts absent from d1_contrasts.csv: {gaps}")
             af = _read(out_dir / "d1_arm_subject_f1.csv")
             c17 = _read(out_dir / "d1_c17_factors.csv")
-            primary = contrast_table(df, include_published=True)
-            sensitivity = contrast_table(df, include_published=False)
+            primary = contrast_table(df, include_published=False)          # the seeds alone: the published run is never a realization
+            sensitivity = contrast_table(df, include_published=True)
         except InputError as e:
             return _no_outcome(out_dir, str(e))
 
@@ -319,8 +340,8 @@ def run(out_dir: Path, require=None) -> int:
             shown = "C16 plateau pair, null" if cid in ("C16a", "C16b") else ""
             verdict.append(f"- **{cid}: {label}**" if label != "descriptive" else f"- {cid} (descriptive, D-6a): stacking "
                            f"minus soft vote {p['mean_diff_pp']:+.2f} pt")
-            rows.append({"contrast": cid, "letter": label, "letter_without_published": s["letter"], "tier": p["tier"],
-                         "n_realizations": p["n_realizations"], "n_realizations_without_published": s["n_realizations"],
+            rows.append({"contrast": cid, "letter": label, "letter_with_published": s["letter"], "tier": p["tier"],
+                         "n_realizations": p["n_realizations"], "n_realizations_with_published": s["n_realizations"],
                          "mean_diff_pp": p["mean_diff_pp"], "dz": p["dz"], "bca_lo_pp": p["bca_lo_pp"],
                          "bca_hi_pp": p["bca_hi_pp"], "n_improved": p["n_improved"], "p_raw": p["p_raw"],
                          "p_bh": p.get("p_bh", float("nan")), "seed_mean_pp": p["seed_mean_pp"],
@@ -328,15 +349,15 @@ def run(out_dir: Path, require=None) -> int:
             print_gate_header(f"KC-D1 {cid}", label, "")
         res = pd.DataFrame(rows)
         res.to_csv(out_dir / "D1_contrasts_verdict.csv", index=False)
-        differing = res[(res["letter"] != res["letter_without_published"]) & (res["letter"] != "descriptive")]
+        differing = res[(res["letter"] != res["letter_with_published"]) & (res["letter"] != "descriptive")]
         if len(differing):
-            notes.append("Sensitivity (published run excluded) changes the letter for: " + ", ".join(
-                f"{r.contrast} ({r.letter} -> {r.letter_without_published})" for r in differing.itertuples()) + ".")
+            notes.append("Sensitivity (the published run added as an extra realization) changes the letter for: " + ", ".join(
+                f"{r.contrast} ({r.letter} -> {r.letter_with_published})" for r in differing.itertuples()) + ".")
         else:
-            notes.append("Sensitivity (published run excluded): no contrast changes letter.")
-        tables.append("| contrast | letter | without published | mean diff (pt) | dz | p | p BH | improved | seeds same sign |\n"
+            notes.append("Sensitivity (the published run added as an extra realization): no contrast changes letter.")
+        tables.append("| contrast | letter | with published (sensitivity) | mean diff (pt) | dz | p | p BH | improved | seeds same sign |\n"
                       "|---|---|---|---|---|---|---|---|---|\n" +
-                      "\n".join(f"| {r.contrast} | {r.letter} | {r.letter_without_published} | {r.mean_diff_pp:+.2f} | {r.dz:+.2f} | "
+                      "\n".join(f"| {r.contrast} | {r.letter} | {r.letter_with_published} | {r.mean_diff_pp:+.2f} | {r.dz:+.2f} | "
                                 f"{r.p_raw:.3g} | {'' if pd.isna(r.p_bh) else format(r.p_bh, '.3g')} | {r.n_improved}/40 | "
                                 f"{r.n_seeds_same_sign}/{r.n_realizations} |" for r in res.itertuples()))
         for critical in ("C1", "C12"):

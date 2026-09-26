@@ -20,11 +20,12 @@ the D1 verdict. Every registered contrast is now produced, with these definition
   C13b (decision D-6a, descriptive): stacking - soft vote
 and every diff is per subject, per realization, on the SAME seed for every arm in the contrast.
 
-Realizations (plan D1.2): Tier A = seeds 42, 7, 123, 1001 plus the PUBLISHED seed-42 run as a fifth "where one
-exists"; Tier B = seeds 42, 7, 123. A published run is used only for arms listed in kc23_d1_published_runs.csv,
-each checked against a number the plan itself quotes; a contrast gets the fifth realization only if EVERY arm in
-it has a published run. d1_contrasts.csv labels it realization = "published"; the stats report every analysis
-with and without it (the plan's sensitivity).
+Realizations (plan D1.2, Enam's ruling of 26 September): Tier A = seeds 42, 7, 123, 1001 and 2026, so every contrast has
+5 realizations from the same code era and "4 of 5" applies uniformly; Tier B = seeds 42, 7, 123. The PUBLISHED runs are a
+SENSITIVITY analysis only, never the fifth realization. A published run is used only for arms listed in
+kc23_d1_published_runs.csv, each checked against a number the plan itself quotes; a contrast gets a published row only if
+EVERY arm in it has one. d1_contrasts.csv labels those rows realization = "published"; kc23_d1_replicate_stats.py takes its
+letters from the seeds alone and reports the with-published version beside them.
 
 Headline inputs (D1.6): R2, the per-seed ensemble (soft vote), R12, and "global", the global-normalization
 ResNet-SE+CD baseline, taken as R10's pre-adaptation F1 per seed (Enam, 26 September 2026). The realization mean
@@ -46,7 +47,7 @@ from kc23_run_loader import check_config, load_f1, load_instr, N_SUBJECTS_SIAT, 
 
 ROOT = Path(__file__).resolve().parent
 N_SUBJECTS = N_SUBJECTS_SIAT
-TIER_A_SEEDS = [42, 7, 123, 1001]
+TIER_A_SEEDS = [42, 7, 123, 1001, 2026]
 TIER_B_SEEDS = [42, 7, 123]
 TIER_B_ARMS = {"R13", "R14", "R15", "R16", "R17"}
 PUBLISHED_SVM = 0.777      # C12: R2 - SVM (fixed, 77.7), plan D1.5

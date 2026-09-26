@@ -1,6 +1,6 @@
-"""kc23_c5_leak_stats.py: plateau rule, L1/L2/L3, the conformance additions (three models, pooled vs per_subject arms,
-L-OUT / L-NONE, every arm required) and the real-file layout (b8_<tag>_<scheme>_g<g>_<cv_unit>_subjectwise.csv, one wide
-column per model, each job in its own subdirectory)."""
+"""kc23_c5_leak_stats.py: plateau rule, L1/L2/L3, the conformance additions (three models, per-subject cv-unit for every arm
+per Enam's ruling of 26 Sept, L-OUT / L-NONE, every arm required) and the real-file layout
+(b8_<tag>_<scheme>_g<g>_<cv_unit>_subjectwise.csv, one wide column per model, each job in its own subdirectory)."""
 import re
 import sys
 from pathlib import Path
@@ -101,45 +101,45 @@ def _write_scheme_csv(search_root: Path, subdir: str, scheme: str, guard: float,
 
 def _tree(root: Path, p50=0.92, p0=0.80, i=0.79, b_base=0.78, models=("SVM", "RF", "LDA"), plateau_at_1=True):
     for pooled_scheme, sub, m in (("pooled_random", "p50", p50), ("pooled_random_nonoverlap", "p0", p0)):
-        _write_scheme_csv(root, sub, pooled_scheme, 1.0, "pooled", {mm: np.full(N, m) for mm in models})
+        _write_scheme_csv(root, sub, pooled_scheme, 1.0, "per_subject", {mm: np.full(N, m) for mm in models})
     for g in (1, 2, 4, 8, 16):
         v = b_base - (0.0005 * g if plateau_at_1 else 0.02 * g)
-        _write_scheme_csv(root, f"b{g}", "blocked", float(g), "pooled", {mm: np.full(N, v) for mm in models})
+        _write_scheme_csv(root, f"b{g}", "blocked", float(g), "per_subject", {mm: np.full(N, v) for mm in models})
     for g in (1, 4, 16):
-        _write_scheme_csv(root, f"i{g}", "interleaved", float(g), "pooled", {mm: np.full(N, i) for mm in models})
-    _write_scheme_csv(root, "wb1", "blocked", 1.0, "per_subject", {mm: np.full(N, b_base - 0.005) for mm in models})
+        _write_scheme_csv(root, f"i{g}", "interleaved", float(g), "per_subject", {mm: np.full(N, i) for mm in models})
     return root
 
 
-def test_find_scheme_file_separates_the_cv_units(tmp_path):
+def test_find_scheme_file_reads_the_per_subject_arm_and_ignores_a_stray_pooled_file(tmp_path):
     root = _tree(tmp_path / "results_kc23_c5_leak_siat")
-    a = find_scheme_file(root, TAG, "blocked", 1.0, "pooled")
-    b = find_scheme_file(root, TAG, "blocked", 1.0, "per_subject")
-    assert a.name.endswith("_g1_pooled_subjectwise.csv") and b.name.endswith("_g1_per_subject_subjectwise.csv")
-    assert a.parent.name == "b1" and b.parent.name == "wb1"
+    _write_scheme_csv(root, "smoke", "blocked", 1.0, "pooled", {"SVM": np.zeros(N)})          # a pooled smoke-test output
+    a = find_scheme_file(root, TAG, "blocked", 1.0)
+    assert a.name.endswith("_g1_per_subject_subjectwise.csv") and a.parent.name == "b1"
+    assert find_scheme_file(root, TAG, "blocked", 1.0, "pooled").parent.name == "smoke"
 
 
-def test_run_end_to_end_all_three_models_and_wb1(tmp_path):
+def test_run_end_to_end_all_three_models_per_subject(tmp_path):
     root = _tree(tmp_path / "results_kc23_c5_leak_siat")
     rc = run(root, published_blocked_sd=None)
     assert rc == 0
     v = (root / "C5_VERDICT.md").read_text()
     for m in ("SVM", "RF", "LDA"):
         assert f"**{m} outcome: L1**" in v
-    assert "W-B1" in v and LETTER_RE.search(v)
+    assert "W-B1" not in v and "pooled" not in v.lower().replace("pooled_random", "") and LETTER_RE.search(v)
+    assert "reproduction check" in v
     dec = pd.read_csv(root / "C5_decomposition.csv")
     assert list(dec["model"]) == ["SVM", "RF", "LDA"] and (dec["g_star"] == 1).all()
 
 
 def test_the_gate_still_works_when_given_a_scheme_subdirectory(tmp_path):
     root = _tree(tmp_path / "results_kc23_c5_leak_siat")
-    assert run(root / "wb1", published_blocked_sd=None) == 0 and (root / "C5_VERDICT.md").exists()
+    assert run(root / "b1", published_blocked_sd=None) == 0 and (root / "C5_VERDICT.md").exists()
 
 
 def test_run_escalates_when_one_model_has_no_plateau(tmp_path):
     root = _tree(tmp_path / "results_kc23_c5_leak_siat")
     for g in (1, 2, 4, 8, 16):
-        _write_scheme_csv(root, f"b{g}", "blocked", float(g), "pooled",
+        _write_scheme_csv(root, f"b{g}", "blocked", float(g), "per_subject",
                           {"SVM": np.full(N, 0.90 - 0.05 * g / 4), "RF": np.full(N, 0.78), "LDA": np.full(N, 0.78)})
     assert run(root, published_blocked_sd=None) == 20
     assert "**SVM outcome: L3**" in (root / "C5_VERDICT.md").read_text()
@@ -151,8 +151,9 @@ def test_run_exit_10_on_an_out_letter(tmp_path):
     assert "L-NONE" in (root / "C5_VERDICT.md").read_text()
 
 
-@pytest.mark.parametrize("victim", ["pooled_random_nonoverlap_g1_pooled", "pooled_random_g1_pooled", "blocked_g8_pooled",
-                                    "blocked_g16_pooled", "interleaved_g4_pooled", "blocked_g1_per_subject"])
+@pytest.mark.parametrize("victim", ["pooled_random_nonoverlap_g1_per_subject", "pooled_random_g1_per_subject",
+                                    "blocked_g8_per_subject", "blocked_g16_per_subject", "interleaved_g4_per_subject",
+                                    "interleaved_g16_per_subject"])
 def test_run_fails_closed_when_any_arm_is_missing(tmp_path, victim):
     root = _tree(tmp_path / "results_kc23_c5_leak_siat")
     next(root.glob(f"*/b8_{TAG}_{victim}_subjectwise.csv")).unlink()
@@ -191,10 +192,15 @@ def test_published_blocked_sd_missing_file_for_siat_is_an_error_not_a_skip(tmp_p
         mod.load_published_blocked_sd("siat", "SVM")
 
 
-def test_the_builder_passes_pooled_to_every_arm_but_w_b1():
+def test_the_builder_runs_every_c5_arm_per_subject_and_has_no_w_b1_or_pooled_arm():
     import kc23_build_job_csvs as b
-    rows = {r["job_id"]: r["command"] for r in b.cpu_rows if r["job_id"].startswith("c5_siat_")}
-    assert "--cv-unit per_subject" in rows["c5_siat_wb1"]
-    for jid, cmd in rows.items():
-        if jid not in ("c5_siat_wb1", "c5_siat_verdict"):
-            assert "--cv-unit pooled" in cmd, jid
+    for ds in ("siat", "enabl3s"):
+        rows = {r["job_id"]: r["command"] for r in b.cpu_rows if r["job_id"].startswith(f"c5_{ds}_")}
+        assert f"c5_{ds}_wb1" not in rows
+        arms = {k: v for k, v in rows.items() if not k.endswith("_verdict")}
+        assert sorted(arms) == sorted(f"c5_{ds}_{a}" for a in ["p50", "p0", "b1", "b2", "b4", "b8", "b16", "i1", "i4", "i16"])
+        for jid, cmd in arms.items():
+            assert "--cv-unit per_subject" in cmd and "pooled " not in cmd.replace("pooled_random", ""), jid
+        verdict = next(r for r in b.cpu_rows if r["job_id"] == f"c5_{ds}_verdict")
+        assert set(verdict["depends_on"].split(";")) == {f"c5_{ds}_{a}" for a in
+                                                          ["p50", "p0", "b1", "b2", "b4", "b8", "b16", "i1", "i4", "i16"]}

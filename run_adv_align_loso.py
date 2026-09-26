@@ -380,8 +380,13 @@ def main():
                          "validation subjects, which neither the classifier nor the adversary trains on. Absent "
                          "(default): none of this code runs and every output is unchanged.")
     ap.add_argument("--probe-cap", type=int, default=100, help="Windows per subject and class for the probes.")
+    ap.add_argument("--within-class-probe", action="store_true",
+                    help="KC-D6 mechanism test: with --instrument, also write the subject probe inside each movement class "
+                         "(subject_probe_within_class_bacc) to embed_probes.csv. Absent (default): nothing changes.")
     args = ap.parse_args()
 
+    if args.within_class_probe and not args.instrument:
+        raise SystemExit("--within-class-probe needs --instrument")
     if args.adv_mode == "classcond" and not args.oracle_target_labels:
         raise SystemExit("--adv-mode classcond requires --oracle-target-labels")
     if args.oracle_target_labels and args.adv_mode != "classcond":
@@ -473,7 +478,7 @@ def main():
             from run_cnn_arch_loso import instrument_fold
             instrument_fold(model, Xte, y[te], int(heldout), args.arch, args.instrument, device, row["f1_macro"],
                             seed=args.seed, Xva=Xtr_all[m_va], yva=ytr_all[m_va], subj_va=subtr[m_va],
-                            probe_cap=args.probe_cap)
+                            probe_cap=args.probe_cap, within_class_probe=args.within_class_probe)
 
         pd.DataFrame([dict(e, subject=int(heldout), adv_lambda=args.adv_lambda) for e in log]).to_csv(
             log_path, mode="a", header=not log_path.exists(), index=False)

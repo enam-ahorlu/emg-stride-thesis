@@ -71,7 +71,7 @@ LABEL_TO_IDX = {lab: i for i, lab in enumerate(LABELS)}
 def train_deep_coral_logged(model, Xs_tr, ys_tr, Xs_va, ys_va, Xt, device,
                             epochs, batch, lr, patience, lam, seed,
                             aug_mode="none", aug_sigma=0.1, aug_chandrop_p=0.2, aug_timemask_frac=0.15,
-                            target_pass="train", coral_normalize="none"):
+                            target_pass="train", coral_normalize="none", grad_clip=None):
     """Identical to run_deep_coral_cnn_loso.train_deep_coral, plus per-epoch logging.
     target_pass="train" (default) is bit-identical to the original: that branch below is the
     original single line, untouched, in its original position. "eval" and "none" are D2e
@@ -101,6 +101,7 @@ def train_deep_coral_logged(model, Xs_tr, ys_tr, Xs_va, ys_va, Xt, device,
         if target_pass != "none":
             tgt_it = iter(tgt)
         ce_sum, cl_sum, nb = 0.0, 0.0, 0
+        nd_max = 0.0          # l2 only: the largest | ||embedding|| - 1 | the CORAL term saw this epoch
         for Xb, yb in src:
             if target_pass == "none":
                 # no target DataLoader, no target forward, no CORAL term computed.
@@ -138,15 +139,24 @@ def train_deep_coral_logged(model, Xs_tr, ys_tr, Xs_va, ys_va, Xt, device,
                 fs_n = fs / (fs.norm(dim=1, keepdim=True) + 1e-8)
                 ft_n = ft / (ft.norm(dim=1, keepdim=True) + 1e-8)
                 cl = coral_loss(fs_n, ft_n)
+                # KC-D6 ruling (26 Sept): 'flat by construction' is a property of the normalised embedding the loss sees
+                # and it is CHECKED, not assumed. Measurement only; no RNG draw, no effect on the loss or gradients.
+                nd_max = max(nd_max, float((fs_n.detach().norm(dim=1) - 1).abs().max()),
+                             float((ft_n.detach().norm(dim=1) - 1).abs().max()))
             else:  # "none" -- bit-identical to the original single line
                 cl = coral_loss(fs, ft)
             loss = ce + lam * cl
-            loss.backward(); opt.step()
+            loss.backward()
+            if grad_clip:      # KC-D6 divergence retry (plan 6.3): only when asked for; absent, the line above is the original
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+            opt.step()
             ce_sum += float(ce.detach()); cl_sum += float(cl.detach()); nb += 1
         sched.step()
         vloss, _, _ = evaluate(model, va, device)
         log.append({"epoch": ep + 1, "train_ce": ce_sum / max(nb, 1),
                     "train_coral": cl_sum / max(nb, 1), "val_loss": float(vloss)})
+        if coral_normalize == "l2":
+            log[-1]["coral_embed_normdev"] = nd_max
         if vloss + 1e-6 < best:
             best, best_state, bad = vloss, {k: v.detach().cpu() for k, v in model.state_dict().items()}, 0
             log[-1]["best"] = 1
@@ -253,6 +263,8 @@ def main():
     ap.add_argument("--aug-timemask-frac", type=float, default=0.15)
     ap.add_argument("--n-src-embed", type=int, default=4000,
                     help="Source windows sampled (stratified by class) for the alignment measurements.")
+    ap.add_argument("--grad-clip", type=float, default=None,
+                    help="KC-D6 divergence retry (plan 6.3): clip the gradient norm (5.0 for the retry). Absent (default): no clipping.")
     ap.add_argument("--coral-normalize", default="none", choices=["none", "l2"],
                     help="KC-D0.5/D6 SFC. none (default) is bit-identical to the pre-KC23 "
                          "script: coral_loss(fs, ft) on the raw embeddings. l2 L2-normalizes "
@@ -325,7 +337,7 @@ def main():
             args.coral_lambda, args.seed,
             aug_mode=args.augmentation, aug_sigma=args.aug_sigma,
             aug_chandrop_p=args.aug_chandrop_p, aug_timemask_frac=args.aug_timemask_frac,
-            target_pass=args.target_pass, coral_normalize=args.coral_normalize)
+            target_pass=args.target_pass, coral_normalize=args.coral_normalize, grad_clip=args.grad_clip)
 
         te_dl = DataLoader(WindowsDataset(Xte, y[te]), batch_size=512, shuffle=False)
         _, yt, yp = evaluate(model, te_dl, device)
@@ -348,6 +360,8 @@ def main():
         al = {"subject": int(heldout), "target_pass": args.target_pass, "epochs_run": len(log),
               "best_epoch": int(max([e["epoch"] for e in log if e["best"] == 1] or [0]))}
         al.update(alignment_metrics(Fs, ys_pool[idx], Ft, y[te], args.seed + heldout, args.coral_lambda))
+        if args.coral_normalize == "l2":
+            al["coral_embed_normdev_max"] = float(max(e["coral_embed_normdev"] for e in log))
 
         if args.instrument:
             from run_cnn_arch_loso import instrument_fold      # imported only when asked for: the default path is untouched

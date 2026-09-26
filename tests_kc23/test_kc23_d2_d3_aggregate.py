@@ -52,14 +52,14 @@ def d2root(tmp_path):
 def test_d2_end_to_end_o_r(d2root):
     out = d2root / "results_kc23_d2_reliance"
     assert d2a.run(d2root, out) == 0
-    assert len(pd.read_csv(out / "d2_persubject_sums.csv")) == 5 * 4 * 40
+    assert len(pd.read_csv(out / "d2_persubject_sums.csv")) == 5 * 5 * 40
     assert d2s.run(out) == 0
     v = (out / "D2_VERDICT.md").read_text()
     assert "**Outcome: O-R**" in v and "Residual caveat" in v
     det = pd.read_csv(out / "D2_detail.csv")
     occ = det[det["comparison"].str.startswith("zeroing occlusion, R3")].iloc[0]
     assert occ["factor_mean"] == pytest.approx(4.0, rel=0.10) and occ["factor_sd"] > 0     # a per-realization SD exists
-    assert len(occ["factor_per_realization"].split(";")) == 4
+    assert len(occ["factor_per_realization"].split(";")) == 5
 
 
 def test_d2_o_t_when_neither_measure_falls(tmp_path):
@@ -85,7 +85,7 @@ def test_d2_factor_is_computed_per_realization_not_from_pooled_data(tmp_path):
     pooled = df[df.arm == "R1"].occlusion_sum.mean() / df[df.arm == "R3"].occlusion_sum.mean()
     det = d2s.compare(df, "R3", "R1", "occlusion_sum")
     per = [float(x) for x in det["factor_per_realization"].split(";")]
-    assert det["factor_mean"] == pytest.approx(np.mean(per), abs=2e-3) and len(per) == 4
+    assert det["factor_mean"] == pytest.approx(np.mean(per), abs=2e-3) and len(per) == 5
     assert det["factor_sd"] == pytest.approx(np.std(per, ddof=1), abs=2e-3)
     assert abs(det["factor_mean"] - pooled) > 1e-6          # they are different quantities
 

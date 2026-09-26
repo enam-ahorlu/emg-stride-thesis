@@ -7,7 +7,7 @@ runs (plan D2.2). kc23_d2_reliance_stats.py read r1_occlusion.csv and five
 siblings from its own directory, where nothing had ever written them, so the
 gate could only crash. This builds its input from the real runs.
 
-Arms (KC-D1's R1 to R5), seeds 42, 7, 123 and 1001 (the four instrumented Tier A
+Arms (KC-D1's R1 to R5), seeds 42, 7, 123, 1001 and 2026 (the five instrumented Tier A
 realizations), per-subject normalization, instrumented:
   R1 resnet_se none            R2 resnet_se chandrop 0.2      R3 resnet_se gainjitter 0.40
   R4 resnet    none            R5 resnet    chandrop 0.2
@@ -30,7 +30,7 @@ import pandas as pd
 
 from kc23_run_loader import load_run
 
-SEEDS = [42, 7, 123, 1001]
+SEEDS = [42, 7, 123, 1001, 2026]
 ARMS = {   # arm -> (directory pattern, arch, augmentation, expected kwargs)
     "R1": ("results_kc23_d1_r1_s{seed}", "resnet_se", "none", {}),
     "R2": ("results_kc23_d1_r2_s{seed}", "resnet_se", "chandrop", {"chandrop_p": 0.2}),

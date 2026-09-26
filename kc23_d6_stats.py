@@ -14,7 +14,11 @@ unmatched case to X4.
 Mode is chosen by the out_dir name (the queue passes only --out):
   *sanity*        d6_sanity.csv
   *manipulation*  d6_family_<family>.csv for adv_marginal, sfc and advps (seed 42)
-  *outcome*       d6_family_<family>.csv for every family that passed the gate (seeds 42, 7, 123)
+  *outcome*       d6_family_<family>.csv for every family that passed the gate (seeds 42, 7, 123); the verdict ends with the
+                  combined through-line matrix (axis x invariance measured / shape shown / mechanism measured / replicated on
+                  ENABL3S), whose cells hold the letters the other stages produced (no new judgment is made in it)
+  *mechanism*     d6_mechanism_meta.csv, d6_mechanism_arms.csv (ADV against ADV-C at the ADV collapse lambda, plan 6.6)
+  *secondary*     d6_secondary.csv (ADV at its best lambda against R2, R10, R11; ADV-PS at each lambda against R2)
 
 Statistics (operationalised by Enam, 26 September 2026, matching KC-D4; see
 kc23_invariance_common.py). Matrices are (40 folds, knobs), realization-averaged
@@ -31,9 +35,10 @@ per fold, and the FOLDS are the Page blocks:
      G-PASS  the domain probe falls >= 10 pts from the lowest to the highest knob AND the unseen-subject probe falls
              with a significant Page trend (Holm < 0.05)                    -> run Stage 2
      G-WEAK  a fall of 2 to 10 pts, or only one of the two meters moves    -> run Stage 2, flagged weak
-     G-FAIL  a fall < 2 pts (the D2c threshold)                             -> no Stage 2
-   For SFC the embedding norm must stay flat across the weights; if it does not the normalization is broken and the
-   family stops (norm_ok = False, no Stage 2).
+     G-FAIL  BOTH meters fail: a domain fall < 2 pts (the D2c threshold) AND no significant subject-probe trend
+                                                                             -> no Stage 2   (Enam, 26 Sept)
+   For SFC the L2-normalised embedding the CORAL term sees must be unit norm (max |norm - 1| < 1e-5); if it is not the
+   normalization is broken and the family stops (norm_ok = False, no Stage 2). The raw penultimate norm is reported only.
 3. Primary outcome, ADV (and SFC on the same grid), realization-averaged (classify_outcome). With "invariance rises" =
    both meters rise (Holm < 0.05):
      X1  invariance rises, F1 has an INTERIOR peak with a falling limb (>= 2 pts and paired significant), F1 tracks the
@@ -43,8 +48,13 @@ per fold, and the FOLDS are the Page blocks:
      X4  the shape appears (interior peak and falling limb) but F1 does not track class information
      X-OUT  anything else (for example invariance does not rise, or F1 tracks the invariance meters): the label for a
             case outside the pre-registered grid; exit 10; never defaulted into X4
-4. Mechanism (classify_mechanism), ADV-C against ADV: unchanged decision rule; it needs a within-class subject-invariance
-   measure and the ADV-C runs, neither of which exists yet (KC23_PREREG_CONFORMANCE.md, open).
+4. Mechanism (classify_mechanism), ADV-C against ADV at the ADV collapse lambda_max (the smallest lambda_max above the peak
+   whose realization-mean F1 is 2 pts or more below it), realization-averaged and paired. Within-class subject invariance is
+   1 minus the within-class subject probe (subject_probe_within_class_bacc: the probe inside each movement class, averaged over
+   classes); ADV-C must be at least as invariant as ADV. C-M1 exits 0; C-M2, C-M3 and "ADV has no collapse, ADV-C not run"
+   (plan 6.2) exit 10 (claim-level, reported). ADV-CDAN, when run (only after C-M1), is tabulated beside them, no letter.
+5. Secondary contrasts: reported, no letter (exit 0): the batch size differs from KC-D1's runs (256 here, the D1 default there),
+   so the contrasts against R2, R10 and R11 are stated with that difference.
 
 Exit codes: only the sanity gate returns 20. G-FAIL returns 0 (a result). X2, X3, X4, X-OUT return 10.
 A missing or malformed input returns 20 with a verdict that carries no outcome line.
@@ -58,16 +68,17 @@ import numpy as np
 import pandas as pd
 
 from kc23_invariance_common import (ALPHA, holm_adjust, page_falls, peak_then_fall, tracks, tracks_invariance)
-from kc23_stats_common import print_gate_header, write_no_outcome_verdict
+from kc23_stats_common import paired_test, print_gate_header, write_no_outcome_verdict
 
 SANITY_PUBLISHED_F1 = 0.830
 SANITY_TOL = 0.015
 FALL_MIN_PP = 2.0
 DOMAIN_FALL_PASS_PP = 10.0
 DOMAIN_FALL_FAIL_PP = 2.0
-SFC_NORM_MAX_RATIO = 1.10       # operationalisation of "the embedding norm must stay flat" (max/min of the fold mean)
+SFC_UNIT_NORM_TOL = 1e-5        # Enam, 26 Sept: the L2-normalised embedding the CORAL term sees must be unit norm, max |norm - 1| < 1e-5
 EXPECTED_FAMILIES = ("adv_marginal", "sfc", "advps")
 N_FOLDS = 40
+WITHIN = "subject_probe_within_class_bacc"
 
 
 class InputError(Exception):
@@ -94,11 +105,10 @@ def classify_manipulation(domain_mat: np.ndarray, subject_mat: np.ndarray) -> tu
     m = meters_fall(domain_mat, subject_mat)
     domain_moves = domain_fall_pts >= DOMAIN_FALL_PASS_PP
     subject_moves = m["subject_falls"]
-    # G-FAIL is checked first: the plan states it as a threshold on the fall alone ("a fall < 2 points, the D2c
-    # threshold"), independent of what the unseen-subject probe does. Where a fall < 2 pts coincides with a moving
-    # subject probe the plan's G-FAIL and G-WEAK wordings overlap; the plan's explicit threshold wins (recorded in
-    # KC23_PREREG_CONFORMANCE.md).
-    if domain_fall_pts < DOMAIN_FALL_FAIL_PP:
+    # Ruling (Enam, 26 Sept): G-WEAK explicitly covers "only one of the two meters moves", so G-FAIL needs BOTH to fail:
+    # the domain-probe fall under 2 pts AND no significant Page trend on the unseen-subject probe. A domain fall under
+    # 2 pts with a significant subject-probe trend is G-WEAK.
+    if domain_fall_pts < DOMAIN_FALL_FAIL_PP and not subject_moves:
         letter = "G-FAIL"
     elif domain_moves and subject_moves:
         letter = "G-PASS"
@@ -108,10 +118,15 @@ def classify_manipulation(domain_mat: np.ndarray, subject_mat: np.ndarray) -> tu
                     "subject_moves": bool(subject_moves), **m}
 
 
-def sfc_norm_flat(norm_mat: np.ndarray) -> tuple[bool, dict]:
-    per_weight = norm_mat.mean(axis=0)
-    ratio = float(per_weight.max() / per_weight.min()) if per_weight.min() > 0 else float("inf")
-    return bool(ratio <= SFC_NORM_MAX_RATIO), {"norm_max_over_min": ratio, "max_allowed": SFC_NORM_MAX_RATIO}
+def sfc_unit_norm(normdev_mat: np.ndarray, raw_norm_mat: np.ndarray) -> tuple[bool, dict]:
+    """Ruling (Enam, 26 Sept). The stop condition is the normalisation itself: the embedding the CORAL term sees is L2
+    normalised, so its norm must be 1 (max |norm - 1| < 1e-5 over every fold, weight and batch). Failing it is the
+    broken-normalisation stop. The RAW penultimate norm across the weights is reported, descriptively, and is NOT a stop
+    condition: once the loss is scale-free, raw scale no longer lowers it."""
+    worst = float(np.max(normdev_mat))
+    return bool(np.isfinite(worst) and worst < SFC_UNIT_NORM_TOL), {
+        "normalised_norm_dev_max": worst, "unit_norm_tol": SFC_UNIT_NORM_TOL,
+        "raw_norm_by_weight": ";".join(f"{v:.4f}" for v in raw_norm_mat.mean(axis=0))}
 
 
 def classify_outcome(f1: np.ndarray, domain: np.ndarray, subject: np.ndarray, sil: np.ndarray, cprobe: np.ndarray,
@@ -176,7 +191,7 @@ def _read(path: Path) -> pd.DataFrame:
 def family_matrices(df: pd.DataFrame, seeds: list[int], label: str):
     """(knobs, {measure: (folds, knobs)}, diverged per knob). Every (fold, knob, seed) exactly once, no NaN."""
     need = {"knob", "realization", "subject", "f1", "domain_probe_bacc", "subject_probe_bacc", "class_silhouette",
-            "class_probe_bacc", "feat_norm_src", "diverged"}
+            "class_probe_bacc", "feat_norm_src", "diverged"} | ({"coral_embed_normdev"} if label == "sfc" else set())
     if not need <= set(df.columns):
         raise InputError(f"{label}: lacks columns {sorted(need - set(df.columns))}")
     if set(df["realization"].unique()) != set(seeds):
@@ -186,13 +201,93 @@ def family_matrices(df: pd.DataFrame, seeds: list[int], label: str):
     if counts.shape[0] != N_FOLDS or (counts != len(seeds)).any().any():
         raise InputError(f"{label}: needs {N_FOLDS} folds x {len(knobs)} knobs x {len(seeds)} realizations, no gaps")
     mats = {}
-    for col in ("f1", "domain_probe_bacc", "subject_probe_bacc", "class_silhouette", "class_probe_bacc", "feat_norm_src"):
+    for col in ("f1", "domain_probe_bacc", "subject_probe_bacc", "class_silhouette", "class_probe_bacc", "feat_norm_src") + (
+            ("coral_embed_normdev",) if label == "sfc" else ()):
         if df[col].isna().any():
             raise InputError(f"{label}: NaN in {col}")
         piv = df.groupby(["subject", "knob"])[col].mean().unstack("knob")
         mats[col] = piv[knobs].to_numpy(float)
     diverged = np.array([bool(df.loc[df["knob"] == k, "diverged"].any()) for k in knobs])
     return knobs, mats, diverged
+
+
+def mechanism_letter(meta: pd.Series, arms: pd.DataFrame) -> tuple[str, dict, list[dict]]:
+    """ADV-C against ADV at the collapse lambda_max. Realization-averaged per subject, paired over the 40 subjects."""
+    ck, nk = float(meta["collapse_knob"]), (None if pd.isna(meta["next_knob"]) else float(meta["next_knob"]))
+
+    def per_subject(kind, knob, col):
+        d = arms[(arms["kind"] == kind) & (arms["knob"].astype(float) == knob)]
+        if d.empty or d["realization"].nunique() != len(str(meta["seeds"]).split(";")):
+            raise InputError(f"{kind} at lambda_max {knob}: realizations {sorted(d['realization'].unique())}, need {meta['seeds']}")
+        piv = d.groupby(["subject", "realization"])[col].mean().unstack("realization")
+        if len(piv) != N_FOLDS or piv.isna().any().any():
+            raise InputError(f"{kind} at lambda_max {knob}: needs {N_FOLDS} folds in every realization")
+        return piv.mean(axis=1).sort_index().to_numpy(float)
+
+    rows = []
+    for knob in [ck] + ([nk] if nk is not None else []):
+        f_c, f_a = per_subject("advc", knob, "f1"), per_subject("adv", knob, "f1")
+        w_c, w_a = per_subject("advc", knob, WITHIN), per_subject("adv", knob, WITHIN)
+        letter, detail = classify_mechanism(float(f_c.mean()), float(f_a.mean()), float(meta["peak_f1"]),
+                                            float(1 - w_c.mean()), float(1 - w_a.mean()))
+        t = paired_test(f_c, f_a, f"advc_minus_adv_lambda{knob:g}", "D6-mechanism")
+        rows.append({"lambda_max": knob, "letter_if_this_value": letter, "advc_f1": float(f_c.mean()), "adv_f1": float(f_a.mean()),
+                     "advc_minus_adv_pp": t["delta_pp"], "wilcoxon_p": t["p_raw"], "dz": t["cohens_d" if "cohens_d" in t else "cohens_dz"],
+                     "advc_within_class_probe": float(w_c.mean()), "adv_within_class_probe": float(w_a.mean()),
+                     "n_improved": t["n_improved"], **detail})
+    return rows[0]["letter_if_this_value"], rows[0], rows
+
+
+def cdan_rows(meta: pd.Series, arms: pd.DataFrame) -> list[dict]:
+    d = arms[arms["kind"] == "cdan"]
+    out = []
+    for knob in sorted(d["knob"].astype(float).unique()):
+        x = d[d["knob"].astype(float) == knob]
+        out.append({"lambda_max": knob, "cdan_f1": float(x.groupby("subject")["f1"].mean().mean()),
+                    "cdan_within_class_probe": float(x.groupby("subject")[WITHIN].mean().mean()),
+                    "cdan_domain_probe": float(x.groupby("subject")["domain_probe_bacc"].mean().mean())})
+    return out
+
+
+def secondary_table(df: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for cid, g in df.groupby("contrast", sort=False):
+        avg = g.groupby("subject")["diff"].mean().sort_index().to_numpy(float)
+        if len(avg) != N_FOLDS:
+            raise InputError(f"secondary contrast {cid}: needs {N_FOLDS} subjects, found {len(avg)}")
+        t = paired_test(avg, np.zeros_like(avg), cid, "D6-secondary")
+        by_real = g.groupby("realization")["diff"].mean()
+        rows.append({"contrast": cid, "mean_diff_pp": t["delta_pp"], "wilcoxon_p": t["p_raw"], "dz": t["cohens_dz"],
+                     "bca_lo_pp": t["bca_lo_pp"], "bca_hi_pp": t["bca_hi_pp"], "n_improved": t["n_improved"],
+                     "n_realizations": int(len(by_real)), "n_realizations_same_sign": int((np.sign(by_real) == np.sign(by_real.mean())).sum())})
+    return pd.DataFrame(rows)
+
+
+def _bold_lines(path: Path) -> list[str]:
+    """The '**label: LETTER**' lines of another stage's verdict, or [] when it does not exist yet."""
+    import re
+    if not path.exists():
+        return []
+    return [m.group(1).strip() for m in re.finditer(r"\*\*([^*\n]*:\s*[A-Za-z0-9][^*\n]*)\*\*", path.read_text(encoding="utf-8"))]
+
+
+def throughline_matrix(root: Path, d6_manip: list[str], d6_outcome: list[str], d6_mech: list[str]) -> str:
+    """Plan 6 output: 'a combined through-line matrix: axis (ladder from C2, channel from D4, learned from D6) x {invariance
+    measured, shape shown, mechanism measured, replicated on ENABL3S where run}'. Each cell lists the letters the stage that
+    bears on it produced (or says it is not available yet); the matrix makes no judgment of its own."""
+    def cell(lines):
+        return "; ".join(lines) if lines else "not available"
+    c2 = _bold_lines(root / "results_kc23_c2_whitening_w400" / "C2_VERDICT.md")
+    c6 = _bold_lines(root / "results_kc23_c6_ladder_enabl3s" / "C6_VERDICT.md")
+    d4 = _bold_lines(root / "results_kc23_d4_stats" / "D4_VERDICT.md")
+    d5 = _bold_lines(root / "results_kc23_d5_stats" / "D5_VERDICT.md")
+    w = [l for l in c2 if "Endpoint 1" in l]
+    m = [l for l in c2 if "Endpoint 2" in l]
+    rows = [("ladder (C2, C6)", "geometry rows and probes (kc23_c6_geometry.py), no letter", cell(w), cell(m), cell(c6)),
+            ("channel (D4)", cell(d4), cell(d4), cell(d4), cell(d5)),
+            ("learned (D6)", cell(d6_manip), cell(d6_outcome), cell(d6_mech), "not run on ENABL3S")]
+    return ("| axis | invariance measured | shape shown | mechanism measured | replicated on ENABL3S where run |\n"
+            "|---|---|---|---|---|\n" + "\n".join("| " + " | ".join(r) + " |" for r in rows))
 
 
 def _fail(out_dir: Path, name: str, reason: str) -> int:
@@ -218,9 +313,13 @@ def run(out_dir: Path) -> int:
         mode = "manipulation"
     elif "outcome" in name:
         mode = "outcome"
+    elif "mechanism" in name:
+        mode = "mechanism"
+    elif "secondary" in name:
+        mode = "secondary"
     else:
-        return _fail(out_dir, name, f"{name!r} names neither the sanity, the manipulation nor the outcome check, so it "
-                                    f"is not known which inputs are required")
+        return _fail(out_dir, name, f"{name!r} names neither the sanity, manipulation, outcome, mechanism nor secondary check, "
+                                    f"so it is not known which inputs are required")
     results, tables, exit_code = {}, [], 0
     try:
         if mode == "sanity":
@@ -240,7 +339,7 @@ def run(out_dir: Path) -> int:
                 letter, detail = classify_manipulation(mats["domain_probe_bacc"], mats["subject_probe_bacc"])
                 row = {"letter": letter, "norm_ok": True, **detail}
                 if fam == "sfc":
-                    ok, nd = sfc_norm_flat(mats["feat_norm_src"])
+                    ok, nd = sfc_unit_norm(mats["coral_embed_normdev"], mats["feat_norm_src"])
                     row.update(nd); row["norm_ok"] = ok
                     if not ok:
                         exit_code = max(exit_code, 10)
@@ -249,7 +348,7 @@ def run(out_dir: Path) -> int:
                 print_gate_header(f"KC-D6 manipulation ({fam})", letter,
                                   {"G-PASS": "Run Stage 2.", "G-WEAK": "Run Stage 2, flagged weak.",
                                    "G-FAIL": "No Stage 2."}[letter])
-        else:  # outcome
+        elif mode == "outcome":
             marker = out_dir / "d6_no_passing_family.csv"
             fams = [f for f in EXPECTED_FAMILIES if (out_dir / f"d6_family_{f}.csv").exists()]
             if not fams and not marker.exists():
@@ -266,6 +365,37 @@ def run(out_dir: Path) -> int:
             if not fams:
                 results["outcome"] = {"letter": "NO-STAGE-2"}
                 exit_code = max(exit_code, 10)
+        elif mode == "mechanism":
+            meta_df = _read(out_dir / "d6_mechanism_meta.csv")
+            if len(meta_df) != 1:
+                raise InputError("d6_mechanism_meta.csv must hold exactly one row")
+            meta = meta_df.iloc[0]
+            if bool(meta["not_run"]):
+                results["mechanism"] = {"letter": "C-NOT-RUN", "peak_knob": meta["peak_knob"], "peak_f1": meta["peak_f1"]}
+                tables.append("ADV has no collapse (no lambda_max above the peak is 2 pts or more below it), so ADV-C is not run "
+                              "(plan 6.2). ADV F1 by lambda_max: " + str(meta["adv_f1_by_knob"]))
+                exit_code = max(exit_code, 10)
+            else:
+                arms = _read(out_dir / "d6_mechanism_arms.csv")
+                letter, first, rows_m = mechanism_letter(meta, arms)
+                results["mechanism"] = {"letter": letter, **first}
+                exit_code = max(exit_code, 0 if letter == "C-M1" else 10)
+                pd.DataFrame(rows_m).to_csv(out_dir / "D6_mechanism.csv", index=False)
+                cd = cdan_rows(meta, arms)
+                tab = pd.DataFrame(rows_m)[["lambda_max", "letter_if_this_value", "advc_f1", "adv_f1", "advc_minus_adv_pp",
+                                            "wilcoxon_p", "advc_within_class_probe", "adv_within_class_probe"]]
+                tables.append(f"ADV peak F1 {float(meta['peak_f1']):.4f}; collapse lambda_max {meta['collapse_knob']}. ADV-C "
+                              f"(oracle target labels, diagnostic only, never deployable) against ADV:\n\n```\n"
+                              + tab.to_string(index=False, float_format=lambda v: f"{v:.4f}") + "\n```\n"
+                              + ("\nADV-CDAN (deployable, no target labels; no letter):\n\n```\n"
+                                 + pd.DataFrame(cd).to_string(index=False, float_format=lambda v: f"{v:.4f}") + "\n```" if cd else ""))
+        elif mode == "secondary":
+            sec = secondary_table(_read(out_dir / "d6_secondary.csv"))
+            sec.to_csv(out_dir / "D6_secondary_contrasts.csv", index=False)
+            results["secondary"] = {"letter": "reported", "n_contrasts": int(len(sec))}
+            tables.append("Paired over the 40 subjects, realization-averaged (seeds 42, 7, 123); no letter and no halt. The D6 arms "
+                          "use batch 256 and KC-D1's use the run script's default, so the batch differs (as in C11).\n\n```\n"
+                          + sec.to_string(index=False, float_format=lambda v: f"{v:.4g}") + "\n```")
     except InputError as e:
         return _fail(out_dir, name, str(e))
     except ValueError as e:
@@ -284,8 +414,20 @@ def run(out_dir: Path) -> int:
             lines.append("\nEvery family is G-FAIL: this axis cannot be tested with these knobs (plan 6.7); the "
                          "Section 5.3 limitation is restated with the new evidence.")
         if not results["manipulation_sfc"]["norm_ok"]:
-            lines.append("\nSFC: the embedding norm did not stay flat across the weights, so the normalization is "
-                         "broken and the family stops (no Stage 2).")
+            lines.append("\nSFC: the L2-normalised embedding the CORAL term sees is not unit norm (max |norm - 1| "
+                         f"{results['manipulation_sfc']['normalised_norm_dev_max']:.2e}, tolerance 1e-5), so the "
+                         "normalization is broken and the family stops (no Stage 2).")
+        if "raw_norm_by_weight" in results["manipulation_sfc"]:
+            lines.append("\nSFC raw penultimate norm by weight (descriptive, not a stop condition): "
+                         + results["manipulation_sfc"]["raw_norm_by_weight"])
+    if mode == "outcome":
+        root = out_dir.parent
+        man = [f"{k}: {v['letter']}" for k, v in results.items() if k.startswith("manipulation_")]
+        if not man:
+            man = _bold_lines(root / "results_kc23_d6_manipulation_check" / "D6_VERDICT.md")
+        outc = [f"{k[len('outcome_'):]}: {v['letter']}" for k, v in results.items() if k.startswith("outcome_")]
+        mech = _bold_lines(root / "results_kc23_d6_mechanism_check" / "D6_VERDICT.md")
+        lines.append("\n## Combined through-line matrix\n\n" + throughline_matrix(root, man, outc, mech))
     if tables:
         lines.append("\n" + "\n\n".join(tables))
     (out_dir / "D6_VERDICT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

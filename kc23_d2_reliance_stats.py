@@ -48,7 +48,7 @@ from scipy import stats
 from kc23_stats_common import print_gate_header, write_no_outcome_verdict
 
 ARMS = ["R1", "R2", "R3", "R4", "R5"]
-REALIZATIONS = [42, 7, 123, 1001]
+REALIZATIONS = [42, 7, 123, 1001, 2026]
 N_SUBJECTS = 40
 QUANTITIES = ["occlusion_sum", "attenuation_sum", "permutation_sum"]
 # (label, arm, reference, quantity, primary?)

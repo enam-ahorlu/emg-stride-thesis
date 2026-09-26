@@ -44,10 +44,15 @@ def _run(script: Path, tmp: Path, out: str, extra: list[str]):
     return tmp / out
 
 
+# The pre-change scripts are the ones in commit d613a06 (the last commit before --instrument and the D6 normalisation
+# check were added). A fixed commit, not HEAD, so the proof does not turn into a skip once the change is committed.
+BASE_COMMIT = "d613a06"
+
+
 def _head_copy(name: str, tmp: Path) -> Path:
-    r = subprocess.run(["git", "show", f"HEAD:06_Code/{name}"], cwd=REPO, capture_output=True, text=True)
+    r = subprocess.run(["git", "show", f"{BASE_COMMIT}:{name}"], cwd=REPO, capture_output=True, text=True)
     if r.returncode != 0:
-        r = subprocess.run(["git", "show", f"HEAD:{name}"], cwd=REPO, capture_output=True, text=True)
+        r = subprocess.run(["git", "show", f"{BASE_COMMIT}:06_Code/{name}"], cwd=REPO, capture_output=True, text=True)
     if r.returncode != 0 or not r.stdout:
         pytest.skip("git HEAD copy of the pre-change script is unavailable")
     p = tmp / f"old_{name}"
@@ -95,3 +100,27 @@ def test_adv_runner_with_the_flag_writes_probes_and_leaves_the_main_outputs_unch
     for f in ("occlusion.csv", "attenuation.csv", "permutation.csv", "embed_probes.csv"):
         assert (b / "instr" / f).exists(), f
     assert not (a / "instr").exists()
+
+
+def test_the_l2_path_gains_only_the_normalisation_check_columns(tmp_path):
+    """KC-D6 ruling of 26 Sept: the run now CHECKS that the embedding the CORAL term sees is unit norm. The check is a
+    measurement (no RNG draw, no effect on the loss): F1, every alignment measure and every logged loss are unchanged, and
+    the only difference is the new column."""
+    _tiny_data(tmp_path)
+    old = _head_copy("run_deep_coral_align_loso.py", tmp_path)
+    args = ["--coral-lambda", "10", "--coral-normalize", "l2"]
+    a = _run(old, tmp_path, "old_l2", args)
+    b = _run(REPO / "run_deep_coral_align_loso.py", tmp_path, "new_l2", args)
+    _same_files(a, b, ["deep_coral_subjectwise.csv"])
+    for name, extra_col in (("alignment_subjectwise.csv", "coral_embed_normdev_max"), ("training_log.csv", "coral_embed_normdev")):
+        da, db = pd.read_csv(a / name), pd.read_csv(b / name)
+        assert extra_col in db.columns and extra_col not in da.columns
+        pd.testing.assert_frame_equal(da, db.drop(columns=[extra_col]))
+    assert (pd.read_csv(b / "alignment_subjectwise.csv")["coral_embed_normdev_max"] < 1e-5).all()
+
+
+def test_the_default_path_writes_no_normalisation_column(tmp_path):
+    _tiny_data(tmp_path)
+    b = _run(REPO / "run_deep_coral_align_loso.py", tmp_path, "plain", ["--coral-lambda", "1.0"])
+    assert "coral_embed_normdev_max" not in pd.read_csv(b / "alignment_subjectwise.csv").columns
+    assert "coral_embed_normdev" not in pd.read_csv(b / "training_log.csv").columns

@@ -51,7 +51,7 @@ def _cnn_infer(model, X, device, batch=512):
 
 
 def instrument_fold(model, Xte, yte, subject, arch, instr_dir, device, row_f1,
-                    seed=42, Xva=None, yva=None, subj_va=None, probe_cap=100):
+                    seed=42, Xva=None, yva=None, subj_va=None, probe_cap=100, within_class_probe=False):
     """W-2 Stage G0 (+ KC-D0.3). After a fold trains and before the model is
     discarded, on the held-out subject's windows only:
       - channel-occlusion sensitivity  -> {instr_dir}/occlusion.csv
@@ -232,14 +232,33 @@ def instrument_fold(model, Xte, yte, subject, arch, instr_dir, device, row_f1,
                 class_probe_bacc = float(cross_val_score(clf2, F_ho, yte_cap, cv=skf2,
                                                           scoring="balanced_accuracy", n_jobs=1).mean())
 
-            _append_rows(instr_dir / "embed_probes.csv", [{
+            probe_row = {
                 "subject": subject, "n_val_subjects": int(len(np.unique(subj_va_cap))),
                 "n_probe_subjects": n_subjects_probe, "chance_subject_probe": chance,
                 "subject_probe_bacc": subj_probe_bacc,
                 "held_out_class_silhouette": sil,
                 "held_out_class_probe_bacc": class_probe_bacc,
                 "probe_cap": probe_cap,
-            }])
+            }
+            if within_class_probe:
+                # KC-D6 mechanism test (plan 6.6, ADV-C against ADV): the subject probe INSIDE each movement class, on the same
+                # embeddings and windows, averaged over the classes. Off by default: the column does not exist, and no other
+                # output changes.
+                y_all = np.concatenate([yte_cap, yva_cap])
+                wc = []
+                for c in np.unique(y_all):
+                    mc = y_all == c
+                    Fc, sc = F_all[mc], subj_all[mc]
+                    _, codes_c = np.unique(sc, return_inverse=True)
+                    cnt_c = np.bincount(codes_c)
+                    n_split_c = int(min(5, cnt_c[cnt_c > 0].min())) if len(sc) else 0
+                    if n_split_c >= 2 and len(np.unique(sc)) >= 2:
+                        clf_c = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, C=1.0))
+                        skf_c = StratifiedKFold(n_splits=n_split_c, shuffle=True, random_state=seed)
+                        wc.append(float(cross_val_score(clf_c, Fc, sc, cv=skf_c, scoring="balanced_accuracy", n_jobs=1).mean()))
+                probe_row["subject_probe_within_class_bacc"] = float(np.mean(wc)) if wc else float("nan")
+                probe_row["n_within_class_probes"] = len(wc)
+            _append_rows(instr_dir / "embed_probes.csv", [probe_row])
 
         print(f"[instrument] Sub{subject:02d}: occlusion 9 ch, attenuation 9x5, "
               f"permutation 9 ch x5, embed_probes {'yes' if Xva is not None else 'n/a'}, "
