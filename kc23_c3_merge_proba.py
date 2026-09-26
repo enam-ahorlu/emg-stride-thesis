@@ -44,7 +44,9 @@ def merge(new_svm_dir: Path, published_dir: Path, out_dir: Path) -> dict:
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--new-svm-dir", default="results_kc23_c3_svm_per_subject/proba")
-    ap.add_argument("--published-dir", default="results_ensemble_v2/proba")
+    # proba_aug_chandrop holds the augmented ResNet-SE behind the 0.8579 headline; results_ensemble_v2/proba holds the
+    # UN-augmented one (soft 0.8134). The earlier default here merged the wrong one (conformance pass, 26 Sept 2026).
+    ap.add_argument("--published-dir", default="results_ensemble_v2/proba_aug_chandrop")
     ap.add_argument("--out", default="results_kc23_c3_ensemble_proba")
     args = ap.parse_args()
     counts = merge(Path(args.new_svm_dir), Path(args.published_dir), Path(args.out))

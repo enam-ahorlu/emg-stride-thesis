@@ -4,7 +4,7 @@ kc23_d1_replicate_stats.py
 =============================
 KC-D1 stats/gate. EXPERIMENT_PLAN_KC23_DEEP.md "KC-D1. The replicate
 programme", D1.4 to D1.7. The long pole of the programme: the reproduction
-gate, 17 registered contrasts (C1-C17), the KC-D6-adjacent descriptive
+gate, the registered contrasts (C1-C17), the KC-D6-adjacent descriptive
 stacking row C13b (decision D-6a, KC23_HALT.md), and the headline gate.
 
 D1.4 reproduction gate (seed 42 re-run only): R2 within +/-1.5pt of 0.8395,
@@ -28,19 +28,32 @@ D1.7: C1 or C12 landing NOT ESTABLISHED -> ESCALATE. Any other established
 contrast landing AMBIGUOUS/NOT ESTABLISHED is reported, not halted.
 
 C13b (DECISION D-6a, KC23_HALT.md, 24 September 2026): a DESCRIPTIVE row
-beside C13, comparing the published stacking combiner (SVM + ResNet-SE+CD,
-logistic-regression meta-learner fit on the other 39 subjects) against the
-soft-vote ensemble, read against the measured realization SD -- not a
-registered hypothesis, no ESTABLISHED/AMBIGUOUS label, no gate.
+beside C13, comparing the published stacking combiner against the soft-vote
+ensemble, read against the measured realization SD -- not a registered
+hypothesis, no ESTABLISHED/AMBIGUOUS label, no gate.
 
-Scope note: D1.5 item 3 ("secondary model: F1 ~ arm + (1|subject) + (1|seed)
-via statsmodels MixedLM") is NOT computed by this script. The pre-registered
-ESTABLISHED/AMBIGUOUS/NOT-ESTABLISHED verdict depends only on items 1
-(realization-averaged Wilcoxon + BH) and 2 (seed-level sign consistency), so
-this omission does not affect any letter here; the MixedLM fit is a
-supplementary cross-check the real KC-D1 write-up should still add before
-Table 4.6/4.8/4.9 text is finalized, and it is flagged here rather than
-silently skipped.
+Conformance pass, 26 September 2026 (KC23_PREREG_CONFORMANCE.md). The decision
+functions below (reproduction_gate, classify_contrast, classify_headline,
+benjamini_hochberg, stacking_descriptive) are unchanged from 0ba3575. What changed
+is the analysis around them:
+  - BH runs over the FIXED registered family (kc23_d1_aggregate.REGISTERED_BH_FAMILY:
+    C1-C14, C16c, C17a, C17b = 17 tests). Before, it ran over whichever contrasts
+    happened to be present, which shrinks the family and is anti-conservative.
+  - C16 is three comparisons: the two plateau pairs (C16a R13-R2, C16b R17-R2) are
+    nulls (TOST) and the fall (C16c R15-R2) is a difference test. Before, all of
+    C16 was treated as a null.
+  - Tier A uses the published seed-42 run as a fifth realization where every arm of
+    a contrast has one (kc23_d1_published_runs.csv). EVERY analysis is also reported
+    without it (the plan's sensitivity); the escalation rule uses the primary
+    analysis (with the published run), and a difference in letter is stated.
+  - the run-variance deliverable (SD of the 40-fold mean per arm, the pooled SD with
+    its degrees of freedom and chi-square 95% interval, the per-fold SD distribution).
+  - the secondary model (F1 ~ arm + (1|subject) + (1|seed), statsmodels MixedLM) is
+    fitted when statsmodels is importable; if it is not, the verdict SAYS it was not
+    computed. The letters do not depend on it (D1.5 items 1 and 2 carry the verdict).
+  - required inputs are enforced by directory; a missing input exits 20 with a verdict
+    that has no outcome line; the contrasts nothing produces are no longer silently
+    omitted (every registered contrast is produced by kc23_d1_aggregate.py).
 """
 from __future__ import annotations
 import argparse
@@ -51,8 +64,9 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from kc23_d1_aggregate import (ALL_CONTRAST_IDS, DESCRIPTIVE_CONTRASTS, HEADLINE_ARMS, NULL_CONTRASTS,
+                               REGISTERED_BH_FAMILY)
 from kc23_stats_common import cohens_d_paired, bca_ci, tost_equivalence, print_gate_header
-from kc23_d1_aggregate import EXTRACTABLE_CONTRASTS, HEADLINE_ARMS as EXTRACTED_HEADLINE_ARMS
 from kc23_stats_common import write_no_outcome_verdict
 
 PUBLISHED_R2 = 0.8395
@@ -64,18 +78,18 @@ PUBLISHED_ENSEMBLE = 0.858
 PUBLISHED_R12 = 0.860
 PUBLISHED_GLOBAL = 0.772
 
-NULL_CONTRASTS = {"C15", "C16"}
+NULL_SET = set(NULL_CONTRASTS)
 
 # Which inputs each directory it serves must hold. Decided by the directory name because the queue calls every
 # gate as `python <gate> --out <out_dir>` with nothing else. Any other name is an error, never a permissive default.
 REQUIRED_BY_DIR_SUFFIX = {"repro_check": {"repro"}, "d1_stats": {"repro", "contrasts", "headline"}}
-# Registered items that no queue job produces yet (kc23_d1_aggregate.py, "out of scope"): listed in the verdict so
-# a reader can see they were NOT computed, instead of assuming the 17 contrasts were all read.
-NOT_COMPUTED_CONTRASTS = ["C10", "C11", "C13", "C13b", "C15", "C16", "C17"]
-NOT_COMPUTED_HEADLINE = ["ensemble", "global"]
 
 CONTRASTS = ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11",
             "C12", "C13", "C14", "C15", "C16", "C17"]
+TWO_ARM_CONTRASTS = {"C1": ("R2", "R1"), "C2": ("R3", "R2"), "C3": ("R14", "R13"), "C4": ("R16", "R15"),
+                     "C5": ("R1", "R4"), "C8": ("R4", "R6"), "C9": ("R2", "R10"), "C10": ("R11", "R10"),
+                     "C11": ("R2", "R11"), "C13": ("ENS_SOFT", "R2"), "C14": ("R12", "R2"), "C15": ("R9", "R8"),
+                     "C16a": ("R13", "R2"), "C16b": ("R17", "R2"), "C16c": ("R15", "R2")}
 
 
 def reproduction_gate(r1_mean: float, r2_mean: float, r10_pre_mean: float) -> tuple[str, dict]:
@@ -135,6 +149,104 @@ def stacking_descriptive(f1_stacking: np.ndarray, f1_softvote: np.ndarray, reali
            "edge_within_run_variance": abs(edge_pp) < realization_sd * 100.0}
 
 
+# ---------------------------------------------------------------------------------------------- analysis layer
+class InputError(Exception):
+    pass
+
+
+def analyse_contrast(g: pd.DataFrame) -> dict:
+    """One contrast's rows (realization, subject, diff): the realization-averaged paired test (per subject, average
+    over the realizations, then Wilcoxon, dz, BCa, subjects improved), and the seed-level consistency (the mean
+    difference within each shared realization, its mean and SD, and how many realizations share the overall sign)."""
+    per_subj = g.groupby("subject")["diff"].mean().sort_index()
+    avg = per_subj.to_numpy(float)
+    by_real = g.groupby("realization")["diff"].mean()
+    p_raw = 1.0 if np.allclose(avg, 0) else float(stats.wilcoxon(avg, zero_method="wilcox", alternative="two-sided").pvalue)
+    lo, hi = bca_ci(avg)
+    sign = np.sign(by_real.mean())
+    return {"avg": avg, "n_realizations": int(len(by_real)), "p_raw": p_raw, "mean_diff_pp": float(avg.mean() * 100.0),
+            "dz": cohens_d_paired(avg, np.zeros_like(avg)), "bca_lo_pp": float(lo * 100.0), "bca_hi_pp": float(hi * 100.0),
+            "n_improved": int((avg > 0).sum()), "seed_mean_pp": float(by_real.mean() * 100.0),
+            "seed_sd_pp": float(by_real.std(ddof=1) * 100.0) if len(by_real) > 1 else float("nan"),
+            "n_agree": int((np.sign(by_real) == sign).sum())}
+
+
+def contrast_table(df: pd.DataFrame, include_published: bool) -> dict[str, dict]:
+    """Letters for every contrast, with BH over the FIXED registered family."""
+    d = df if include_published else df[df["realization"].astype(str) != "published"]
+    out: dict[str, dict] = {}
+    for cid in ALL_CONTRAST_IDS:
+        g = d[d["contrast"] == cid]
+        if g.empty:
+            raise InputError(f"contrast {cid} has no rows")
+        a = analyse_contrast(g)
+        a["tier"] = g["tier"].iloc[0]
+        out[cid] = a
+    p_bh = benjamini_hochberg([out[c]["p_raw"] for c in REGISTERED_BH_FAMILY])
+    for c, pb in zip(REGISTERED_BH_FAMILY, p_bh):
+        out[c]["p_bh"] = pb
+        out[c]["letter"], out[c]["detail"] = classify_contrast(out[c]["avg"], out[c]["n_agree"], out[c]["n_realizations"],
+                                                               pb, out[c]["tier"])
+    for c in NULL_SET:
+        out[c]["letter"], out[c]["detail"] = classify_contrast(out[c]["avg"], 0, out[c]["n_realizations"], 1.0,
+                                                               out[c]["tier"], is_null=True)
+    for c in DESCRIPTIVE_CONTRASTS:
+        out[c]["letter"] = "descriptive"
+    return out
+
+
+def run_variance(af: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """The D1.5 run-variance deliverable, on the NEW realizations only (the published run is a different code state)."""
+    d = af[af["realization"].astype(str) != "published"]
+    rows, dfs, variances, fold_sds = [], [], [], []
+    for arm, g in d.groupby("arm"):
+        means = g.groupby("realization")["f1"].mean()
+        if len(means) < 2:
+            continue
+        rows.append({"arm": arm, "n_realizations": int(len(means)), "mean_f1": float(means.mean()),
+                     "sd_of_40fold_mean": float(means.std(ddof=1))})
+        dfs.append(len(means) - 1)
+        variances.append(means.var(ddof=1))
+        piv = g.pivot_table(index="subject", columns="realization", values="f1")
+        fold_sds.extend(piv.std(axis=1, ddof=1).dropna().tolist())
+    df = int(sum(dfs))
+    pooled_var = float(np.sum(np.array(variances) * np.array(dfs)) / df)
+    lo = float(np.sqrt(df * pooled_var / stats.chi2.ppf(0.975, df)))
+    hi = float(np.sqrt(df * pooled_var / stats.chi2.ppf(0.025, df)))
+    fs = np.array(fold_sds)
+    summ = {"pooled_sd_pt": float(np.sqrt(pooled_var) * 100), "df": df, "chi2_lo_pt": lo * 100, "chi2_hi_pt": hi * 100,
+            "fold_sd_median_pt": float(np.median(fs) * 100), "fold_sd_q25_pt": float(np.quantile(fs, 0.25) * 100),
+            "fold_sd_q75_pt": float(np.quantile(fs, 0.75) * 100), "fold_sd_max_pt": float(fs.max() * 100),
+            "n_arm_fold_cells": int(len(fs))}
+    return pd.DataFrame(rows), summ
+
+
+def secondary_model(af: pd.DataFrame) -> tuple[str, pd.DataFrame | None]:
+    """D1.5 item 3: F1 ~ arm + (1|subject) + (1|seed) via statsmodels MixedLM, for the two-arm contrasts. Returns
+    (a sentence for the verdict, a table or None). If statsmodels is not importable the sentence says NOT computed."""
+    try:
+        import statsmodels.formula.api as smf
+    except Exception:
+        return ("Secondary mixed model (F1 ~ arm + (1|subject) + (1|seed)): NOT computed, statsmodels is not installed in "
+                "this environment. The letters do not depend on it (D1.5 items 1 and 2 carry the verdict)."), None
+    rows = []
+    d = af[af["realization"].astype(str) != "published"].copy()
+    d["seed"] = d["realization"].astype(str)
+    try:
+        for cid, (a, b) in TWO_ARM_CONTRASTS.items():
+            sub = d[d["arm"].isin([a, b])].copy()
+            sub["is_a"] = (sub["arm"] == a).astype(float)
+            sub["one"] = 1
+            md = smf.mixedlm("f1 ~ is_a", sub, groups=sub["one"],
+                             vc_formula={"subject": "0 + C(subject)", "seed": "0 + C(seed)"}).fit(reml=True)
+            ci = md.conf_int().loc["is_a"]
+            rows.append({"contrast": cid, "fixed_effect_pp": float(md.params["is_a"] * 100), "lo_pp": float(ci[0] * 100),
+                         "hi_pp": float(ci[1] * 100)})
+    except Exception as e:      # a failure of the SECONDARY model must not halt the stage; say so
+        return (f"Secondary mixed model: NOT computed, the fit failed ({type(e).__name__}: {e})."), None
+    return "Secondary mixed model (F1 ~ arm + (1|subject) + (1|seed)) fitted; see D1_secondary_mixedlm.csv.", pd.DataFrame(rows)
+
+
 def required_inputs(out_dir: Path):
     for suffix, req in REQUIRED_BY_DIR_SUFFIX.items():
         if out_dir.name.endswith(suffix):
@@ -148,42 +260,29 @@ def _no_outcome(out_dir: Path, reason: str) -> int:
     return 20
 
 
+def _read(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        raise InputError(f"required input missing: {path}")
+    return pd.read_csv(path)
+
+
 def run(out_dir: Path, require=None) -> int:
-    """require: the set of inputs this directory MUST hold ({"repro"}, or all
-    of repro/contrasts/headline). Fail closed (2026-09-25): a missing required
-    input, or no input at all, exits 20 with a verdict that has no outcome
-    line; the old version wrote '(no inputs present yet)' and exited 0."""
+    """require: the set of inputs this directory MUST hold ({"repro"}, or repro/contrasts/headline). Fail closed: a
+    missing required input, or no input at all, exits 20 with a verdict that has no outcome line."""
     files = {"repro": out_dir / "d1_reproduction_inputs.csv", "contrasts": out_dir / "d1_contrasts.csv",
              "headline": out_dir / "d1_headline_inputs.csv"}
     missing = [k for k in (require or ()) if not files[k].exists()]
     if missing:
-        return _no_outcome(out_dir, f"required input(s) missing in {out_dir.name}: "
-                                     f"{[files[k].name for k in missing]}")
+        return _no_outcome(out_dir, f"required input(s) missing in {out_dir.name}: {[files[k].name for k in missing]}")
     if not any(f.exists() for f in files.values()):
         return _no_outcome(out_dir, f"no D1 input present in {out_dir.name}")
-    if require and "contrasts" in require:
-        have = set(pd.read_csv(files["contrasts"])["contrast"])
-        gaps = [c for c in EXTRACTABLE_CONTRASTS if c not in have]
-        if gaps:
-            return _no_outcome(out_dir, f"contrasts absent from d1_contrasts.csv: {gaps}")
-    if require and "headline" in require:
-        have_h = set(pd.read_csv(files["headline"])["arm"])
-        gaps = [a for a in EXTRACTED_HEADLINE_ARMS if a not in have_h]
-        if gaps:
-            return _no_outcome(out_dir, f"headline arms absent from d1_headline_inputs.csv: {gaps}")
     exit_code = 0
 
-    # Fixed 2026-09-24: this letter used to be computed, used to set exit_code,
-    # and then silently dropped -- the local `letter` name was reused (and
-    # overwritten) by the per-contrast and per-headline-arm loops below, so
-    # D1_VERDICT.md never recorded it even though the gate had genuinely run
-    # and genuinely passed or failed. Found live: results_kc23_d1_repro_check/
-    # D1_VERDICT.md existed with only its header, no letter, even though the
-    # job had actually run and produced real reproduction_inputs.
+    # D1.4 reproduction gate. (Fixed 2026-09-24: this letter was once computed, used, and then silently dropped from the
+    # verdict by a shadowed local name.)
     repro_letter, repro_detail = None, None
-    gate_path = out_dir / "d1_reproduction_inputs.csv"
-    if gate_path.exists():
-        g = pd.read_csv(gate_path).set_index("arm")["f1_mean"]
+    if files["repro"].exists():
+        g = pd.read_csv(files["repro"]).set_index("arm")["f1_mean"]
         repro_letter, repro_detail = reproduction_gate(float(g["R1"]), float(g["R2"]), float(g["R10_pre"]))
         print_gate_header("KC-D1 reproduction gate", repro_letter,
                           "Continue." if repro_letter == "PASS" else "ESCALATE: code drift since publication.")
@@ -191,89 +290,112 @@ def run(out_dir: Path, require=None) -> int:
         if repro_letter == "FAIL":
             exit_code = 20
 
-    contrast_results = {}
-    contrasts_path = out_dir / "d1_contrasts.csv"  # cols: contrast, tier, realization, subject, diff
-    if contrasts_path.exists() and exit_code != 20:
-        df = pd.read_csv(contrasts_path)
-        rows = []
-        for cname, g in df.groupby("contrast"):
-            tier = g["tier"].iloc[0]
-            is_null = cname in NULL_CONTRASTS
-            avg = g.groupby("subject")["diff"].mean().to_numpy()
-            if is_null:
-                letter, detail = classify_contrast(avg, 0, 0, 1.0, tier, is_null=True)
-                rows.append({"contrast": cname, "tier": tier, "letter": letter, **detail})
-                continue
-            if np.allclose(avg, 0):
-                p_raw = 1.0
-            else:
-                p_raw = float(stats.wilcoxon(avg, zero_method="wilcox", alternative="two-sided").pvalue)
-            by_real = g.groupby("realization")["diff"].mean()
-            n_agree = int((np.sign(by_real) == np.sign(by_real.mean())).sum())
-            rows.append({"contrast": cname, "tier": tier, "p_raw": p_raw, "n_agree": n_agree,
-                        "n_realizations": len(by_real), "mean_diff_pp": float(avg.mean() * 100),
-                        "cohens_dz": cohens_d_paired(avg, np.zeros_like(avg))})
-        # BH within the whole KC-D1 family of non-null contrasts
-        nonnull = [r for r in rows if "p_raw" in r]
-        if nonnull:
-            p_bh = benjamini_hochberg([r["p_raw"] for r in nonnull])
-            for r, pb in zip(nonnull, p_bh):
-                letter, detail = classify_contrast(None, r["n_agree"], r["n_realizations"], pb, r["tier"])
-                r["p_bh"] = pb
-                r["letter"] = letter
-        for r in rows:
-            contrast_results[r["contrast"]] = r
-            print_gate_header(f"KC-D1 {r['contrast']}", r["letter"], "")
+    verdict = ["# KC-D1 verdict\n"]
+    if repro_letter is not None:
+        verdict.append(f"- **reproduction: {repro_letter}**")
+    tables, notes = [], []
 
+    if "contrasts" in (require or ()) and exit_code != 20:
+        try:
+            df = _read(files["contrasts"])
+            need = {"contrast", "tier", "realization", "subject", "diff"}
+            if not need <= set(df.columns):
+                raise InputError(f"d1_contrasts.csv lacks {sorted(need - set(df.columns))}")
+            have = set(df["contrast"])
+            gaps = [c for c in ALL_CONTRAST_IDS if c not in have]
+            if gaps:
+                raise InputError(f"contrasts absent from d1_contrasts.csv: {gaps}")
+            af = _read(out_dir / "d1_arm_subject_f1.csv")
+            c17 = _read(out_dir / "d1_c17_factors.csv")
+            primary = contrast_table(df, include_published=True)
+            sensitivity = contrast_table(df, include_published=False)
+        except InputError as e:
+            return _no_outcome(out_dir, str(e))
+
+        rows = []
+        for cid in ALL_CONTRAST_IDS:
+            p, s = primary[cid], sensitivity[cid]
+            label = p["letter"]
+            shown = "C16 plateau pair, null" if cid in ("C16a", "C16b") else ""
+            verdict.append(f"- **{cid}: {label}**" if label != "descriptive" else f"- {cid} (descriptive, D-6a): stacking "
+                           f"minus soft vote {p['mean_diff_pp']:+.2f} pt")
+            rows.append({"contrast": cid, "letter": label, "letter_without_published": s["letter"], "tier": p["tier"],
+                         "n_realizations": p["n_realizations"], "n_realizations_without_published": s["n_realizations"],
+                         "mean_diff_pp": p["mean_diff_pp"], "dz": p["dz"], "bca_lo_pp": p["bca_lo_pp"],
+                         "bca_hi_pp": p["bca_hi_pp"], "n_improved": p["n_improved"], "p_raw": p["p_raw"],
+                         "p_bh": p.get("p_bh", float("nan")), "seed_mean_pp": p["seed_mean_pp"],
+                         "seed_sd_pp": p["seed_sd_pp"], "n_seeds_same_sign": p["n_agree"], "note": shown})
+            print_gate_header(f"KC-D1 {cid}", label, "")
+        res = pd.DataFrame(rows)
+        res.to_csv(out_dir / "D1_contrasts_verdict.csv", index=False)
+        differing = res[(res["letter"] != res["letter_without_published"]) & (res["letter"] != "descriptive")]
+        if len(differing):
+            notes.append("Sensitivity (published run excluded) changes the letter for: " + ", ".join(
+                f"{r.contrast} ({r.letter} -> {r.letter_without_published})" for r in differing.itertuples()) + ".")
+        else:
+            notes.append("Sensitivity (published run excluded): no contrast changes letter.")
+        tables.append("| contrast | letter | without published | mean diff (pt) | dz | p | p BH | improved | seeds same sign |\n"
+                      "|---|---|---|---|---|---|---|---|---|\n" +
+                      "\n".join(f"| {r.contrast} | {r.letter} | {r.letter_without_published} | {r.mean_diff_pp:+.2f} | {r.dz:+.2f} | "
+                                f"{r.p_raw:.3g} | {'' if pd.isna(r.p_bh) else format(r.p_bh, '.3g')} | {r.n_improved}/40 | "
+                                f"{r.n_seeds_same_sign}/{r.n_realizations} |" for r in res.itertuples()))
         for critical in ("C1", "C12"):
-            if critical in contrast_results and contrast_results[critical]["letter"] == "NOT ESTABLISHED":
+            if primary[critical]["letter"] == "NOT ESTABLISHED":
                 exit_code = 20
                 print(f"[D1] {critical} NOT ESTABLISHED -> ESCALATE (Finding C's core changes).")
+                notes.append(f"{critical} is NOT ESTABLISHED: ESCALATE (D1.7).")
+        # C13b, the descriptive stacking row, against the realization SD of the soft vote
+        new = af[af["realization"].astype(str) != "published"]
+        soft_sd = float(new[new["arm"] == "ENS_SOFT"].groupby("realization")["f1"].mean().std(ddof=1))
+        soft = new[new["arm"] == "ENS_SOFT"].groupby("subject")["f1"].mean().sort_index()
+        stack = new[new["arm"] == "ENS_STACK"].groupby("subject")["f1"].mean().sort_index()
+        c13b = stacking_descriptive(stack.to_numpy(), soft.to_numpy(), soft_sd)
+        pd.DataFrame([c13b]).to_csv(out_dir / "D1_C13b_stacking.csv", index=False)
+        notes.append(f"C13b (descriptive): stacking {c13b['edge_pp']:+.2f} pt over the soft vote against a realization SD of "
+                     f"{c13b['realization_sd_pp']:.2f} pt (within run variance: {c13b['edge_within_run_variance']}).")
+        for label, gg in c17.groupby("comparison"):
+            notes.append(f"C17, occlusion reduction factor {label}: {gg['factor'].mean():.2f}x, SD {gg['factor'].std(ddof=1):.2f} "
+                         f"across {len(gg)} realizations.")
+        rv, rv_sum = run_variance(af)
+        rv.to_csv(out_dir / "D1_run_variance.csv", index=False)
+        pd.DataFrame([rv_sum]).to_csv(out_dir / "D1_run_variance_pooled.csv", index=False)
+        notes.append(f"Run variance: pooled SD of the 40-fold mean {rv_sum['pooled_sd_pt']:.2f} pt on {rv_sum['df']} degrees of "
+                     f"freedom (chi-square 95% interval {rv_sum['chi2_lo_pt']:.2f} to {rv_sum['chi2_hi_pt']:.2f} pt); per-fold SD "
+                     f"across realizations, median {rv_sum['fold_sd_median_pt']:.2f} pt (IQR {rv_sum['fold_sd_q25_pt']:.2f} to "
+                     f"{rv_sum['fold_sd_q75_pt']:.2f}, max {rv_sum['fold_sd_max_pt']:.2f}) over {rv_sum['n_arm_fold_cells']} arm-fold cells.")
+        sec, sec_tab = secondary_model(af)
+        notes.append(sec)
+        if sec_tab is not None:
+            sec_tab.to_csv(out_dir / "D1_secondary_mixedlm.csv", index=False)
 
-    headline_path = out_dir / "d1_headline_inputs.csv"
-    headline_checks = {}
-    if headline_path.exists() and exit_code != 20:
-        h = pd.read_csv(headline_path)
-        checks = headline_checks
-        for arm, published in [("R2", PUBLISHED_R2), ("ensemble", PUBLISHED_ENSEMBLE),
-                               ("R12", PUBLISHED_R12), ("global", PUBLISHED_GLOBAL)]:
-            row = h[h["arm"] == arm]
-            if len(row):
-                letter, detail = classify_headline(published, float(row["realization_mean"].iloc[0]),
-                                                    float(row["realization_sd"].iloc[0]))
-                checks[arm] = {"letter": letter, **detail}
-                print_gate_header(f"KC-D1 headline ({arm})", letter, "")
+    if "headline" in (require or ()) and exit_code != 20:
+        try:
+            h = _read(files["headline"])
+            if not {"arm", "realization_mean", "realization_sd"} <= set(h.columns) or set(h["arm"]) != set(HEADLINE_ARMS):
+                raise InputError(f"d1_headline_inputs.csv must hold exactly the arms {list(HEADLINE_ARMS)}")
+        except InputError as e:
+            return _no_outcome(out_dir, str(e))
+        published = {"R2": PUBLISHED_R2, "ensemble": PUBLISHED_ENSEMBLE, "R12": PUBLISHED_R12, "global": PUBLISHED_GLOBAL}
+        checks = {}
+        for arm, pub in published.items():
+            row = h[h["arm"] == arm].iloc[0]
+            letter, detail = classify_headline(pub, float(row["realization_mean"]), float(row["realization_sd"]))
+            checks[arm] = {"letter": letter, **detail}
+            verdict.append(f"- **headline ({arm}): {letter}**")
+            print_gate_header(f"KC-D1 headline ({arm})", letter, "")
+        pd.DataFrame([{"arm": a, **v} for a, v in checks.items()]).to_csv(out_dir / "D1_headline_verdict.csv", index=False)
         if any(v["letter"] == "H2" for v in checks.values()):
             exit_code = 20
-
-    stacking_path = out_dir / "d1_stacking_c13b.csv"
-    stacking_result = None
-    if stacking_path.exists():
-        s = pd.read_csv(stacking_path)
-        stacking_result = stacking_descriptive(s["f1_stacking"].to_numpy(), s["f1_softvote"].to_numpy(),
-                                               float(s["realization_sd"].iloc[0]))
-        print(f"[D1] C13b (descriptive, decision D-6a): {stacking_result}")
+            notes.append("A headline arm is H2: ESCALATE (D1.6), whether to report the realization mean as the headline is "
+                         "Enam's decision.")
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    if contrast_results:
-        pd.DataFrame(list(contrast_results.values())).to_csv(out_dir / "D1_contrasts_verdict.csv", index=False)
-    if stacking_result:
-        pd.DataFrame([stacking_result]).to_csv(out_dir / "D1_C13b_stacking.csv", index=False)
-
-    verdict_lines = ["# KC-D1 verdict\n"]
-    if repro_letter is not None:
-        verdict_lines.append(f"- **reproduction: {repro_letter}**")
-    for k, v in contrast_results.items():
-        verdict_lines.append(f"- **{k}: {v['letter']}**")
-    for arm, v in headline_checks.items():
-        verdict_lines.append(f"- **headline ({arm}): {v['letter']}**")
-    if require and "contrasts" in require:
-        verdict_lines.append("")
-        verdict_lines.append("Registered but NOT computed (no job produces their inputs yet): contrasts "
-                             + ", ".join(NOT_COMPUTED_CONTRASTS) + "; headline arms " + ", ".join(NOT_COMPUTED_HEADLINE)
-                             + ". The secondary MixedLM model is also not computed (see the module docstring).")
-    (out_dir / "D1_VERDICT.md").write_text("\n".join(verdict_lines) + "\n", encoding="utf-8")
-
+    body = "\n".join(verdict) + "\n"
+    if tables:
+        body += "\n" + "\n\n".join(tables) + "\n"
+    if notes:
+        body += "\n" + "\n\n".join(notes) + "\n"
+    (out_dir / "D1_VERDICT.md").write_text(body, encoding="utf-8")
     return exit_code
 
 

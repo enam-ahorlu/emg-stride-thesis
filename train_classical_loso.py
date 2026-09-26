@@ -120,12 +120,31 @@ class LosoRow:
 
 
 # ---- KC-C3.3 extended search spaces, fixed by EXPERIMENT_PLAN_KC23_CLASSICAL.md ----
-SVM_GRID_EXTENDED = {
-    "clf__C": [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30],
-    "clf__gamma": [0.01, 0.1, 0.3, 1, 3, 10, "scale"],
-}  # 8 x 7 = 56 cells (the plan's "48 cells" counts gamma as 6 numeric values only;
-   # "scale" is kept as an extra option here rather than dropped, since removing it
-   # would silently lose the one gamma value every published fold actually used)
+# SVM-X (plan C3.3): "C in {0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30}; gamma in {0.01, 0.1, 0.3, 1, 3, 10} x `scale`
+# value (48 cells)". Corrected 26 September 2026 (KC23_PREREG_CONFORMANCE.md): the first version used those six
+# numbers as ABSOLUTE gammas, plus 'scale' as an extra cell (56 cells). For 72 standardized features `scale` is about
+# 1/72 = 0.0139, so the plan's multiples span 1.4e-4 to 0.14 and the absolute values 0.01 to 10 sit one to three orders
+# of magnitude higher: a different search. The gamma axis is now the plan's multiples OF the fitted scale value.
+SVM_C_EXTENDED = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30]
+SVM_GAMMA_MULT_EXTENDED = [0.01, 0.1, 0.3, 1, 3, 10]
+
+
+def svm_gamma_scale_value(Xtr, scaler_steps) -> float:
+    """sklearn's gamma='scale' value, 1 / (n_features * X.var()), on the data the SVC actually sees (after the pipeline's
+    scaler, if any) for THIS outer training set."""
+    Xs = Pipeline(scaler_steps).fit_transform(Xtr) if scaler_steps else Xtr
+    return float(1.0 / (Xs.shape[1] * float(np.var(Xs))))
+
+
+def svm_extended_grid(Xtr, scaler_steps, c_values=None, mult_values=None):
+    """(param_grid, scale_value, multipliers): C x (multiplier * scale). c_values / mult_values override the plan's
+    axes; that is how the plan's edge rule (extend an axis by two steps, once) is run, see kc23_c3_edge.py."""
+    scale = svm_gamma_scale_value(Xtr, scaler_steps)
+    cs = list(c_values) if c_values else list(SVM_C_EXTENDED)
+    mults = list(mult_values) if mult_values else list(SVM_GAMMA_MULT_EXTENDED)
+    return {"clf__C": cs, "clf__gamma": [float(m * scale) for m in mults]}, scale, mults
+
+
 RF_GRID_EXTENDED = {
     "clf__n_estimators": [200, 500, 1000],
     "clf__max_depth": [None, 10, 20, 40],
@@ -142,6 +161,10 @@ KNN_GRID = {
     "clf__n_neighbors": [5, 11, 21, 41, 81],
     "clf__weights": ["uniform", "distance"],
 }
+
+
+def _csv_floats(text):
+    return [float(x) for x in str(text).split(",") if x.strip()] if text else None
 
 
 def make_search(pipe, param_grid, scoring, cv, search_mode, n_iter, seed, n_jobs):
@@ -240,6 +263,12 @@ def main():
     ap.add_argument("--search", default="grid", choices=["grid", "random"],
                     help="KC-C3. grid (default) = GridSearchCV over the full space (SVM-X, "
                          "KNN). random = RandomizedSearchCV, --n-iter draws, seeded (RF-X, HGB).")
+    ap.add_argument("--svm-c-grid", default=None,
+                    help="KC-C3 edge rule only: comma list replacing the extended SVM C axis (default: the plan's "
+                         "0.01..30). Used by the rerun that extends an axis by two steps, once.")
+    ap.add_argument("--svm-gamma-mult-grid", default=None,
+                    help="KC-C3 edge rule only: comma list replacing the extended SVM gamma multipliers of `scale` "
+                         "(default: 0.01, 0.1, 0.3, 1, 3, 10).")
     ap.add_argument("--n-iter", type=int, default=30,
                     help="KC-C3. Draws for --search random (default 30, per the plan).")
     ap.add_argument("--no-scale", action="store_true", help="Disable StandardScaler (NOT recommended; kept for legacy comparison)")
@@ -507,8 +536,10 @@ def main():
                 # --grid default (the default value) is BYTE-IDENTICAL to the
                 # pre-KC23 grid: {C: [1,5,10], gamma: ['scale']}, GridSearchCV,
                 # n_jobs=args.n_jobs. This is the KC-C3 inertness gate.
+                gamma_scale, gamma_mults = None, None
                 if args.grid == "extended":
-                    param_grid = SVM_GRID_EXTENDED
+                    param_grid, gamma_scale, gamma_mults = svm_extended_grid(
+                        Xtr, _build_scaler_steps(), _csv_floats(args.svm_c_grid), _csv_floats(args.svm_gamma_mult_grid))
                 else:
                     param_grid = {"clf__C": [1, 5, 10], "clf__gamma": ["scale"]}
 
@@ -524,6 +555,14 @@ def main():
                 best = search.best_estimator_
                 yhat = best.predict(Xte)
                 best_params_str = str(search.best_params_)
+                if gamma_scale is not None:
+                    bg = float(search.best_params_["clf__gamma"])
+                    pd.DataFrame([{"heldout_subject": int(heldout), "scale_value": gamma_scale,
+                                   "best_gamma": bg, "best_gamma_mult": bg / gamma_scale,
+                                   "c_grid": ";".join(map(str, param_grid["clf__C"])),
+                                   "gamma_mult_grid": ";".join(map(str, gamma_mults))}]).to_csv(
+                        out_dir / "svm_extended_gamma.csv", mode="a", header=not (out_dir / "svm_extended_gamma.csv").exists(),
+                        index=False)
 
             elif model_name == "RF":
                 steps = _build_scaler_steps()

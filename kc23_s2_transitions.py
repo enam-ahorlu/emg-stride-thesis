@@ -42,8 +42,11 @@ Measures per (condition, model), per S2.4:
                             circuit (ties go to the most recent): change in
                             steady-state error, in transition-zone error, and
                             the added decision delay (paired per transition)
-The S2b window trade (250 against 400 ms) needs the 400 ms predictions and is
-NOT computed here; the verdict says so.
+The S2b window trade (250 against 400 ms) is computed by kc23_s2b_window_trade.py from the 400 ms predictions; when
+its reading file exists (--s2b-dir) the verdict includes it, otherwise it says Reading 2 is not computed.
+
+Reordering, 26 September 2026: the verdict leads with the transductive and balanced25 conditions. The causal-100
+collapse is reported as a finding in its own right, not as a reading.
 """
 from __future__ import annotations
 import argparse
@@ -95,11 +98,12 @@ def label_windows(t_end: np.ndarray, transitions: list) -> pd.DataFrame:
 
 
 def decision_delay(t_end: np.ndarray, y_pred: np.ndarray, transitions: list,
-                   n_consecutive: int = N_CONSECUTIVE) -> pd.DataFrame:
+                   n_consecutive: int = N_CONSECUTIVE, max_gap_s: float | None = None) -> pd.DataFrame:
     """Per transition: delay from the true change to the end time of the first
     of n_consecutive adjacent windows all predicted as the NEW class. Only
     windows ending at or after the change and before the next transition are
     searched; NaN if the new class is never stably reached (unresolved)."""
+    max_gap_s = MAX_GAP_S if max_gap_s is None else max_gap_s     # S2b passes 2 x its window step (0.40 s at 400 ms)
     t_end = np.asarray(t_end, float)
     y_pred = np.asarray(y_pred)
     rows = []
@@ -110,7 +114,7 @@ def decision_delay(t_end: np.ndarray, y_pred: np.ndarray, transitions: list,
         delay = np.nan
         run, start, prev = 0, None, None
         for k in idx:
-            if y_pred[k] == target and (run > 0 and t_end[k] - t_end[prev] <= MAX_GAP_S):
+            if y_pred[k] == target and (run > 0 and t_end[k] - t_end[prev] <= max_gap_s):
                 run += 1
             elif y_pred[k] == target:
                 run, start = 1, k
@@ -175,7 +179,7 @@ def _rate(mask_num: np.ndarray, mask_den: np.ndarray) -> float:
     return float(mask_num[mask_den].mean()) if d else float("nan")
 
 
-def analyse(cond: str, model: str, df: pd.DataFrame, table: pd.DataFrame):
+def analyse(cond: str, model: str, df: pd.DataFrame, table: pd.DataFrame, max_gap_s: float | None = None):
     """Returns (measures dict, per-window zone frame, per-transition delay frame)."""
     trans_by = {k: sorted(zip(g["t_change_s"], g["from"], g["to"])) for k, g in table.groupby(["subject", "circuit"])}
     zone_frames, delay_frames = [], []
@@ -188,7 +192,7 @@ def analyse(cond: str, model: str, df: pd.DataFrame, table: pd.DataFrame):
         z["y_vote"] = causal_vote(g["y_pred"].to_numpy())
         zone_frames.append(z)
         for label, col in (("raw", "y_pred"), ("vote", "y_vote")):
-            d = decision_delay(g["t_end"].to_numpy(), z[col].to_numpy(), trans)
+            d = decision_delay(g["t_end"].to_numpy(), z[col].to_numpy(), trans, max_gap_s=max_gap_s)
             d["subject"], d["circuit"], d["source"] = subj, circ, label
             delay_frames.append(d)
     zones = pd.concat(zone_frames, ignore_index=True)
@@ -243,27 +247,69 @@ def analyse(cond: str, model: str, df: pd.DataFrame, table: pd.DataFrame):
     return m, zones, delays
 
 
-def _reading(measures: pd.DataFrame) -> str:
-    sel = measures[(measures["condition"] == "causal100") & (measures["model"] == "soft")]
+LEAD_CONDITIONS = ["transductive", "causal_balanced25"]      # the readings S2 leads with (decision of 26 Sept 2026)
+SEPARATE_CONDITION = "causal100"                              # reported as a finding of its own, not as a reading
+
+
+def vote_reading(measures: pd.DataFrame, cond: str, model: str = "soft") -> dict:
+    """S2.5 reading 1 for one condition: does the five-window vote cut steady-state error AND add under 250 ms median delay?"""
+    sel = measures[(measures["condition"] == cond) & (measures["model"] == model)]
     if sel.empty:
-        return "Reading 1 not evaluated (soft, causal100 row absent)."
+        return {"cond": cond, "evaluated": False}
     r = sel.iloc[0]
-    cut = r["vote_delta_steady_error"] < 0
     added_ms = r["vote_added_delay_paired_median_s"] * 1000.0
+    cut = bool(r["vote_delta_steady_error"] < 0)
     under = bool(added_ms < 250.0) if not np.isnan(added_ms) else False
-    if cut and under:
-        verdict = ("the five-window vote cuts steady-state error and adds under 250 ms median delay, so Section "
-                   "4.4.3's smoothing paragraph can be stated for real transitions, with these numbers")
+    return {"cond": cond, "evaluated": True, "cut": cut, "under": under, "holds": cut and under,
+            "d_steady_pt": r["vote_delta_steady_error"] * 100.0, "d_zone_pt": r["vote_delta_zone_error"] * 100.0,
+            "added_ms": added_ms, "n_paired": int(r["vote_added_delay_n_paired"])}
+
+
+def _reading(measures: pd.DataFrame) -> str:
+    """Reading 1 leads with the transductive and balanced25 conditions, on the soft vote; the causal-100 collapse follows
+    as its own finding (a buffer taken from the start of a real continuous session does not work)."""
+    parts = [vote_reading(measures, c) for c in LEAD_CONDITIONS]
+    if not all(p["evaluated"] for p in parts):
+        return "Reading 1 not evaluated (a lead-condition soft row is absent)."
+    lines = [f"- {p['cond']}: steady-state error change {p['d_steady_pt']:+.2f} pt, transition-zone error change "
+             f"{p['d_zone_pt']:+.2f} pt, paired median added delay {p['added_ms']:+.0f} ms ({p['n_paired']} transitions)"
+             for p in parts]
+    if all(p["holds"] for p in parts):
+        verdict = ("the five-window vote cuts steady-state error and adds under 250 ms median delay under both lead conditions, "
+                   "so Section 4.4.3's smoothing paragraph can be stated for real transitions, with these numbers")
+    elif not any(p["holds"] for p in parts):
+        verdict = ("the vote does not both cut steady-state error and add under 250 ms median delay under either lead condition, "
+                   "so the limitation stays and gains these numbers")
     else:
-        verdict = ("the vote does not both cut steady-state error and add under 250 ms median delay, so the "
-                   "limitation stays and gains these numbers")
-    return (f"Reading 1 (soft vote, causal 100-window buffer): steady-state error change "
-            f"{r['vote_delta_steady_error'] * 100:+.2f} pt, transition-zone error change "
-            f"{r['vote_delta_zone_error'] * 100:+.2f} pt, paired median added delay {added_ms:+.0f} ms "
-            f"({int(r['vote_added_delay_n_paired'])} transitions): {verdict}.")
+        verdict = "the two lead conditions disagree, so neither statement is made without both sets of numbers"
+    return "Reading 1 (soft vote; the lead conditions):\n\n" + "\n".join(lines) + f"\n\nSo: {verdict}."
 
 
-def run(out_dir: Path, preds_dir: Path, table_path: Path) -> int:
+def _causal100_finding(measures: pd.DataFrame) -> str:
+    rows = []
+    for model in MODELS:
+        a = measures[(measures["condition"] == "transductive") & (measures["model"] == model)]
+        b = measures[(measures["condition"] == SEPARATE_CONDITION) & (measures["model"] == model)]
+        if a.empty or b.empty:
+            continue
+        rows.append(f"{model}: steady-state error {a.iloc[0]['steady_error']:.3f} transductive, "
+                    f"{b.iloc[0]['steady_error']:.3f} causal-100")
+    if not rows:
+        return "Causal-100 finding not evaluated (rows absent)."
+    return ("## Finding, reported on its own: the causal 100-window buffer collapses\n\nA buffer taken from the start of a real "
+            "continuous session does not work as a normalization reference: " + "; ".join(rows) + ". This is not a reading "
+            "of S2.5; it is the measurement that supports the need for a scripted commissioning step (decision D-6b). The "
+            "causal-100 rows stay in the table and in s2_measures.csv, and Reading 1 is not taken from them.")
+
+
+def _s2b_reading(s2b_dir: Path | None) -> str:
+    if s2b_dir is None or not (Path(s2b_dir) / "s2b_reading.txt").exists():
+        return ("Reading 2 (S2b, 400 ms against 250 ms): NOT computed here; it needs the 400 ms per-window predictions "
+                "with circuit and time (kc23_s2b_window_trade.py).")
+    return (Path(s2b_dir) / "s2b_reading.txt").read_text(encoding="utf-8").strip()
+
+
+def run(out_dir: Path, preds_dir: Path, table_path: Path, s2b_dir: Path | None = None) -> int:
     try:
         preds = _load_preds(preds_dir)
         table = _load_table(table_path)
@@ -298,14 +344,16 @@ def run(out_dir: Path, preds_dir: Path, table_path: Path) -> int:
     key = ["condition", "model", "steady_error", "zone_error", "dns_as_wak_rate_zone", "dns_as_wak_rate_steady",
            "delay_all_median_s", "vote_delta_steady_error", "vote_delta_zone_error", "vote_added_delay_paired_median_s"]
     head = "| " + " | ".join(key) + " |\n|" + "---|" * len(key) + "\n"
+    order = {c: i for i, c in enumerate(LEAD_CONDITIONS + [SEPARATE_CONDITION])}
+    shown = measures.assign(_o=measures["condition"].map(order)).sort_values(["_o"], kind="stable")
     body = "".join("| " + " | ".join(f"{r[k]:.4f}" if isinstance(r[k], float) else str(r[k]) for k in key) + " |\n"
-                   for _, r in measures.iterrows())
+                   for _, r in shown.iterrows())
     (out_dir / "S2_VERDICT.md").write_text(
-        "# KC-S2 verdict\n\nDescriptive only (no halting letters, per S2.5). Measures per condition and model, "
-        "windows scored against the ground-truth transition table.\n\n" + head + body +
-        f"\n{_reading(measures)}\n\nReading 2 (S2b, 400 ms against 250 ms): NOT computed by this script; it needs "
-        f"the 400 ms per-window predictions with circuit and time.\n\nFull tables: s2_measures.csv, "
-        f"s2_decision_delay.csv, s2_zone_labels.csv.\n", encoding="utf-8")
+        "# KC-S2 verdict\n\nDescriptive only (no halting letters, per S2.5). The readings lead with the transductive and "
+        "balanced25 conditions; the causal-100 collapse is reported separately below. Measures per condition and model, "
+        "windows scored against the ground-truth transition table (rows in that order).\n\n" + head + body +
+        f"\n## Readings\n\n{_reading(measures)}\n\n{_causal100_finding(measures)}\n\n{_s2b_reading(s2b_dir)}\n\n"
+        f"Full tables: s2_measures.csv, s2_decision_delay.csv, s2_zone_labels.csv.\n", encoding="utf-8")
     return 0
 
 
@@ -314,8 +362,9 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--preds-dir", required=True)
     ap.add_argument("--table", required=True)
+    ap.add_argument("--s2b-dir", default=None, help="results_kc23_s2b_window_trade, for Reading 2 (optional)")
     args = ap.parse_args()
-    sys.exit(run(Path(args.out), Path(args.preds_dir), Path(args.table)))
+    sys.exit(run(Path(args.out), Path(args.preds_dir), Path(args.table), Path(args.s2b_dir) if args.s2b_dir else None))
 
 
 if __name__ == "__main__":

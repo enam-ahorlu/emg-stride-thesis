@@ -1,64 +1,88 @@
-"""Synthetic tests for kc23_c5_leak_stats.py: find_plateau, L1/L2/L3, and the
-real-file discovery layer (fixed 2026-09-24: the gate originally assumed
-p50_subjectwise.csv / b{g}_subjectwise.csv files that b8_movement_blocked_sd.py
-never wrote -- its real --scheme output is b8_<tag>_<scheme>_g<g>_<cv_unit>_
-subjectwise.csv with one wide column per model)."""
-import pytest
-import numpy as np
-import pandas as pd
+"""kc23_c5_leak_stats.py: plateau rule, L1/L2/L3, the conformance additions (three models, pooled vs per_subject arms,
+L-OUT / L-NONE, every arm required) and the real-file layout (b8_<tag>_<scheme>_g<g>_<cv_unit>_subjectwise.csv, one wide
+column per model, each job in its own subdirectory)."""
+import re
 import sys
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import kc23_c5_leak_stats as mod
 from kc23_c5_leak_stats import find_plateau, classify_l, tag_from_search_root, find_scheme_file, run
 
+LETTER_RE = re.compile(r"\*\*[^*\n]*:\s*[A-Za-z0-9][^*\n]*\*\*")
 RNG = np.random.default_rng(3)
 N = 40
+TAG = "kc23_c5_siat"
 
 
 def _f1(base, noise=0.005):
     return np.clip(base + RNG.normal(0, noise, N), 0.05, 0.99)
 
 
+def _b(vals):
+    return {g: _f1(v) for g, v in zip((1, 2, 4, 8, 16), vals)}
+
+
 def test_plateau_found_early():
-    b = {1: _f1(0.80), 2: _f1(0.799), 4: _f1(0.798), 8: _f1(0.75), 16: _f1(0.70)}
-    g_star, detail = find_plateau(b)
+    g_star, detail = find_plateau(_b([0.80, 0.799, 0.798, 0.75, 0.70]))
     assert g_star == 1, detail
 
 
+def test_plateau_later():
+    g_star, _ = find_plateau(_b([0.90, 0.85, 0.80, 0.797, 0.70]))
+    assert g_star == 4
+
+
 def test_no_plateau():
-    b = {1: _f1(0.90), 2: _f1(0.85), 4: _f1(0.80), 8: _f1(0.75), 16: _f1(0.70)}
-    g_star, detail = find_plateau(b)
+    g_star, detail = find_plateau(_b([0.90, 0.85, 0.80, 0.75, 0.70]))
     assert g_star is None, detail
 
 
+def _arms(p50, p0, i, b, g=1):
+    return _f1(p50), _f1(p0), {gg: _f1(i) for gg in (1, 4, 16)}, {gg: _f1(b) for gg in (1, 2, 4, 8, 16)}
+
+
 def test_l1_overlap_dominant():
-    p50 = _f1(0.92)
-    p0 = _f1(0.80)     # big overlap drop
-    i_g = _f1(0.79)
-    b_g = _f1(0.78)    # total = p50-b_g = 14pt, overlap=12pt (>=60%)
-    letters, detail = classify_l(p50, p0, i_g, b_g, g_star=1, published_blocked_sd=None)
-    assert "L1" in letters, (letters, detail)
+    p50, p0, i, b = _arms(0.92, 0.80, 0.79, 0.78)               # total 14, overlap 12
+    letters, _ = classify_l(p50, p0, i, b, 1, None)
+    assert "L1" in letters
 
 
 def test_l2_drift_dominant():
-    p50 = _f1(0.90)
-    p0 = _f1(0.89)     # small overlap drop (1pt)
-    i_g = _f1(0.88)    # small autocorr drop (1pt)
-    b_g = _f1(0.80)    # big drift drop (8pt); total=10pt, drift=8pt (>=40%)
-    letters, detail = classify_l(p50, p0, i_g, b_g, g_star=1, published_blocked_sd=None)
-    assert "L2" in letters, (letters, detail)
+    p50, p0, i, b = _arms(0.90, 0.89, 0.88, 0.80)               # total 10, drift 8
+    letters, _ = classify_l(p50, p0, i, b, 1, None)
+    assert "L2" in letters and "L1" not in letters
 
 
 def test_l3_no_plateau():
-    letters, detail = classify_l(_f1(0.9), _f1(0.85), _f1(0.8), _f1(0.75), g_star=None,
-                                 published_blocked_sd=None)
-    assert letters == ["L3"], (letters, detail)
+    p50, p0, i, b = _arms(0.9, 0.85, 0.8, 0.75)
+    assert classify_l(p50, p0, i, b, None, None)[0] == ["L3"]
 
 
 def test_l3_gstar_mismatch_vs_published():
-    p50, p0, i_g, b_g = _f1(0.90), _f1(0.85), _f1(0.80), _f1(0.75)
-    letters, detail = classify_l(p50, p0, i_g, b_g, g_star=4, published_blocked_sd=0.85)
-    assert "L3" in letters, (letters, detail)
+    p50, p0, i, b = _arms(0.90, 0.85, 0.80, 0.75)
+    letters, _ = classify_l(p50, p0, i, b, 4, 0.85)
+    assert "L3" in letters
+
+
+def test_l_none_when_neither_share_threshold_is_met():
+    p50, p0, i, b = _arms(0.90, 0.86, 0.82, 0.80)               # total 10: overlap 4, drift 2
+    assert classify_l(p50, p0, i, b, 1, None)[0] == ["L-NONE"]
+
+
+def test_l_out_when_the_plateau_is_at_a_guard_with_no_interleaved_arm():
+    p50, p0, i, b = _arms(0.90, 0.85, 0.80, 0.75)
+    assert classify_l(p50, p0, i, b, 2, None)[0] == ["L-OUT"]      # I is registered at g in {1, 4, 16} only
+    assert classify_l(p50, p0, i, b, 8, None)[0] == ["L-OUT"]
+
+
+def test_l_out_when_blocked_is_not_below_pooled():
+    p50, p0, i, b = _arms(0.80, 0.79, 0.80, 0.85)
+    assert "L-OUT" in classify_l(p50, p0, i, b, 1, None)[0]
 
 
 def test_tag_from_search_root():
@@ -66,92 +90,111 @@ def test_tag_from_search_root():
     assert tag_from_search_root(Path("results_kc23_c5_leak_enabl3s")) == "kc23_c5_enabl3s"
 
 
-def _write_scheme_csv(search_root: Path, scheme_subdir: str, tag: str, scheme: str, guard: float,
-                      cv_unit: str, f1_by_model: dict):
-    """Mirrors the real layout: each job writes into its OWN subdirectory of
-    the shared dataset root, never into the root itself (avoiding the
-    is_complete() collision fixed 2026-09-24)."""
-    d = search_root / scheme_subdir
+def _write_scheme_csv(search_root: Path, subdir: str, scheme: str, guard: float, cv_unit: str, by_model: dict, tag=TAG):
+    d = search_root / subdir
     d.mkdir(parents=True, exist_ok=True)
-    stem = f"b8_{tag}_{scheme}_g{guard:g}_{cv_unit}"
-    df = pd.DataFrame({"subject": list(range(1, 41))})
-    for model, vals in f1_by_model.items():
+    df = pd.DataFrame({"subject": list(range(1, N + 1))})
+    for model, vals in by_model.items():
         df[model] = vals
-    df.to_csv(d / f"{stem}_subjectwise.csv", index=False)
+    df.to_csv(d / f"b8_{tag}_{scheme}_g{guard:g}_{cv_unit}_subjectwise.csv", index=False)
 
 
-def test_find_scheme_file_matches_real_naming(tmp_path):
-    root = tmp_path / "results_kc23_c5_leak_siat"
-    _write_scheme_csv(root, "p50", "kc23_c5_siat", "pooled_random", 1.0, "per_subject",
-                      {"SVM": [0.8] * 40})
-    f = find_scheme_file(root, "kc23_c5_siat", "pooled_random")
-    assert f is not None and f.name == "b8_kc23_c5_siat_pooled_random_g1_per_subject_subjectwise.csv"
-
-
-def test_run_end_to_end_on_real_file_layout(tmp_path):
-    root = tmp_path / "results_kc23_c5_leak_siat"
-    _write_scheme_csv(root, "p50", "kc23_c5_siat", "pooled_random", 1.0, "per_subject", {"SVM": np.full(40, 0.92)})
-    _write_scheme_csv(root, "p0", "kc23_c5_siat", "pooled_random_nonoverlap", 1.0, "per_subject",
-                      {"SVM": np.full(40, 0.80)})
+def _tree(root: Path, p50=0.92, p0=0.80, i=0.79, b_base=0.78, models=("SVM", "RF", "LDA"), plateau_at_1=True):
+    for pooled_scheme, sub, m in (("pooled_random", "p50", p50), ("pooled_random_nonoverlap", "p0", p0)):
+        _write_scheme_csv(root, sub, pooled_scheme, 1.0, "pooled", {mm: np.full(N, m) for mm in models})
     for g in (1, 2, 4, 8, 16):
-        _write_scheme_csv(root, f"b{g}", "kc23_c5_siat", "blocked", float(g), "pooled",
-                          {"SVM": np.full(40, 0.78 - g * 0.001)})
+        v = b_base - (0.0005 * g if plateau_at_1 else 0.02 * g)
+        _write_scheme_csv(root, f"b{g}", "blocked", float(g), "pooled", {mm: np.full(N, v) for mm in models})
     for g in (1, 4, 16):
-        _write_scheme_csv(root, f"i{g}", "kc23_c5_siat", "interleaved", float(g), "pooled",
-                          {"SVM": np.full(40, 0.79)})
-    # the triggering job's own out_dir is one of the leaf subdirectories, not the shared root
-    rc = run(root / "wb1", published_blocked_sd=None, model="SVM")
-    assert (root / "C5_VERDICT.md").exists()
-    assert rc in (0, 20)
+        _write_scheme_csv(root, f"i{g}", "interleaved", float(g), "pooled", {mm: np.full(N, i) for mm in models})
+    _write_scheme_csv(root, "wb1", "blocked", 1.0, "per_subject", {mm: np.full(N, b_base - 0.005) for mm in models})
+    return root
 
 
-def test_run_missing_p0_is_fail_not_fallback(tmp_path):
-    root = tmp_path / "results_kc23_c5_leak_siat"
-    _write_scheme_csv(root, "p50", "kc23_c5_siat", "pooled_random", 1.0, "per_subject", {"SVM": np.full(40, 0.92)})
-    # p0 deliberately missing
-    rc = run(root / "p50", published_blocked_sd=None, model="SVM")
-    assert rc == 20
+def test_find_scheme_file_separates_the_cv_units(tmp_path):
+    root = _tree(tmp_path / "results_kc23_c5_leak_siat")
+    a = find_scheme_file(root, TAG, "blocked", 1.0, "pooled")
+    b = find_scheme_file(root, TAG, "blocked", 1.0, "per_subject")
+    assert a.name.endswith("_g1_pooled_subjectwise.csv") and b.name.endswith("_g1_per_subject_subjectwise.csv")
+    assert a.parent.name == "b1" and b.parent.name == "wb1"
+
+
+def test_run_end_to_end_all_three_models_and_wb1(tmp_path):
+    root = _tree(tmp_path / "results_kc23_c5_leak_siat")
+    rc = run(root, published_blocked_sd=None)
+    assert rc == 0
     v = (root / "C5_VERDICT.md").read_text()
-    assert "NO OUTCOME COMPUTED" in v and "**" not in v   # a missing input is not a result: no letter line
+    for m in ("SVM", "RF", "LDA"):
+        assert f"**{m} outcome: L1**" in v
+    assert "W-B1" in v and LETTER_RE.search(v)
+    dec = pd.read_csv(root / "C5_decomposition.csv")
+    assert list(dec["model"]) == ["SVM", "RF", "LDA"] and (dec["g_star"] == 1).all()
 
 
-def test_different_schemes_do_not_collide_on_is_complete(tmp_path):
-    """The bug this whole file layout exists to prevent: two jobs sharing one
-    out_dir would make is_complete() mark the second "already done" the
-    instant the first wrote any *subjectwise.csv there."""
-    root = tmp_path / "results_kc23_c5_leak_siat"
-    _write_scheme_csv(root, "p50", "kc23_c5_siat", "pooled_random", 1.0, "per_subject", {"SVM": np.full(40, 0.92)})
-    p0_dir = root / "p0"
-    assert not any(p0_dir.glob("*subjectwise.csv")) if p0_dir.exists() else True
-    assert not list(root.glob("*subjectwise.csv")), "no file should land directly in the shared root"
+def test_the_gate_still_works_when_given_a_scheme_subdirectory(tmp_path):
+    root = _tree(tmp_path / "results_kc23_c5_leak_siat")
+    assert run(root / "wb1", published_blocked_sd=None) == 0 and (root / "C5_VERDICT.md").exists()
 
 
-if __name__ == "__main__":
-    fns = [v for k, v in list(globals().items()) if k.startswith("test_")]
-    for fn in fns:
-        fn()
-        print(f"PASS {fn.__name__}")
-    print(f"\n{len(fns)} tests passed")
+def test_run_escalates_when_one_model_has_no_plateau(tmp_path):
+    root = _tree(tmp_path / "results_kc23_c5_leak_siat")
+    for g in (1, 2, 4, 8, 16):
+        _write_scheme_csv(root, f"b{g}", "blocked", float(g), "pooled",
+                          {"SVM": np.full(N, 0.90 - 0.05 * g / 4), "RF": np.full(N, 0.78), "LDA": np.full(N, 0.78)})
+    assert run(root, published_blocked_sd=None) == 20
+    assert "**SVM outcome: L3**" in (root / "C5_VERDICT.md").read_text()
 
 
-# ---------------------------------------------------------------------------
-# 2026-09-25: the L3 published-figure clause was silently never evaluated in the queue path.
+def test_run_exit_10_on_an_out_letter(tmp_path):
+    root = _tree(tmp_path / "results_kc23_c5_leak_siat", p0=0.91, i=0.86, b_base=0.85)    # nothing fires
+    assert run(root, published_blocked_sd=None) == 10
+    assert "L-NONE" in (root / "C5_VERDICT.md").read_text()
+
+
+@pytest.mark.parametrize("victim", ["pooled_random_nonoverlap_g1_pooled", "pooled_random_g1_pooled", "blocked_g8_pooled",
+                                    "blocked_g16_pooled", "interleaved_g4_pooled", "blocked_g1_per_subject"])
+def test_run_fails_closed_when_any_arm_is_missing(tmp_path, victim):
+    root = _tree(tmp_path / "results_kc23_c5_leak_siat")
+    next(root.glob(f"*/b8_{TAG}_{victim}_subjectwise.csv")).unlink()
+    assert run(root, published_blocked_sd=None) == 20
+    text = (root / "C5_VERDICT.md").read_text()
+    assert "NO OUTCOME COMPUTED" in text and not LETTER_RE.search(text) and not (root / "C5_decomposition.csv").exists()
+
+
+def test_a_missing_model_column_fails_closed(tmp_path):
+    root = _tree(tmp_path / "results_kc23_c5_leak_siat", models=("SVM", "RF"))
+    assert run(root, published_blocked_sd=None) == 20
+
+
 def test_published_blocked_sd_enabl3s_is_reported_not_evaluated_never_silent():
-    import kc23_c5_leak_stats as mod
     v, note = mod.load_published_blocked_sd("enabl3s", "SVM")
     assert v is None and "NOT evaluated" in note
 
 
 def test_published_blocked_sd_siat_read_from_real_file():
-    import kc23_c5_leak_stats as mod
     if not (mod.ROOT / mod.PUBLISHED_B8_FILE["siat"]).exists():
         pytest.skip("published b8 file not present")
     v, note = mod.load_published_blocked_sd("siat", "SVM")
     assert abs(v - 0.8801) < 1e-9 and "evaluated against" in note
 
 
+def test_published_blocked_sd_for_a_model_the_file_lacks_is_reported_not_evaluated():
+    if not (mod.ROOT / mod.PUBLISHED_B8_FILE["siat"]).exists():
+        pytest.skip("published b8 file not present")
+    v, note = mod.load_published_blocked_sd("siat", "LDA")
+    assert v is None and "NOT evaluated for LDA" in note
+
+
 def test_published_blocked_sd_missing_file_for_siat_is_an_error_not_a_skip(tmp_path, monkeypatch):
-    import kc23_c5_leak_stats as mod
     monkeypatch.setattr(mod, "ROOT", tmp_path)
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(mod.InputError):
         mod.load_published_blocked_sd("siat", "SVM")
+
+
+def test_the_builder_passes_pooled_to_every_arm_but_w_b1():
+    import kc23_build_job_csvs as b
+    rows = {r["job_id"]: r["command"] for r in b.cpu_rows if r["job_id"].startswith("c5_siat_")}
+    assert "--cv-unit per_subject" in rows["c5_siat_wb1"]
+    for jid, cmd in rows.items():
+        if jid not in ("c5_siat_wb1", "c5_siat_verdict"):
+            assert "--cv-unit pooled" in cmd, jid

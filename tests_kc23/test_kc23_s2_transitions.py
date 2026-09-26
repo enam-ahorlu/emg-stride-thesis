@@ -125,6 +125,47 @@ def test_run_end_to_end_writes_measures_and_verdict(tmp_path):
     assert len(meas) == len(CONDITIONS) * len(MODELS)
     v = (out / "S2_VERDICT.md").read_text()
     assert "Descriptive only" in v and "NOT computed" in v and not LETTER_RE.search(v)
+    assert "causal 100-window buffer collapses" in v and v.index("Reading 1") < v.index("causal 100-window buffer collapses")
+
+
+def test_verdict_leads_with_the_transductive_and_balanced25_rows_and_takes_reading_1_from_them(tmp_path):
+    pdir, tpath = _write(tmp_path)
+    out = tmp_path / "out"
+    assert run(out, pdir, tpath) == 0
+    v = (out / "S2_VERDICT.md").read_text()
+    rows = [l.split("|")[1].strip() for l in v.splitlines() if l.startswith("| ") and "---" not in l][1:]
+    assert rows[:6] == ["transductive"] * 3 + ["causal_balanced25"] * 3 and rows[6:] == ["causal100"] * 3
+    reading = v[v.index("Reading 1"):v.index("## Finding")]
+    assert "transductive" in reading and "causal_balanced25" in reading and "causal100" not in reading
+
+
+def test_reading_1_states_disagreement_between_the_lead_conditions():
+    base = {"model": "soft", "vote_delta_zone_error": -0.01, "vote_added_delay_n_paired": 5}
+    meas = pd.DataFrame([
+        {**base, "condition": "transductive", "vote_delta_steady_error": -0.02, "vote_added_delay_paired_median_s": 0.1},
+        {**base, "condition": "causal_balanced25", "vote_delta_steady_error": +0.02, "vote_added_delay_paired_median_s": 0.1}])
+    assert "disagree" in m._reading(meas)
+
+
+def test_the_causal100_collapse_is_quantified_per_model_and_not_labelled_a_reading():
+    meas = pd.DataFrame([{"condition": c, "model": mo, "steady_error": e}
+                         for c, e in (("transductive", 0.15), ("causal100", 0.60)) for mo in MODELS])
+    t = m._causal100_finding(meas)
+    assert "0.150 transductive" in t and "0.600 causal-100" in t and "D-6b" in t and "not a reading" in t
+
+
+def test_s2b_reading_is_included_only_when_its_file_exists(tmp_path):
+    assert "NOT computed" in m._s2b_reading(tmp_path)
+    (tmp_path / "s2b_reading.txt").write_text("Reading 2 (S2b): measured.", encoding="utf-8")
+    assert m._s2b_reading(tmp_path) == "Reading 2 (S2b): measured."
+
+
+def test_decision_delay_gap_scales_with_the_window_step():
+    t = np.array([5.0, 5.2, 5.4, 5.6])                                # 400 ms windows, 0.2 s step
+    y = np.full(4, CODE_UPS)
+    assert abs(decision_delay(t, y, [(5.0, "LW", "SA")], max_gap_s=0.4).loc[0, "delay_s"] - 0.0) < 1e-9
+    t2 = np.array([5.0, 5.3, 5.6, 5.9])                               # a 0.3 s spacing breaks the default 0.25 s rule
+    assert np.isnan(decision_delay(t2, np.full(4, CODE_UPS), [(5.0, "LW", "SA")]).loc[0, "delay_s"])
 
 
 @pytest.mark.parametrize("victim", ["preds/s2_predictions_transductive.csv", "preds/s2_predictions_causal100.csv",
