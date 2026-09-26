@@ -515,3 +515,63 @@ fold), not SIAT's per-subject best_params, which have no ENABL3S equivalent.
 D5: 14/15 rows verified complete; stats not run (not all 15 ready).
 
 Tests: 204 total (up from 189 at `61815ef`), all green.
+
+
+## Section 10. Post-pre-registration implementation fixes (4) (25 to 26 September 2026)
+
+**Commits** (decision rules unchanged since `0ba3575`, checked at the AST level: no `classify_*`
+function or existing numeric constant in any `kc23_*_stats.py` differs from that commit):
+`109193c` KC-S1 verdict under D-6b; `d5ded64` KC-D5 under D-6c; `c599762` KC-S2.4 rewrite;
+`d6ad74e` fail-open sweep; `8a6d2bc` unattended queue, light lane, gate wiring, expected_outputs;
+`faf1a13` and `140e996` two queue fixes found on the first scheduled run.
+
+**Correction to Section 9.** It said S2.4 had its real `--preds` wired into `kc23_s2_transitions.py`.
+It had not worked on real data: the script never read the transition table, took window index over
+`fs` as a sample time, pooled the three models in one predictions file, and wrote a placeholder
+verdict with exit 0 when its input was absent. That placeholder made the row "skipped(complete)".
+Rewritten in `c599762` and re-run through the queue.
+
+**Decisions recorded.** D-6b (S1, D-S accepted) is in `KC23_HALT.md` under the S1 entry. D-6c
+(KC-D5 directions: gain jitter ahead of channel dropout, and a permutation-reliance reduction, both
+positive, both the reading less favourable to the thesis) is in the `d5ded64` message and the
+`kc23_d5_aggregate.py` docstring.
+
+**Results.**
+- KC-S1: reproduction gate PASS; **D-S**; K=25 S-ens1 85.32% against L0 81.60%, +3.72 pt, 36 of 40.
+  The secondary analyses are in `results_kc23_s1_gate/S1_VERDICT.md`.
+- KC-D5 (`results_kc23_d5_stats/D5_VERDICT.md`, produced by the queue): chandrop_gain E-R (10 of 10);
+  gainjitter_vs_chandrop E-N (4 of 10); occlusion_reduction E-R (9 of 10, factor 1.68x against about 6x
+  on SIAT-LLMD); permutation_reduction E-N (4 of 10). ResNet-SE+CD 0.6487 +/- 0.0082 against the ENABL3S
+  SVM 0.657 (-0.83 pp).
+- KC-S2.4 (`results_kc23_s2_transitions/`): descriptive; the causal 100-window condition shows the
+  single-activity-buffer collapse (steady-state error 0.34 to 0.77), so its delay figures are
+  dominated by it. S2b (250 against 400 ms) is not computed: the 400 ms ResNet-SE+CD run is queued.
+
+**Fail-open sweep** (`tests_kc23/test_kc23_failopen_sweep.py`: every script, run with every input
+missing, must exit non-zero and leave no verdict with an outcome letter).
+Fail-open, fixed: `kc23_d1_aggregate`, `kc23_d1_replicate_stats`, `kc23_d6_aggregate` (also a
+fallback to all rows when no lambda 0 row existed), `kc23_c4_feature_stats` (fell back to the published
+0.777; read inputs no job writes), `kc23_s3_inventory`. Failure verdict carried an outcome letter, fixed:
+`kc23_c3_tuning_stats`, `kc23_c5_leak_stats`, `kc23_d6_stats`, `kc23_s1_scripted_stats`. Also fixed:
+`kc23_c4_extract_rich` (Rich-126 never built), `kc23_c5_leak_stats` L3 published-figure clause never
+evaluated in the queue path (SIAT now reads `results_b8_sd`; ENABL3S has none and the verdict says so;
+this activates a pre-registered clause, no threshold changed), `kc23_c2_whitening_stats` (w400 verdict
+labelled w250). Already fail-closed and unchanged: `kc23_c1_nested_selection`, `kc23_c2_whitening_stats`
+(exit), `kc23_c3_merge_proba`, `kc23_c6_ladder_stats`, `kc23_d2/d3/d4`, `kc23_s2_f0_feasibility`,
+`kc23_s2_transition_table`, `kc23_s2_predictions`.
+
+**Open, not fixed.** The D2, D3, D4 and C6 gates fail closed (they crash, write no letter) but nothing
+produces the intermediate files they read (`r1_occlusion.csv` and its siblings for D2,
+`d3_realization_means.csv`, `d4_dose_sweep.csv` and `d4_gainjitter_boundary.csv`, `ladder_geometry.csv`),
+so none can ever produce a letter. Each needs an aggregator like D5's. The D1 verdict lists the
+registered contrasts nothing yet produces (C10, C11, C13, C13b, C15, C16, C17, headline ensemble and
+global).
+
+**Operations.** Task Scheduler entry `KC23Queue` (`kc23_queue_task.ps1`): at logon and every 5 minutes,
+one instance, no time limit, runs on battery, outside the app's process tree. The runner takes
+`queue.lock`, adopts live jobs from `running.json`, and persists halted stages and failed jobs in
+`queue_state.json` (`--retry JOB_ID`, `--clear-halt STAGE`). A light lane runs read-only gates beside the
+one heavy CPU job. `KC23_POWER_SETTINGS.md` records the one power setting changed; revert with
+`kc23_restore_power.cmd`.
+
+Tests: 331 total (up from 204), all green.
