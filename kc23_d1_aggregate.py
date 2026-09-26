@@ -79,6 +79,8 @@ INTERACTION_CONTRASTS = [  # (id, a, b, c, d): diff = (f1(a)-f1(b)) - (f1(c)-f1(
     ("C7", "R5", "R4", "R7", "R6"),
 ]
 HEADLINE_ARMS = ["R2", "R12"]
+EXTRACTABLE_CONTRASTS = [c[0] for c in SIMPLE_CONTRASTS] + [c[0] for c in INTERACTION_CONTRASTS] + ["C12"]
+OUTPUT_FILES = ("d1_reproduction_inputs.csv", "d1_contrasts.csv", "d1_headline_inputs.csv")
 
 
 def arm_seeds(arm: str) -> list[int]:
@@ -192,21 +194,47 @@ def build_headline_rows(root: Path) -> list[dict]:
     return rows
 
 
-def run(out_dir: Path, root: Path) -> int:
+def run(out_dir: Path, root: Path, require: str | None = None) -> int:
+    """Fail closed (2026-09-25). This extractor is incremental by design, but
+    as a queue row it must not exit 0 having written nothing: that let
+    d1_reproduction_check report 'done' on an empty directory. `require`:
+      "repro"  the reproduction inputs (R1/R2/R10-pre, seed 42) must be written
+      "full"   reproduction inputs, EVERY extractable contrast and BOTH headline
+               arms must be written (what d1_full_aggregate needs)
+      None     at least one output file must be written
+    On failure it returns 1 and leaves none of its output files behind, so a
+    file from an earlier partial run cannot stand in for a missing input."""
     out_dir.mkdir(parents=True, exist_ok=True)
+    for name in OUTPUT_FILES:
+        (out_dir / name).unlink(missing_ok=True)
 
     repro = build_reproduction_inputs(root)
+    contrast_rows = build_contrast_rows(root)
+    headline_rows = build_headline_rows(root)
+
+    problems = []
+    if require in ("repro", "full") and repro is None:
+        problems.append("reproduction inputs (R1/R2/R10-pre, seed 42) are not complete")
+    if require == "full":
+        have = {r["contrast"] for r in contrast_rows}
+        missing = [c for c in EXTRACTABLE_CONTRASTS if c not in have]
+        if missing:
+            problems.append(f"contrasts not ready: {missing}")
+        if len(headline_rows) != len(HEADLINE_ARMS):
+            problems.append(f"headline arms ready {[r['arm'] for r in headline_rows]}, need {HEADLINE_ARMS}")
+    if require is None and repro is None and not contrast_rows and not headline_rows:
+        problems.append("nothing was ready to write")
+    if problems:
+        print(f"[d1-aggregate] FAIL (require={require!r}), no output written: " + "; ".join(problems),
+              file=sys.stderr)
+        return 1
+
     if repro is not None:
         repro.to_csv(out_dir / "d1_reproduction_inputs.csv", index=False)
-
-    contrast_rows = build_contrast_rows(root)
     if contrast_rows:
         pd.DataFrame(contrast_rows).to_csv(out_dir / "d1_contrasts.csv", index=False)
-
-    headline_rows = build_headline_rows(root)
     if headline_rows:
         pd.DataFrame(headline_rows).to_csv(out_dir / "d1_headline_inputs.csv", index=False)
-
     return 0
 
 
@@ -214,8 +242,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", required=True)
     ap.add_argument("--root", default=".")
+    ap.add_argument("--require", choices=["repro", "full"], default=None,
+                    help="repro: the seed-42 reproduction inputs must be complete; full: also every extractable "
+                         "contrast and both headline arms. Default: at least one output. Exit 1 otherwise.")
     args = ap.parse_args()
-    sys.exit(run(Path(args.out), Path(args.root)))
+    sys.exit(run(Path(args.out), Path(args.root), args.require))
 
 
 if __name__ == "__main__":

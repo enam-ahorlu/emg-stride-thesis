@@ -42,12 +42,28 @@ def test_real_marginal_fixture_has_expected_columns():
     assert {"subject", "adv_lambda", "f1_macro"}.issubset(adv.columns)
 
 
+def _place_lambda0(root: Path):
+    """The real smoke fixture was run at a NON-zero lambda; make the lambda 0 arm explicit, as the real job writes."""
+    _place_knob(root, "adv_marginal", 0, SMOKE_MARGINAL)
+    f = root / FAMILY_OUT_DIR["adv_marginal"](0) / "adv_subjectwise.csv"
+    df = pd.read_csv(f)
+    df["adv_lambda"] = 0
+    df.to_csv(f, index=False)
+
+
 def test_build_sanity_from_real_marginal_fixture(tmp_path):
-    _place_knob(tmp_path, "adv_marginal", 0, SMOKE_MARGINAL)
+    _place_lambda0(tmp_path)
     sanity = build_sanity(tmp_path)
     assert sanity is not None
     assert list(sanity.columns) == ["subject", "f1"]
     assert len(sanity) == 1  # the smoke fixture has one subject
+
+
+def test_build_sanity_has_no_fallback_to_nonzero_lambda_rows(tmp_path):
+    # The old code used ALL rows when no adv_lambda == 0 row existed, scoring the sanity gate on another lambda.
+    _place_knob(tmp_path, "adv_marginal", 0, SMOKE_MARGINAL)
+    assert pd.read_csv(SMOKE_MARGINAL / "adv_subjectwise.csv")["adv_lambda"].ne(0).all()
+    assert build_sanity(tmp_path) is None
 
 
 def test_build_sanity_missing_lambda0_returns_none(tmp_path):
@@ -85,8 +101,31 @@ def test_build_manipulation_sfc_uses_alignment_file_too(tmp_path):
 def test_run_end_to_end_writes_only_what_is_ready(tmp_path):
     root = tmp_path / "root"
     out = tmp_path / "out"
-    _place_knob(root, "adv_marginal", 0, SMOKE_MARGINAL)
+    _place_lambda0(root)
     rc = run(out, root)
     assert rc == 0
     assert (out / "d6_sanity.csv").exists()
     assert not (out / "d6_manipulation_adv_marginal.csv").exists()  # only 1/7 knobs present
+
+
+def test_run_require_sanity_writes_only_sanity(tmp_path):
+    root, out = tmp_path / "root", tmp_path / "out"
+    _place_lambda0(root)
+    assert run(out, root, require="sanity") == 0
+    assert [p.name for p in out.glob("*.csv")] == ["d6_sanity.csv"]
+
+
+def test_run_require_manipulation_fails_when_a_family_is_incomplete_and_leaves_nothing(tmp_path):
+    root, out = tmp_path / "root", tmp_path / "out"
+    for knob in FAMILY_KNOBS["adv_marginal"]:
+        _place_knob(root, "adv_marginal", knob, SMOKE_MARGINAL)      # this family complete; sfc and advps absent
+    assert run(out, root, require="manipulation") == 1
+    assert not list(out.glob("*.csv"))
+
+
+def test_run_require_sanity_fails_with_nothing_ready(tmp_path):
+    assert run(tmp_path / "out", tmp_path / "root", require="sanity") == 1
+
+
+def test_run_default_mode_fails_when_nothing_ready_instead_of_exit_zero(tmp_path):
+    assert run(tmp_path / "out", tmp_path / "root") == 1

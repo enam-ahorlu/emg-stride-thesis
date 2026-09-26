@@ -148,13 +148,20 @@ def run(out_dir: Path, npz_path: Path, freq72_path: Path | None) -> int:
     np.savez(out_dir / "kc23_tdpsd54_features.npz", X=t54)
     print(f"[C4] TDPSD-54: {t54.shape} -> {out_dir / 'kc23_tdpsd54_features.npz'}")
 
-    if freq72_path is not None and freq72_path.exists():
+    # Fail closed (2026-09-25): a --freq72 path that was GIVEN but does not exist used to skip Rich-126 silently and
+    # exit 0, and the queued command passed no --freq72 at all, so kc23_rich126_features.npz was never produced
+    # while every rich126 row downstream needed it. Giving no --freq72 is still allowed (TDPSD-54 only), but a path
+    # that does not exist is an error.
+    if freq72_path is not None:
+        if not freq72_path.exists():
+            print(f"[C4] FAIL: --freq72 {freq72_path} does not exist; nothing skipped silently", file=sys.stderr)
+            return 1
         freq72 = np.load(freq72_path)["X"]
         r126 = rich126(X, freq72)
         np.savez(out_dir / "kc23_rich126_features.npz", X=r126)
         print(f"[C4] Rich-126: {r126.shape} -> {out_dir / 'kc23_rich126_features.npz'}")
     else:
-        print("[C4] Rich-126 skipped: no --freq72 npz given")
+        print("[C4] Rich-126 not built: no --freq72 npz given (TDPSD-54 only)")
     return 0
 
 

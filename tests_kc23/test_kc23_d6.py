@@ -99,7 +99,8 @@ def test_run_sanity_dir_fails_closed_when_file_missing(tmp_path):
     out = tmp_path / "results_kc23_d6_sanity_check"
     rc = run(out)
     assert rc == 20
-    assert "FAIL" in (out / "D6_VERDICT.md").read_text()
+    v = (out / "D6_VERDICT.md").read_text()
+    assert "NO OUTCOME COMPUTED" in v and "**" not in v   # a missing input is not a result: no letter line
 
 
 def test_run_manipulation_dir_fails_closed_on_missing_family(tmp_path):
@@ -128,7 +129,7 @@ def test_run_sanity_dir_escalates_on_drift(tmp_path):
     pd.DataFrame([{"subject": s, "f1": 0.60} for s in range(1, 41)]).to_csv(out / "d6_sanity.csv", index=False)
     rc = run(out)
     assert rc == 20
-    assert "FAIL" in (out / "D6_VERDICT.md").read_text()
+    assert "sanity: FAIL" in (out / "D6_VERDICT.md").read_text()   # a COMPUTED FAIL is a real outcome letter
 
 
 def test_run_manipulation_dir_gpass_end_to_end(tmp_path):

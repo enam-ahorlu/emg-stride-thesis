@@ -113,7 +113,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
-    sys.exit(run(Path(args.out)))
+    out = Path(args.out)
+    # The window tag was hard-wired to w250 here, so the w400 directory's verdict was labelled (w250). The queue
+    # passes only --out, so the label comes from the directory name (results_kc23_c2_whitening_w250 / _w400).
+    sys.exit(run(out, w250=not out.name.endswith("w400")))
 
 
 if __name__ == "__main__":

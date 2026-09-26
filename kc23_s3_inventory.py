@@ -33,10 +33,14 @@ KNOWN_AONLY_DIRS = {
 
 def build_inventory(manifest_path: Path = ROOT / "RUN_MANIFEST.csv") -> pd.DataFrame:
     rows = []
-    manifest = pd.read_csv(manifest_path) if manifest_path.exists() else pd.DataFrame()
-    aonly_dirs = set()
-    if len(manifest):
-        aonly_dirs = set(manifest[manifest["dir"].astype(str).str.contains("aonly", case=False, na=False)]["dir"])
+    # Fail closed (2026-09-25): a missing manifest used to become an empty one, so the inventory then reported
+    # every cell as absent, which looks like a finding and is not one.
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"run manifest missing: {manifest_path}")
+    manifest = pd.read_csv(manifest_path)
+    if "dir" not in manifest.columns or len(manifest) == 0:
+        raise ValueError(f"{manifest_path} has no 'dir' column or no rows")
+    aonly_dirs = set(manifest[manifest["dir"].astype(str).str.contains("aonly", case=False, na=False)]["dir"])
 
     for fam in FAMILIES:
         for norm in NORMS:
@@ -59,7 +63,11 @@ def build_inventory(manifest_path: Path = ROOT / "RUN_MANIFEST.csv") -> pd.DataF
 
 
 def run(out_dir: Path) -> int:
-    inv = build_inventory()
+    try:
+        inv = build_inventory()
+    except (FileNotFoundError, ValueError) as e:
+        print(f"[S3] FAIL, no inventory written: {e}", file=sys.stderr)
+        return 1
     out_dir.mkdir(parents=True, exist_ok=True)
     inv.to_csv(out_dir / "active_only_inventory.csv", index=False)
     n_missing = int((~inv["present"]).sum())

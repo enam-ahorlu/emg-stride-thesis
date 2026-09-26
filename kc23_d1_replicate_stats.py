@@ -52,6 +52,8 @@ import pandas as pd
 from scipy import stats
 
 from kc23_stats_common import cohens_d_paired, bca_ci, tost_equivalence, print_gate_header
+from kc23_d1_aggregate import EXTRACTABLE_CONTRASTS, HEADLINE_ARMS as EXTRACTED_HEADLINE_ARMS
+from kc23_stats_common import write_no_outcome_verdict
 
 PUBLISHED_R2 = 0.8395
 PUBLISHED_R1 = 0.782
@@ -63,6 +65,14 @@ PUBLISHED_R12 = 0.860
 PUBLISHED_GLOBAL = 0.772
 
 NULL_CONTRASTS = {"C15", "C16"}
+
+# Which inputs each directory it serves must hold. Decided by the directory name because the queue calls every
+# gate as `python <gate> --out <out_dir>` with nothing else. Any other name is an error, never a permissive default.
+REQUIRED_BY_DIR_SUFFIX = {"repro_check": {"repro"}, "d1_stats": {"repro", "contrasts", "headline"}}
+# Registered items that no queue job produces yet (kc23_d1_aggregate.py, "out of scope"): listed in the verdict so
+# a reader can see they were NOT computed, instead of assuming the 17 contrasts were all read.
+NOT_COMPUTED_CONTRASTS = ["C10", "C11", "C13", "C13b", "C15", "C16", "C17"]
+NOT_COMPUTED_HEADLINE = ["ensemble", "global"]
 
 CONTRASTS = ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11",
             "C12", "C13", "C14", "C15", "C16", "C17"]
@@ -125,7 +135,42 @@ def stacking_descriptive(f1_stacking: np.ndarray, f1_softvote: np.ndarray, reali
            "edge_within_run_variance": abs(edge_pp) < realization_sd * 100.0}
 
 
-def run(out_dir: Path) -> int:
+def required_inputs(out_dir: Path):
+    for suffix, req in REQUIRED_BY_DIR_SUFFIX.items():
+        if out_dir.name.endswith(suffix):
+            return req
+    return None
+
+
+def _no_outcome(out_dir: Path, reason: str) -> int:
+    print(f"[D1] FAIL (no outcome computed): {reason}", file=sys.stderr)
+    write_no_outcome_verdict(out_dir / "D1_VERDICT.md", "KC-D1 verdict", reason)
+    return 20
+
+
+def run(out_dir: Path, require=None) -> int:
+    """require: the set of inputs this directory MUST hold ({"repro"}, or all
+    of repro/contrasts/headline). Fail closed (2026-09-25): a missing required
+    input, or no input at all, exits 20 with a verdict that has no outcome
+    line; the old version wrote '(no inputs present yet)' and exited 0."""
+    files = {"repro": out_dir / "d1_reproduction_inputs.csv", "contrasts": out_dir / "d1_contrasts.csv",
+             "headline": out_dir / "d1_headline_inputs.csv"}
+    missing = [k for k in (require or ()) if not files[k].exists()]
+    if missing:
+        return _no_outcome(out_dir, f"required input(s) missing in {out_dir.name}: "
+                                     f"{[files[k].name for k in missing]}")
+    if not any(f.exists() for f in files.values()):
+        return _no_outcome(out_dir, f"no D1 input present in {out_dir.name}")
+    if require and "contrasts" in require:
+        have = set(pd.read_csv(files["contrasts"])["contrast"])
+        gaps = [c for c in EXTRACTABLE_CONTRASTS if c not in have]
+        if gaps:
+            return _no_outcome(out_dir, f"contrasts absent from d1_contrasts.csv: {gaps}")
+    if require and "headline" in require:
+        have_h = set(pd.read_csv(files["headline"])["arm"])
+        gaps = [a for a in EXTRACTED_HEADLINE_ARMS if a not in have_h]
+        if gaps:
+            return _no_outcome(out_dir, f"headline arms absent from d1_headline_inputs.csv: {gaps}")
     exit_code = 0
 
     # Fixed 2026-09-24: this letter used to be computed, used to set exit_code,
@@ -222,8 +267,11 @@ def run(out_dir: Path) -> int:
         verdict_lines.append(f"- **{k}: {v['letter']}**")
     for arm, v in headline_checks.items():
         verdict_lines.append(f"- **headline ({arm}): {v['letter']}**")
-    if not (repro_letter is not None or contrast_results or headline_checks):
-        verdict_lines.append("(no inputs present yet)")
+    if require and "contrasts" in require:
+        verdict_lines.append("")
+        verdict_lines.append("Registered but NOT computed (no job produces their inputs yet): contrasts "
+                             + ", ".join(NOT_COMPUTED_CONTRASTS) + "; headline arms " + ", ".join(NOT_COMPUTED_HEADLINE)
+                             + ". The secondary MixedLM model is also not computed (see the module docstring).")
     (out_dir / "D1_VERDICT.md").write_text("\n".join(verdict_lines) + "\n", encoding="utf-8")
 
     return exit_code
@@ -233,7 +281,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
-    sys.exit(run(Path(args.out)))
+    out = Path(args.out)
+    req = required_inputs(out)
+    if req is None:
+        sys.exit(_no_outcome(out, f"cannot tell which inputs {out.name!r} must hold (expected a name ending in "
+                                  f"{sorted(REQUIRED_BY_DIR_SUFFIX)})"))
+    sys.exit(run(out, req))
 
 
 if __name__ == "__main__":

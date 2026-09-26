@@ -3,6 +3,7 @@ real-file discovery layer (fixed 2026-09-24: the gate originally assumed
 p50_subjectwise.csv / b{g}_subjectwise.csv files that b8_movement_blocked_sd.py
 never wrote -- its real --scheme output is b8_<tag>_<scheme>_g<g>_<cv_unit>_
 subjectwise.csv with one wide column per model)."""
+import pytest
 import numpy as np
 import pandas as pd
 import sys
@@ -110,7 +111,8 @@ def test_run_missing_p0_is_fail_not_fallback(tmp_path):
     # p0 deliberately missing
     rc = run(root / "p50", published_blocked_sd=None, model="SVM")
     assert rc == 20
-    assert "FAIL" in (root / "C5_VERDICT.md").read_text()
+    v = (root / "C5_VERDICT.md").read_text()
+    assert "NO OUTCOME COMPUTED" in v and "**" not in v   # a missing input is not a result: no letter line
 
 
 def test_different_schemes_do_not_collide_on_is_complete(tmp_path):
@@ -130,3 +132,26 @@ if __name__ == "__main__":
         fn()
         print(f"PASS {fn.__name__}")
     print(f"\n{len(fns)} tests passed")
+
+
+# ---------------------------------------------------------------------------
+# 2026-09-25: the L3 published-figure clause was silently never evaluated in the queue path.
+def test_published_blocked_sd_enabl3s_is_reported_not_evaluated_never_silent():
+    import kc23_c5_leak_stats as mod
+    v, note = mod.load_published_blocked_sd("enabl3s", "SVM")
+    assert v is None and "NOT evaluated" in note
+
+
+def test_published_blocked_sd_siat_read_from_real_file():
+    import kc23_c5_leak_stats as mod
+    if not (mod.ROOT / mod.PUBLISHED_B8_FILE["siat"]).exists():
+        pytest.skip("published b8 file not present")
+    v, note = mod.load_published_blocked_sd("siat", "SVM")
+    assert abs(v - 0.8801) < 1e-9 and "evaluated against" in note
+
+
+def test_published_blocked_sd_missing_file_for_siat_is_an_error_not_a_skip(tmp_path, monkeypatch):
+    import kc23_c5_leak_stats as mod
+    monkeypatch.setattr(mod, "ROOT", tmp_path)
+    with pytest.raises(FileNotFoundError):
+        mod.load_published_blocked_sd("siat", "SVM")

@@ -43,7 +43,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from kc23_stats_common import page_trend_test, paired_test, print_gate_header
+from kc23_stats_common import page_trend_test, paired_test, print_gate_header, write_no_outcome_verdict
 
 SANITY_PUBLISHED_F1 = 0.830
 SANITY_TOL = 0.015
@@ -134,9 +134,7 @@ EXPECTED_FAMILIES = ("adv_marginal", "sfc", "advps")
 
 def _fail_closed(out_dir: Path, reason: str) -> int:
     print(f"[D6] MISSING (fail closed): {reason}", file=sys.stderr)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "D6_VERDICT.md").write_text(
-        f"# KC-D6 verdict\n\n**Outcome: FAIL (missing input)**\n\n{reason}\n", encoding="utf-8")
+    write_no_outcome_verdict(out_dir / "D6_VERDICT.md", "KC-D6 verdict", reason)
     return 20
 
 
@@ -156,14 +154,10 @@ def run(out_dir: Path) -> int:
     expect_sanity = "sanity" in name
     expect_manipulation = "manipulation" in name
     if not expect_sanity and not expect_manipulation:
-        # Unknown invocation context (e.g. a hand-run smoke test): check
-        # whatever is actually present, but still fail closed if NOTHING is.
-        expect_sanity = (out_dir / "d6_sanity.csv").exists()
-        expect_manipulation = any((out_dir / f"d6_manipulation_{f}.csv").exists() for f in EXPECTED_FAMILIES)
-        if not expect_sanity and not expect_manipulation:
-            return _fail_closed(out_dir, f"{out_dir}: neither d6_sanity.csv nor any "
-                                f"d6_manipulation_<family>.csv found, and this out_dir's name gives no "
-                                f"hint which was expected")
+        # Unknown invocation context. The old code checked "whatever is present", which lets a partial set of
+        # families through as if it were complete. There is no permissive default (2026-09-25).
+        return _fail_closed(out_dir, f"{out_dir.name!r} names neither the sanity nor the manipulation check, so "
+                            f"it is not known which inputs are required")
 
     if expect_sanity:
         sanity_path = out_dir / "d6_sanity.csv"

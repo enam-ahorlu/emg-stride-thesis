@@ -45,7 +45,32 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from kc23_stats_common import paired_test, print_gate_header
+from kc23_stats_common import paired_test, print_gate_header, write_no_outcome_verdict
+
+ROOT = Path(__file__).resolve().parent
+# The published movement-blocked SD figure that L3's second clause compares B-g* against, per dataset. The queue
+# invokes this gate with --out only, so before 2026-09-25 published_blocked_sd was always None there and that L3
+# clause was silently never evaluated. ENABL3S has no published blocked-SD file (results_b8_sd's "ext" rows are
+# SIAT's extended features, n = 40), so for it the clause is reported as NOT evaluated rather than skipped quietly.
+PUBLISHED_B8_FILE = {"siat": "results_b8_sd/b8_base_w250_compare.csv"}
+
+
+def load_published_blocked_sd(dataset: str, model: str):
+    """(value or None, note). Raises FileNotFoundError/ValueError if the dataset HAS a published file that is
+    missing or lacks the model: that is a missing input, not a reason to skip the clause."""
+    rel = PUBLISHED_B8_FILE.get(dataset)
+    if rel is None:
+        return None, (f"L3 published-figure clause NOT evaluated: no published blocked SD exists for dataset "
+                      f"{dataset!r}")
+    f = ROOT / rel
+    if not f.exists():
+        raise FileNotFoundError(f"published blocked-SD file missing: {f}")
+    df = pd.read_csv(f)
+    row = df[df["model"] == model]
+    if row.empty or "sd_new_blocked" not in df.columns:
+        raise ValueError(f"{f.name} has no sd_new_blocked row for model {model!r}")
+    v = float(row["sd_new_blocked"].iloc[0])
+    return v, f"L3 published-figure clause evaluated against {model} sd_new_blocked {v:.4f} ({rel})"
 
 
 def find_plateau(b_by_g: dict[int, np.ndarray], guards=(1, 2, 4, 8, 16)) -> tuple[int | None, dict]:
@@ -131,10 +156,22 @@ def run(out_dir: Path, published_blocked_sd: float | None = None, model: str = "
     p50 = load("pooled_random", label="P50")
     p0 = load("pooled_random_nonoverlap", label="P0")
     if p50 is None or p0 is None:
-        search_root.mkdir(parents=True, exist_ok=True)
-        (search_root / "C5_VERDICT.md").write_text(
-            "# KC-C5 verdict\n\n**Outcome: FAIL (missing P50/P0 input)**\n", encoding="utf-8")
+        write_no_outcome_verdict(search_root / "C5_VERDICT.md", "KC-C5 verdict",
+                                 "the pooled-random (P50) or pooled non-overlap (P0) input is missing")
         return 20
+
+    if published_blocked_sd is None:
+        dataset = search_root.name[len("results_kc23_c5_leak_"):] if search_root.name.startswith(
+            "results_kc23_c5_leak_") else search_root.name
+        try:
+            published_blocked_sd, published_note = load_published_blocked_sd(dataset, model)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"[C5] FAIL (no outcome computed): {e}", file=sys.stderr)
+            write_no_outcome_verdict(search_root / "C5_VERDICT.md", "KC-C5 verdict", str(e))
+            return 20
+    else:
+        published_note = f"L3 published-figure clause evaluated against the supplied value {published_blocked_sd:.4f}"
+    print(f"[C5] {published_note}")
 
     b_by_g = {}
     for g in (1, 2, 4, 8, 16):
@@ -171,7 +208,7 @@ def run(out_dir: Path, published_blocked_sd: float | None = None, model: str = "
     search_root.mkdir(parents=True, exist_ok=True)
     pd.DataFrame([detail]).to_csv(search_root / "C5_decomposition.csv", index=False)
     (search_root / "C5_VERDICT.md").write_text(
-        f"# KC-C5 verdict\n\n**Outcome(s): {letters}**\n\n{' '.join(reading)}\n", encoding="utf-8")
+        f"# KC-C5 verdict\n\n**Outcome(s): {letters}**\n\n{' '.join(reading)}\n\n{published_note}.\n", encoding="utf-8")
 
     return 20 if "L3" in letters else 0
 

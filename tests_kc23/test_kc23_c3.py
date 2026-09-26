@@ -135,7 +135,8 @@ def test_run_fails_closed_when_resnet_reference_missing(tmp_path):
     out = tmp_path / "results_kc23_c3_ensemble"
     rc = run(out, root=tmp_path)
     assert rc == 20
-    assert "FAIL" in (out / "C3_VERDICT.md").read_text()
+    v = (out / "C3_VERDICT.md").read_text()
+    assert "NO OUTCOME COMPUTED" in v and "**" not in v   # a missing input is not a result: no letter line
 
 
 def test_run_fails_closed_when_ensemble_file_missing(tmp_path):
@@ -143,7 +144,8 @@ def test_run_fails_closed_when_ensemble_file_missing(tmp_path):
     out = tmp_path / "results_kc23_c3_ensemble"
     rc = run(out, root=tmp_path)
     assert rc == 20
-    assert "FAIL" in (out / "C3_VERDICT.md").read_text()
+    v = (out / "C3_VERDICT.md").read_text()
+    assert "NO OUTCOME COMPUTED" in v and "**" not in v   # a missing input is not a result: no letter line
 
 
 def test_run_end_to_end_pass(tmp_path):

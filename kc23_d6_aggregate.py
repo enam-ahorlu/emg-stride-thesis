@@ -72,9 +72,12 @@ def build_sanity(root: Path) -> pd.DataFrame | None:
         print(f"[d6-aggregate] sanity: {f} not found -- lambda_max=0 arm not done yet")
         return None
     df = pd.read_csv(f)
+    # Fail closed (2026-09-25): the old code fell back to ALL rows when no adv_lambda == 0 row existed, which
+    # would have scored the sanity gate on non-zero-lambda runs. No such row means the sanity input is absent.
+    if "adv_lambda" not in df.columns or df[df["adv_lambda"] == 0].empty:
+        print(f"[d6-aggregate] sanity: {f} has no adv_lambda == 0 rows", file=sys.stderr)
+        return None
     lam0 = df[df["adv_lambda"] == 0]
-    if lam0.empty:
-        lam0 = df  # single-knob smoke fixtures may not carry adv_lambda==0 explicitly
     return lam0[["subject", "f1_macro"]].rename(columns={"f1_macro": "f1"})
 
 
@@ -95,21 +98,43 @@ def build_manipulation(root: Path, family: str) -> pd.DataFrame | None:
     return pd.DataFrame(rows)
 
 
-def run(out_dir: Path, root: Path) -> int:
+def run(out_dir: Path, root: Path, require: str | None = None) -> int:
+    """Fail closed (2026-09-25): the old version exited 0 having written
+    nothing whenever the runs were not complete. `require`:
+      "sanity"        d6_sanity.csv must be written (writes only that)
+      "manipulation"  d6_manipulation_<family>.csv must be written for EVERY
+                      family (writes only those)
+      None            at least one output must be written
+    Exit 1, and none of the output files left behind, otherwise."""
     out_dir.mkdir(parents=True, exist_ok=True)
+    names = ["d6_sanity.csv"] + [f"d6_manipulation_{f}.csv" for f in KNOWN_FAMILIES]
+    for n in names:
+        (out_dir / n).unlink(missing_ok=True)
 
-    sanity = build_sanity(root)
+    sanity = build_sanity(root) if require in (None, "sanity") else None
+    manips = {f: build_manipulation(root, f) for f in KNOWN_FAMILIES} if require in (None, "manipulation") else {}
+
+    problems = []
+    if require == "sanity" and sanity is None:
+        problems.append("d6_sanity input (the lambda 0 arm) is not complete")
+    if require == "manipulation":
+        gaps = [f for f in KNOWN_FAMILIES if manips.get(f) is None]
+        if gaps:
+            problems.append(f"manipulation input not complete for families {gaps}")
+    if require is None and sanity is None and all(m is None for m in manips.values()):
+        problems.append("nothing was ready to write")
+    if problems:
+        print("[d6-aggregate] FAIL, no output written: " + "; ".join(problems), file=sys.stderr)
+        return 1
+
     if sanity is not None:
         sanity.to_csv(out_dir / "d6_sanity.csv", index=False)
         print(f"[d6-aggregate] wrote d6_sanity.csv ({len(sanity)} subjects)")
-
-    for family in KNOWN_FAMILIES:
-        manip = build_manipulation(root, family)
+    for family, manip in manips.items():
         if manip is not None:
             manip.to_csv(out_dir / f"d6_manipulation_{family}.csv", index=False)
             print(f"[d6-aggregate] wrote d6_manipulation_{family}.csv "
-                 f"({manip['realization'].nunique()} subjects x {manip['knob'].nunique()} knobs)")
-
+                  f"({manip['realization'].nunique()} subjects x {manip['knob'].nunique()} knobs)")
     return 0
 
 
@@ -117,8 +142,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", required=True)
     ap.add_argument("--root", default=".")
+    ap.add_argument("--require", choices=["sanity", "manipulation"], default=None,
+                    help="which part must be complete (the queue rows pass this); exit 1 if it is not")
     args = ap.parse_args()
-    sys.exit(run(Path(args.out), Path(args.root)))
+    sys.exit(run(Path(args.out), Path(args.root), args.require))
 
 
 if __name__ == "__main__":

@@ -25,9 +25,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from kc23_stats_common import paired_test, print_gate_header, read_subjectwise, require_complete
+from kc23_stats_common import (paired_test, print_gate_header, read_subjectwise, require_complete,
+                               write_no_outcome_verdict)
 
-FREQ72_PUBLISHED_PERSUBJ = 0.777  # SVM, results_loso_freq_persubj
+ROOT = Path(__file__).resolve().parent
+FREQ72_DIR = "results_loso_freq_persubj"    # the published Freq-72 per-subject SVM run (a real directory, not a number)
+FEATURE_SETS = ["tdpsd54", "rich126"]
 
 
 def classify_set(f1_persubj_new: np.ndarray, f1_global_new: np.ndarray,
@@ -60,25 +63,28 @@ def classify_fa(results: dict[str, dict]) -> str:
 
 
 def run(out_dir: Path) -> int:
-    freq72_dir = Path("results_loso_freq_persubj")
-    if freq72_dir.exists():
-        f1_freq72 = require_complete(read_subjectwise(freq72_dir, model_token="SVM"), 40, "freq72")
-    else:
-        f1_freq72 = np.full(40, FREQ72_PUBLISHED_PERSUBJ)
+    """Fail closed (rewritten 2026-09-25). The previous version (a) fell back
+    to the published 0.777 for Freq-72 when its comparator directory was
+    missing, (b) looked for '<feat>_svm_persubj_subjectwise.csv' in its OWN
+    out_dir, a name no job writes, and (c) printed 'no results' and exited 0
+    when it found none, so the gate could never compute a letter and never
+    said so. Inputs are now the real sibling directories the C4 rows write,
+    located relative to this script (the queue passes only --out); every one
+    is required, and nothing stands in for a missing one."""
+    needed = [("freq72", ROOT / FREQ72_DIR)]
+    for feat in FEATURE_SETS:
+        needed.append((f"{feat}_persubj", ROOT / f"results_kc23_c4_{feat}_svm_per_subject"))
+        needed.append((f"{feat}_global", ROOT / f"results_kc23_c4_{feat}_svm_global"))
+    try:
+        f1 = {label: require_complete(read_subjectwise(d, model_token="SVM"), 40, label) for label, d in needed}
+    except (FileNotFoundError, ValueError) as e:
+        print(f"[C4] FAIL (no outcome computed): {e}", file=sys.stderr)
+        write_no_outcome_verdict(out_dir / "C4_VERDICT.md", "KC-C4 verdict", str(e))
+        (out_dir / "C4_tests.csv").unlink(missing_ok=True)
+        return 20
 
-    results = {}
-    for feat in ["tdpsd54", "rich126"]:
-        pp = out_dir / f"{feat}_svm_persubj_subjectwise.csv"
-        gg = out_dir / f"{feat}_svm_global_subjectwise.csv"
-        if pp.exists() and gg.exists():
-            f1p = require_complete(read_subjectwise(pp), 40, feat + "_persubj")
-            f1g = require_complete(read_subjectwise(gg), 40, feat + "_global")
-            results[feat] = classify_set(f1p, f1g, f1_freq72)
-
-    if not results:
-        print("[C4] no feature-set results found under", out_dir)
-        return 0
-
+    results = {feat: classify_set(f1[f"{feat}_persubj"], f1[f"{feat}_global"], f1["freq72"])
+               for feat in FEATURE_SETS}
     letter = classify_fa(results)
     print_gate_header("KC-C4", letter, {
         "F-A": "The claim extends to established richer sets.",

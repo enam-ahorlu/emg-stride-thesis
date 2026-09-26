@@ -26,7 +26,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from kc23_stats_common import paired_test, holm, print_gate_header, read_subjectwise, require_complete
+from kc23_stats_common import (paired_test, holm, print_gate_header, read_subjectwise, require_complete,
+                               write_no_outcome_verdict)
 
 PUBLISHED_SVM = 0.777
 PUBLISHED_ENSEMBLE = 0.858
@@ -101,9 +102,7 @@ def classify_e(f1_ensemble_svmx: np.ndarray) -> tuple[str, dict]:
 
 def _fail_closed(out_dir: Path, reason: str) -> int:
     print(f"[C3] MISSING (fail closed): {reason}", file=sys.stderr)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "C3_VERDICT.md").write_text(
-        f"# KC-C3 verdict\n\n**Outcome: FAIL (missing input)**\n\n{reason}\n", encoding="utf-8")
+    write_no_outcome_verdict(out_dir / "C3_VERDICT.md", "KC-C3 verdict", reason)
     return 20
 
 
