@@ -359,6 +359,19 @@ def already_done(job: "Job") -> bool:
     return is_complete(job.out_dir)
 
 
+def mark_complete(jobs, halted_stages) -> int:
+    """Resolve every QUEUED row whose declared outputs are already complete to skipped(complete), for ALL lanes at
+    once. Without this a row is only resolved when its own lane's scan reaches it, so while the GPU lane is busy for
+    hours the already-finished GPU rows stay 'queued' and every light row that depends on them (a gate, an
+    aggregator) cannot start (found 2026-09-26 on the first hand-off to the scheduled runner)."""
+    n = 0
+    for job in jobs:
+        if job.status == "queued" and job.stage not in halted_stages and already_done(job):
+            job.status = "skipped(complete)"
+            n += 1
+    return n
+
+
 def pick_next(jobs, by_id, halted_stages, light=None):
     """light=None: any job (the GPU lane); False: only heavy jobs; True: only light ones."""
     for job in jobs:
@@ -710,6 +723,8 @@ def run_queue(args, gpu_jobs, cpu_jobs, by_id):
     gpu_running = gpu_running or a_gpu
     cpu_running = cpu_running or a_cpu
     light_running = light_running or a_light
+    print(f"[kc23-queue] {mark_complete(gpu_jobs + cpu_jobs, halted_stages)} queued row(s) already complete "
+          f"by their declared outputs")
     save_state(halted_stages, gpu_jobs + cpu_jobs)
     write_status(gpu_jobs, cpu_jobs, halted_stages, gpu_running, cpu_running)
 

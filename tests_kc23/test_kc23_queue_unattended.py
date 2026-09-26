@@ -303,3 +303,27 @@ def test_keep_awake_never_raises_and_round_trips():
     on = q.keep_awake(True)
     off = q.keep_awake(False)
     assert isinstance(on, bool) and isinstance(off, bool)      # True on Windows; a plain False elsewhere, never an error
+
+
+def test_complete_rows_are_resolved_for_every_lane_at_startup_so_light_rows_are_not_blocked(tmp_path):
+    """Found on the first hand-off: while the GPU lane was busy, already-finished GPU rows stayed 'queued' (a lane only
+    resolves rows as its own scan reaches them), so a light row depending on one could not start."""
+    (tmp_path / "g2").mkdir()
+    (tmp_path / "g2" / "r.csv").write_text("x")
+    busy = _job("g1", command=_cmd("import time; time.sleep(4); open('g1_end','w').write('x')"), out_dir=".",
+                expected="g1_end|EXISTS")
+    done = _job("g2", out_dir="g2", expected="r.csv|EXISTS")                  # complete by its outputs, second in the lane
+    lite = _light("lite", _cmd("open('lite_ran','w').write('x')"), out_dir=".", expected="lite_ran|EXISTS",
+                  depends="g2")
+    by_id = {"g1": busy, "g2": done, "lite": lite}
+    q.run_queue(_args(), [busy, done], [lite], by_id)
+    assert lite.status == "done" and busy.status == "done"
+    assert (tmp_path / "lite_ran").stat().st_mtime < (tmp_path / "g1_end").stat().st_mtime    # did not wait for g1
+
+
+def test_mark_complete_respects_halted_stages(tmp_path):
+    (tmp_path / "o").mkdir(); (tmp_path / "o" / "r.csv").write_text("x")
+    a = _job("a", stage="H", out_dir="o", expected="r.csv|EXISTS")
+    b = _job("b", stage="OK", out_dir="o", expected="r.csv|EXISTS")
+    assert q.mark_complete([a, b], {"H"}) == 1
+    assert a.status == "queued" and b.status == "skipped(complete)"

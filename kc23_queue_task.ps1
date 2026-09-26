@@ -32,7 +32,8 @@ $Py = Join-Path $Here ".venv\Scripts\python.exe"
 $User = "$env:USERDOMAIN\$env:USERNAME"
 
 function Get-TaskXml {
-    $args1 = '/c ""' + $Py + '" kc23_queue.py >> "_run_logs\kc23\queue_stdout.log" 2>> "_run_logs\kc23\queue_stderr.log""'
+    # -u: unbuffered, so queue_stdout.log is live rather than filling in 8 KB blocks
+    $args1 = '/c ""' + $Py + '" -u kc23_queue.py >> "_run_logs\kc23\queue_stdout.log" 2>> "_run_logs\kc23\queue_stderr.log""'
     $start = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
     @"
 <?xml version="1.0" encoding="UTF-16"?>
