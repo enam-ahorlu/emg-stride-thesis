@@ -1,0 +1,2 @@
+best_supervised_arm,family,comparison,mean_a,mean_b,delta_pp,wilcoxon_W,p_raw,cohens_dz,bca_lo_pp,bca_hi_pp,n,n_improved
+S-ens1,S1,supervised_minus_l0,0.8532048499999998,0.8160477583333334,3.7157091666666675,47.0,3.9488440961577e-08,1.059793888674625,2.7390143682960013,4.880417723190107,40,36

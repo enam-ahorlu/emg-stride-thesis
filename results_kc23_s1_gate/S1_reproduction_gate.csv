@@ -1,0 +1,2 @@
+svm_ok,svm_proba_ok,soft_ok,svm_f1,svm_proba_f1,soft_f1,published_svm,published_svm_proba,published_soft
+True,True,True,0.747175025,0.72855985,0.8140658999999999,0.7472,0.7286,0.8152

@@ -184,3 +184,16 @@ def exit_for_letters(fired: list[str], escalate: set, report_only: set) -> int:
     if any(l in report_only for l in fired):
         return 10
     return 0
+
+
+def write_no_outcome_verdict(path: Path, title: str, reason: str) -> None:
+    """Verdict file for a run that could not compute an outcome. It contains
+    no '**...: LETTER**' line on purpose, so the queue's LETTER check (and any
+    reader) can never take it for a result, and it replaces any stale verdict
+    a previous successful run left in the same directory. Added 2026-09-25
+    after a fail-open sweep (D-6c follow-up): earlier failure paths wrote
+    '**Outcome: ... FAIL**', which a LETTER check counts as a real outcome."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    reason = str(reason).replace("**", "")
+    path.write_text(f"# {title}\n\nNO OUTCOME COMPUTED. {reason}\n", encoding="utf-8")

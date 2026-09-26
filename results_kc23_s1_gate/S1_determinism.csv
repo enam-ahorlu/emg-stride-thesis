@@ -1,0 +1,16 @@
+arm,K,max_abs_diff_across_seeds,nan_pattern_identical,seed_invariant,is_control
+S-pool,5,0.0,True,True,False
+S-pool,10,0.0,True,True,False
+S-pool,25,0.0,True,True,False
+S-only,5,0.0,True,True,False
+S-only,10,0.0,True,True,False
+S-only,25,0.0,True,True,False
+RESNET_SE,5,0.173497,True,False,True
+RESNET_SE,10,0.13758900000000007,True,False,True
+RESNET_SE,25,0.14723200000000003,True,False,True
+S-ft,5,0.13848000000000005,True,False,True
+S-ft,10,0.15186100000000002,True,False,True
+S-ft,25,0.08369599999999999,True,False,True
+L0,5,0.08772000000000002,True,False,True
+L0,10,0.06926399999999999,True,False,True
+L0,25,0.07296899999999995,True,False,True

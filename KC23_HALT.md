@@ -49,3 +49,37 @@ owner decision is recorded in the status header of
 **Dependent jobs:** none were held by this escalation (KC-C1 has no
 downstream queue dependents that a "keep the headline" decision would
 change), so nothing needed re-enabling.
+
+---
+
+## ESCALATE: KC-S1, scripted buffer, label-free against supervised (25 September 2026)
+
+**Letter: D-S.** Reproduction gate: PASS (all three checks).
+
+**Numbers.** Computed directly (not through the queue) by
+`kc23_s1_scripted_stats.py --out results_kc23_s1_gate`, on the three finished
+per-seed directories `results_kc23_s1_scripted_s{42,7,123}`, 40 subjects each.
+The stats gate was never wired as a `gate_script` on the `s1_base_*` rows (a
+stale note in `kc23_build_job_csvs.py` said the runner was incomplete; it no
+longer is), so the queue never ran it and the halt protocol did not fire by
+itself. Recorded here so the escalation is not lost.
+
+- Reproduction (seed 42, K=25): SVM decision 0.7472 (target 0.7472), SVM_PROBA
+  0.7286 (target 0.7286), soft vote L0 0.8141 (target 0.8152, within 1.5 pt).
+- Primary endpoint at K=25, realization-averaged over 3 seeds: best supervised
+  arm S-ens1 0.8532 against L0 0.8160, +3.72 pt, Wilcoxon p 3.9e-08, dz 1.06,
+  BCa 95% interval [+2.74, +4.88] pt, 36 of 40 subjects improved.
+
+**Reading.** "Without labeled calibration" holds offline only: labeled
+calibration windows add a reliable 3.7 pt over the label-free soft vote.
+
+**Dependent jobs:** none. No queued row depends on the `s1_base_*` rows.
+
+**Decision (Enam, 25 September 2026):**
+
+[DECISION D-6b: Accept D-S. The label-free claim is restated at its true scope: offline (transductive) the pipeline needs no labels, but the causal deployment needs a commissioning buffer that covers all four movements, and if that buffer is scripted, its labels come at no extra cost to the user. Used with labels (fine-tuned ResNet-SE+CD plus pooled SVM, S-ens1), the same 25 windows per movement raise causal macro-F1 from 81.6% to 85.3% (3 seeds, +3.72 pt, 36/40 subjects). The thesis reports both configurations; the label-free figure is not dropped. No queue change.]
+
+**Follow-up (25 September 2026):** the full verdict, with the secondary
+analyses the plan specifies (K curve, S-ft against L1, S-pool and S-only
+determinism), is in `results_kc23_s1_gate/S1_VERDICT.md`. Thresholds were not
+touched (unchanged since `0ba3575`).
