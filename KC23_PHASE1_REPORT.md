@@ -575,3 +575,31 @@ one heavy CPU job. `KC23_POWER_SETTINGS.md` records the one power setting change
 `kc23_restore_power.cmd`.
 
 Tests: 331 total (up from 204), all green.
+
+## Section 11. Pre-registration conformance (26 September 2026)
+
+The pre-registration is the 23 September plan text, not commit `0ba3575`. "Thresholds unchanged since 0ba3575" showed only
+that the code agreed with itself. Every gate and classify function was read against the plan's outcome tables and the result is
+`KC23_PREREG_CONFORMANCE.md`, one row per clause (plan text, code before, code after, whether the stage's data existed).
+
+- Commit `d613a06`, "pre-registration conformance: gates aligned to the 23 September plan text before their data exists":
+  the table and the corrected gates.
+- Commit `0696a4b`: the aggregators (D2, D3, D4, C6 geometry, D1 ensembles, S2b, S3 benchmark), the instrumented D6 runners,
+  the queue wiring and their tests.
+
+80 clauses: 12 conformant, 11 conformant only under a flagged operationalisation, 57 non-conformant (48 fixed before their
+stage's data or verdict existed, 5 on stages that already had a verdict, reported with both readings and left alone, 4 open).
+No threshold was changed. Uncovered cases (a C3 gain of 3 pt with the lead still over 1 pt, a C4 set that loses, a C5 plateau at
+g = 2 or 8, a D4 combination outside T1 to T3) became explicit "-OUT" letters with exit 10 instead of defaulting into a letter.
+
+Three defects found while reading, each of which would have produced a result that looked real: (1) the "tuned" SVM-X run also
+carried `--save-proba`, train_classical_loso.py's refit-only path, so all 40 folds used the published C = 1, gamma = 'scale'
+(mean F1 0.7767, the published SVM); and its gamma grid was six absolute values, not multiples of `scale`. (2) C5 ran every arm
+per-subject, so W-B1 was identical to B-1. (3) The S2b 400 ms features were extracted from the envelope with the wavelet on at
+2000 Hz, not with the published `--use raw --fs 1000 --no-wavelet`. The affected directories are set aside with notes.
+
+Existing verdicts under the plan rule: none changes. C1 stays E under both readings (the optimism is +0.22 pt against the true
+maximum 0.8604, not -0.02 against the headline 0.8580; the escalation rests on the "chosen in fewer than 20 of 40" clause).
+The D1 reproduction PASS, S1 D-S and D5 letters stand. The S2 reading now leads with the transductive and balanced25
+conditions (vote: -4.31 and -4.03 pt steady-state error, +125 ms paired median delay in both) and reports the causal-100
+collapse as a separate finding.
