@@ -1,0 +1,17 @@
+family,normalization,present,source
+LDA,global,False,
+LDA,per_subject,False,
+SVM,global,True,results_aonly_global
+SVM,per_subject,True,results_aonly_persubj
+RF,global,True,results_aonly_global
+RF,per_subject,True,results_aonly_persubj
+SVMX,global,False,
+SVMX,per_subject,False,
+HGB,global,False,
+HGB,per_subject,False,
+simple,global,False,
+simple,per_subject,False,
+resnet_se,global,False,
+resnet_se,per_subject,False,
+resnet_se_cd,global,False,
+resnet_se_cd,per_subject,True,results_aonly_resnet_se_cd_persubj

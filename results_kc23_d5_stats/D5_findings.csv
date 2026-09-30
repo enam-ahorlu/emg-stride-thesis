@@ -1,0 +1,5 @@
+finding,letter,expected_sign,n_agree,n_subjects,mean_diff,direction_holds
+chandrop_gain,E-R,1,10,10,5.364029841496516,True
+gainjitter_vs_chandrop,E-N,1,4,10,0.5469389435509286,True
+occlusion_reduction,E-R,1,9,10,2.667130371079941,True
+permutation_reduction,E-N,1,4,10,-0.22541607679200842,False

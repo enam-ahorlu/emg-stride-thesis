@@ -86,3 +86,13 @@ features_out_filter/windows_*.npz
 
 # separate environment for the D1 MixedLM secondary model only (statsmodels); .venv stays frozen for reproduction
 .venv_stats/
+
+# -- KC23 RUNTIME AND STAGING (added 30 Sep 2026) ----------------------------
+# Queue lock and pid are live runtime state, not results.
+*.lock
+*.pid
+# ENABL3S windowed arrays and per-subject staging checkpoints written by the
+# KC23 S2 adapters (25-295 MB each). Same policy as features_out_ext above:
+# regenerable, and the derived feature matrices beside them are tracked.
+results_kc23_*/windows_*.npz
+results_kc23_*/checkpoints/

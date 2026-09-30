@@ -1,0 +1,9 @@
+rung,name,f1_mean,f1_sd,n
+0,global_z,0.709404,0.067445,40
+3,mean_scale,0.7767,0.054726,40
+4,full_whiten_recolor,0.67521,0.06386,40
+4b,prez_whiten_lam1,0.763085,0.056894,40
+4c,prez_whiten_scalefree_a1,0.76296,0.056146,40
+4d,prez_whiten_scalefree_a01,0.743839,0.058187,40
+4lw,prez_whiten_ledoitwolf,0.727701,0.060559,40
+4o,oracle_within_class_whiten,0.763017,0.058356,40

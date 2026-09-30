@@ -1,0 +1,2 @@
+method,arch,coral_lambda,f1_macro_mean,n,domain_probe_bacc_mean,class_probe_tgt_bacc_mean,class_probe_src_bacc_mean,coral_rel_mean,coral_scaled_mean,mean_gap_rel_mean,mmd2_rbf_mean,feat_norm_src_mean,feat_norm_tgt_mean
+DeepCORAL+align,resnet_se,30.0,0.8340610740418596,40,0.8238005762190188,0.9250961544243108,0.9010562499999999,0.47656232675214144,0.0006536158689518349,0.3619284063338882,0.06961719367390269,7.6214415743524295,7.189133217821036

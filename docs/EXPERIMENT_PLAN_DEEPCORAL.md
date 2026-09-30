@@ -520,3 +520,98 @@ results directory, seed stays at 42, no repeats.
    subjects improved, and as a multiple of 0.5 pp.
 5. Which outcome fired, A1, B1 or C1, in one sentence.
 6. If A1: the v9 recomputation and whether anything changed side.
+
+---
+
+# D2c AMENDMENT, 19 September 2026. Does the Deep CORAL weight change invariance at all?
+
+## Why this is run
+
+D2 swept lambda from 0.1 to 100 and found macro-F1 flat (0.832 to 0.835, no contrast separable). It logged F1 only. The thesis's
+through-line is that past a point more invariance costs class information and accuracy follows it; the sweep cannot be read
+against that, because nothing recorded whether the embedding became more subject-invariant as lambda rose. The restructure (D2 of
+`RESTRUCTURE_WORKPLAN.md`) therefore lists the sweep as an untested case. D2c turns it into evidence one way or the other, at two
+arms of cost. Enam approved it on 19 September.
+
+## What changes and what does not
+
+`run_deep_coral_align_loso.py` is `run_deep_coral_cnn_loso.py` with measurement added. The training loop is copied line for line
+with logging and no extra RNG draws; a CPU check on synthetic data gave bit-identical F1 from the two scripts at lambda = 100. After
+each fold is trained and the best state restored, it embeds a class-stratified sample of 4,000 source windows (training subjects,
+not validation subjects) and all target windows and records, per fold: the scale-free CORAL distance `coral_rel`, the training
+objective `coral_scaled`, mean embedding norms (a shrinking embedding is the trivial way to lower an unnormalised CORAL loss),
+`mean_gap_rel`, `mmd2_rbf` on standardised features, and two linear probes with 5-fold CV balanced accuracy:
+**`domain_probe_bacc`** (source vs target, balanced; 0.5 means indistinguishable) and **`class_probe_tgt_bacc`** (movement from
+the target's embedding). Target labels are used only by the class probe, after training, as a measurement. A per-epoch log records
+cross-entropy, the unweighted CORAL loss and source validation loss.
+
+Everything else is D2's configuration: ResNet-SE, `--augmentation chandrop` (p = 0.2), global per-channel z-score fit on the
+training fold, `X_env`, seed 42, batch 256, 40 epochs ceiling, patience 7, no repeats.
+
+## The prediction, written before the runs
+
+If the through-line's mechanism is right and the CORAL weight is a real invariance knob, lambda = 100 should leave the target
+less separable from the source than lambda = 0.1, and the class probe on the target should hold or fall; accuracy should not
+rise. If the weight is inert on invariance, the flat F1 in D2 says nothing about the shape, and the thesis says so with numbers.
+
+## Stage A: two arms
+
+```
+foreach L in 0.1 100:
+python run_deep_coral_align_loso.py --npz $NPZ --meta $META \
+    --arch resnet_se --augmentation chandrop --coral-lambda $L --epochs 40 \
+    --out results_deep_coral_align_lam<L> --resume
+```
+Directories `results_deep_coral_align_lam0p1` and `results_deep_coral_align_lam100`, one per lambda, never shared (the `--resume`
+rule from D2 applies). Each arm is an independently resumable job. Expected cost at D2's realised rate (about 200 s a fold): about
+2.2 h an arm, about 4.5 h for Stage A.
+
+**Reproduction gate**, per arm: mean macro-F1 within 1.5 pp of the D2 arm (lambda 0.1: 0.832075; lambda 100: 0.834530). A miss
+stops the run; report it.
+
+## Stage B: conditional and pre-registered
+
+**Trigger: Outcome 1 (below).** Run lambda = 0 into `results_deep_coral_align_lam0` (gate: within 1.5 pp of the 0.772 global-norm
+channel-dropout base). Stage B is a manipulation check only: it asks whether the CORAL term moves subject separability at all
+relative to no CORAL. The F1 rise from lambda 0 to 0.1 is the rising limb the through-line expects (per-subject normalization is
+itself such a step), so it is **not** read as a counter-example.
+
+## Analysis and decision rules, fixed now
+
+`python d2c_analysis.py` (add `--with-lam0` after Stage B). Paired over 40 subjects, lambda 100 minus lambda 0.1: Wilcoxon,
+paired dz, BCa 95% (10,000 resamples), subjects lower, Holm across four contrasts: `domain_probe_bacc` and `class_probe_tgt_bacc`
+(primary), `coral_rel` (manipulation check) and `f1_macro`. Descriptives: embedding norm, `coral_scaled`, `mmd2_rbf`,
+`mean_gap_rel`, source class probe. Read `*_subjectwise.csv` only.
+
+- **Alignment moved:** domain probe lower by at least 2.0 pp, Holm p < 0.05.
+- **Class information fell:** target class probe lower by at least 1.0 pp, Holm p < 0.05.
+- **Accuracy rose:** F1 higher by more than 0.5 pp (the nondeterminism band), Holm p < 0.05.
+
+| Outcome | Condition | Meaning for the thesis | Action |
+|---|---|---|---|
+| 1, inert | alignment did not move | the weight is not an invariance knob here; the flat sweep tests nothing about the shape | run Stage B; body states it with numbers |
+| 2, instance | moved; class information fell; accuracy did not rise | consistent with the shape on a third axis | report; framing is Enam's call |
+| 3, not better, no measured cost | moved; class information held; accuracy did not rise | supports "not better"; does not show the cost on this axis | report; framing is Enam's call |
+| 4, counter-example | moved; accuracy rose | contradicts the through-line on this axis | **hard stop, escalate** |
+| 5, reverse | domain probe **higher** by at least 2.0 pp, significant | the higher weight left the embedding more separable | stop and escalate |
+
+If `coral_scaled` falls while `coral_rel` and the domain probe do not, the loss was lowered by shrinking the embedding. Say so
+plainly; it is Outcome 1 in substance.
+
+## The family
+
+Admit the two primary contrasts (and Stage B's domain-probe contrast if it runs) to the whole-thesis Benjamini-Hochberg family as
+**v9**, from v8's 229 tests and 154 survivors, under v7's genuine-tests-only rule. The F1 and `coral_rel` contrasts are reported
+under the experiment's own Holm and not admitted (F1 re-tests arms the family already carries through D2). Record composition and
+exclusions in the v9 docstring in the form v8 used.
+
+## Operating constraints
+
+As D2: run from `06_Code/` in the project `.venv`, absolute path to the inner python; do not touch `results_deep_coral_lam*`,
+`results_deep_coral_chandrop` or any thesis file; do not fabricate numbers; report unfinished arms as unfinished; `X_env`, seed 42,
+no repeats.
+
+## Report back, in this order
+
+The two reproduction gates and offsets; the Stage A contrast table; the outcome in one sentence; the descriptives, including
+whether the embedding shrank; Stage B if triggered; the v9 family counts and anything that changed side.

@@ -1,0 +1,34 @@
+{
+  "argv": [
+    "run_scripted_supervised.py",
+    "--seed",
+    "42",
+    "--out",
+    "results_kc23_s1_scripted_s42",
+    "--resume"
+  ],
+  "args": {
+    "out": "results_kc23_s1_scripted_s42",
+    "seed": 42,
+    "resume": true,
+    "subjects": null,
+    "base_epochs": 40,
+    "base_patience": 7,
+    "base_batch": 512,
+    "base_lr": 0.001,
+    "base_chandrop_p": 0.2,
+    "ft_epochs": 3,
+    "ft_lr": 0.0005
+  },
+  "resolved_paths": {},
+  "git_commit": "31e0aba5452cc5817795c410db8a02b45cd83a76",
+  "python": "3.14.0",
+  "torch": "2.10.0+cu126",
+  "cuda": "12.6",
+  "cudnn": 91002,
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "numpy": "2.4.1",
+  "scipy": "1.17.0",
+  "sklearn": "1.8.0",
+  "pandas": "2.3.3"
+}
