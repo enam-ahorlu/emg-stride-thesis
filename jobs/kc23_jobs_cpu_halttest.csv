@@ -1,0 +1,2 @@
+job_id,stage,seed,command,out_dir,depends_on,gate_script
+halt_test_job2,OTHER,,"""C:\dev\emg-stride-thesis\.venv\Scripts\python.exe"" -c ""print(2)""",results/kc23_halttest_job2,halt_test_job1,

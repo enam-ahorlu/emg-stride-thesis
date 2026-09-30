@@ -116,7 +116,7 @@ confidence interval, at n = 40 (SIAT) or n = 10 (ENABL3S).
 Every paired comparison the thesis reports is pooled into **one Benjamini-Hochberg family of 229
 tests**, recomputed from source each time it grew rather than patched. 154 survive at a 5%
 false-discovery rate. The 75 that do not are, with two exceptions the thesis names, results already
-reported as null or as honest negatives. `recompute_unified_fdr_v8.py` builds the family of record;
+reported as null or as honest negatives. `src/recompute_unified_fdr_v8.py` builds the family of record;
 every earlier version is kept so the growth of the family is inspectable, and the two contrasts that
 lost significance as it grew are reported rather than absorbed.
 
@@ -125,7 +125,7 @@ lost significance as it grew are reported rather than absorbed.
 ## Datasets
 
 **SIAT-LLMD** (primary). 40 healthy adults, 9 sEMG channels at 1920 Hz. The published feature
-matrices were extracted with `extract_features.py`'s 2000 Hz default left in place, which changes
+matrices were extracted with `src/extract_features.py`'s 2000 Hz default left in place, which changes
 nothing: the rate enters as one multiplicative constant on the two spectral features that both
 normalization schemes divide out, and a rebuild at 1920 Hz reproduces the SVM figure to every
 digit stored.
@@ -148,14 +148,14 @@ the raw recordings.
 ## Pipeline
 
 ```
-preprocess_emg.py     bandpass 20-450 Hz (4th-order Butterworth, zero-phase) -> rectify
-                      -> 50 ms moving-average envelope -> 250 ms windows at 50% overlap
-                      -> 60% label-purity rule -> windowed .npz
-extract_features.py   Base-36 / Extended-54 / Freq-72 / Combined-81 feature matrices
-                      Freq-72 (primary) = MAV, RMS, WL, ZC, WAMP, MNF, MDF, spectral power x 9 channels
-train_classical_loso.py   SVM / RF nested LOSO, inner 5-fold GroupKFold, GridSearchCV on macro-F1
-run_cnn_arch_loso.py      SimpleEMGCNN / ResNet-SE LOSO, --augmentation {none,gaussian,chandrop,timemask}
-ensemble_v2_combine.py    soft, weighted-soft, hard and stacked combiners from saved probabilities
+src/preprocess_emg.py         bandpass 20-450 Hz (4th-order Butterworth, zero-phase) -> rectify
+                              -> 50 ms moving-average envelope -> 250 ms windows at 50% overlap
+                              -> 60% label-purity rule -> windowed .npz
+src/extract_features.py       Base-36 / Extended-54 / Freq-72 / Combined-81 feature matrices
+                              Freq-72 (primary) = MAV, RMS, WL, ZC, WAMP, MNF, MDF, spectral power x 9 channels
+src/train_classical_loso.py   SVM / RF nested LOSO, inner 5-fold GroupKFold, GridSearchCV on macro-F1
+src/run_cnn_arch_loso.py      SimpleEMGCNN / ResNet-SE LOSO, --augmentation {none,gaussian,chandrop,timemask}
+src/ensemble_v2_combine.py    soft, weighted-soft, hard and stacked combiners from saved probabilities
 ```
 
 Normalization is applied **inside** the LOSO loop and never uses held-out labels, which is what makes
@@ -171,17 +171,19 @@ additional seeds.
 
 | Path | Contents |
 |---|---|
-| `*.py` at root | preprocessing, feature extraction, trainers, ablation drivers, statistics, figure scripts |
-| `features_out/`, `features_out_ext/` | derived feature matrices, tracked (SIAT and ENABL3S) |
-| `results_*/` | one directory per experimental arm, each with per-subject metrics and saved predictions |
-| `report_figs/` | publication figures and CSV summary tables |
-| `EXPERIMENT_PLAN_*.md` | pre-registered protocols, written before the runs they govern |
-| `*_REPORT.md`, `RUN_QUEUE*.md` | outcome reports and run logs |
+| `src/` | preprocessing, feature extraction, trainers, experiment drivers, statistics and figure scripts |
+| `data/` | raw recordings (not tracked), windowed arrays, and the derived feature matrices for SIAT and ENABL3S |
+| `results/` | one folder per experimental arm, each with per-subject metrics and saved predictions |
+| `figures/report_figs/` | thesis figures and CSV summary tables |
+| `jobs/`, `scripts/` | KC23 job tables and the shell and PowerShell runners |
+| `tests/kc23/` | the KC23 test suite |
+| `docs/plans/` | pre-registered protocols, written before the runs they govern |
+| `docs/reports/`, `docs/kc23/`, `docs/notes/` | outcome reports, KC23 records and session notes |
 | `REPRODUCE.md` | **the reproduction map**: every thesis number to its script and output |
-| `_STRUCTURE.md` | fuller directory index |
+| `docs/LAYOUT.md` | the full folder guide, and how it maps onto the flat layout of the archived releases |
 
 Several experiments were pre-registered: the protocol, the endpoints and the decision thresholds were
-written into an `EXPERIMENT_PLAN_*.md` before any run began. Where a pre-registered rule produced an
+written into a plan in `docs/plans/` before any run began. Where a pre-registered rule produced an
 uncomfortable answer, the rule was followed and the discomfort reported.
 
 ---
@@ -192,12 +194,12 @@ Prerequisites: Python 3.10+, `numpy scipy pandas scikit-learn torch matplotlib s
 (see `requirements.txt`).
 
 ```bash
-python preprocess_emg.py            # raw recordings -> windowed .npz
-python extract_features.py          # windowed .npz -> feature matrices
-python train_classical_loso.py --norm-mode per_subject   # SVM / RF LOSO
-python run_cnn_arch_loso.py --arch resnet_se --augmentation chandrop --norm-mode per_subject
-python ensemble_v2_combine.py       # combiner comparison
-python recompute_unified_fdr_v8.py  # whole-thesis correction family
+python src/preprocess_emg.py            # raw recordings -> windowed .npz
+python src/extract_features.py          # windowed .npz -> feature matrices
+python src/train_classical_loso.py --norm-mode per_subject   # SVM / RF LOSO
+python src/run_cnn_arch_loso.py --arch resnet_se --augmentation chandrop --norm-mode per_subject
+python src/ensemble_v2_combine.py       # combiner comparison
+python src/recompute_unified_fdr_v8.py  # whole-thesis correction family
 ```
 
 `REPRODUCE.md` is the authority and carries the exact invocation for every reported result,

@@ -1,8 +1,0 @@
-arm,directory,subjectwise_file,f1_column,quoted_value,tolerance,provenance
-R1,results_cnn_aug_resnet_se_none,cnn_arch_subjectwise.csv,f1_macro,0.782,0.0006,"plan D1.4 quotes 0.782 for R1; this directory's 40-fold mean is 0.7822"
-R2,results_cnn_aug_resnet_se_chandrop,cnn_arch_subjectwise.csv,f1_macro,0.8395,0.0006,"plan D1.4 quotes 0.8395 for R2, the model of record; this directory's mean is 0.8395"
-R10,results_adabn_chandrop,adabn_subjectwise.csv,f1_macro,,,"the post-adaptation column of the run whose pre-adaptation mean the plan quotes (R10pre below)"
-R10pre,results_adabn_chandrop,adabn_subjectwise.csv,f1_pre_adabn,0.787,0.0006,"plan D1.4 quotes 0.787 for R10 pre-adaptation; this directory's f1_pre_adabn mean is 0.7874"
-R12,results_win400_cnn_persubj,cnn_arch_subjectwise.csv,f1_macro,0.860,0.0006,"plan D1.6 quotes 0.860 for R12 (400 ms); this directory's mean is 0.8599"
-ENS_SOFT,results_ensemble_v2_chandrop,ensemble_v2_subjectwise.csv,SVM+RESNET_SE [soft],0.858,0.0006,"plan D1.6 quotes 0.858 for the ensemble; this file's SVM+ResNet-SE+CD soft vote is 0.8579"
-ENS_STACK,results_ensemble_v2_chandrop,ensemble_v2_subjectwise.csv,SVM+RESNET_SE [stacking],,,"the stacking combiner of the same file (decision D-6a, contrast C13b)"
